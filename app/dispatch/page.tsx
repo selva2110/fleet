@@ -15,7 +15,7 @@ import {
   Users,
   Gauge,
 } from 'lucide-react';
-import { useCenters, useDrivers, useParticipants, useTrips, useTripStops, useVehicles } from '@/lib/hooks';
+import { useCenters, useDrivers, useParticipants, useTrips, useVehicles, useAllTripStops } from '@/lib/hooks';
 import { useFleetStore } from '@/lib/store';
 import { useLiveTracking } from '@/lib/use-live-tracking';
 import { StatusBadge, VehicleTypeBadge, formatEta, formatTime } from '@/components/shared/badges';
@@ -48,10 +48,8 @@ export default function DispatchPage() {
     [trips]
   );
 
-  const stopsByTrip = useMemo(() => {
-    const map: Record<string, { location: { coordinates: [number, number] }; stop_type: string; sequence_index: number; participant?: { full_name: string } }[]> = {};
-    return map;
-  }, []);
+  const activeTripIds = activeTrips.map((t) => t.id);
+  const { data: stopsByTrip } = useAllTripStops(activeTripIds);
 
   if (!centers || !participants || !vehicles || !drivers || !trips) {
     return (
