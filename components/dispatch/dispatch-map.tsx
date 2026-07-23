@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Center, Participant, Trip, Vehicle } from '@/lib/types';
@@ -32,6 +32,7 @@ export function DispatchMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Record<string, maplibregl.Marker>>({});
+  const [mapReady, setMapReady] = useState(false);
   const selectedVehicleId = useFleetStore((s) => s.selectedVehicleId);
   const selectVehicle = useFleetStore((s) => s.selectVehicle);
   const liveVehicles = useFleetStore((s) => s.liveVehicles);
@@ -110,18 +111,21 @@ export function DispatchMap({
           'circle-stroke-color': '#ffffff',
         },
       });
+
+      setMapReady(true);
     });
 
     return () => {
       map.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
   // Centers markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapReady) return;
 
     for (const center of centers) {
       const id = `center-${center.id}`;
@@ -137,12 +141,12 @@ export function DispatchMap({
         .addTo(map);
       markersRef.current[id] = marker;
     }
-  }, [centers]);
+  }, [centers, mapReady]);
 
   // Participant markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapReady) return;
 
     for (const p of participants) {
       const id = `participant-${p.id}`;
@@ -159,12 +163,12 @@ export function DispatchMap({
         .addTo(map);
       markersRef.current[id] = marker;
     }
-  }, [participants]);
+  }, [participants, mapReady]);
 
   // Route lines + stop circles
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapReady) return;
 
     const features: GeoJSON.Feature[] = [];
     const stopFeatures: GeoJSON.Feature[] = [];
@@ -198,12 +202,12 @@ export function DispatchMap({
 
     const stopSrc = map.getSource('stop-circles') as maplibregl.GeoJSONSource | undefined;
     stopSrc?.setData({ type: 'FeatureCollection', features: stopFeatures } as GeoJSON.FeatureCollection);
-  }, [trips, stopsByTrip]);
+  }, [trips, stopsByTrip, mapReady]);
 
   // Vehicle markers — created once, updated by live positions
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapReady) return;
 
     for (const v of vehicles) {
       const id = `vehicle-${v.id}`;
@@ -225,7 +229,7 @@ export function DispatchMap({
         el.addEventListener('click', () => selectVehicle(v.id));
       }
     }
-  }, [vehicles, selectVehicle]);
+  }, [vehicles, selectVehicle, mapReady]);
 
   // Live position updates
   useEffect(() => {

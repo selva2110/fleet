@@ -50,6 +50,7 @@ export default function DispatchPage() {
 
   const activeTripIds = activeTrips.map((t) => t.id);
   const { data: stopsByTrip } = useAllTripStops(activeTripIds);
+  const stopsByTripResolved = stopsByTrip ?? {};
 
   if (!centers || !participants || !vehicles || !drivers || !trips) {
     return (
@@ -118,7 +119,7 @@ export default function DispatchPage() {
           participants={participants}
           vehicles={vehicles}
           trips={activeTrips}
-          stopsByTrip={stopsByTrip}
+          stopsByTrip={stopsByTripResolved}
         />
         {/* Overlay controls */}
         <div className="absolute left-4 top-4 z-10 flex items-center gap-2">

@@ -334,7 +334,6 @@ export function useSystemEvents() {
 }
 
 export function useAllTripStops(tripIds: string[]) {
-  const qc = useQueryClient();
   return useQuery({
     queryKey: ['all-trip-stops', tripIds.join(',')],
     enabled: tripIds.length > 0,
