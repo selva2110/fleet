@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/app-shell'
+import { ThemeProvider, themeInitScript } from '@/components/theme-provider'
 import { FleetProvider } from '@/lib/store'
 import './globals.css'
 
@@ -27,13 +28,22 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} bg-background`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} bg-background`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="font-sans antialiased">
-        <FleetProvider>
-          <TooltipProvider delay={200}>
-            <AppShell>{children}</AppShell>
-          </TooltipProvider>
-        </FleetProvider>
+        <ThemeProvider>
+          <FleetProvider>
+            <TooltipProvider delay={200}>
+              <AppShell>{children}</AppShell>
+            </TooltipProvider>
+          </FleetProvider>
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

@@ -32,6 +32,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { cn } from '@/lib/utils'
 import { ROLES } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type NavItem = { href: string; label: string; icon: React.ElementType }
 type NavSection = { title: string; items: NavItem[] }
@@ -211,6 +212,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-2">
             <LiveClock />
             <SimToggle />
+            <ThemeToggle />
             <RoleSwitcher />
           </div>
         </header>
