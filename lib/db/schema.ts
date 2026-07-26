@@ -66,7 +66,7 @@ export const vehicles = pgTable('vehicles', {
   wheelchairCapacity: integer('wheelchair_capacity').notNull().default(0),
   oxygenEquipment: boolean('oxygen_equipment').notNull().default(false),
   liftAvailable: boolean('lift_available').notNull().default(false),
-  bariatricCapable: boolean('bariatric_bariatric').notNull().default(false),
+  bariatricCapable: boolean('bariatric_capable').notNull().default(false),
   stretcherCapable: boolean('stretcher_capable').notNull().default(false),
   fuelType: text('fuel_type').notNull(),
   maintenanceStatus: text('maintenance_status').notNull(),
