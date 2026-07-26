@@ -8,9 +8,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Funnel,
-  FunnelChart,
-  LabelList,
   Pie,
   PieChart,
   PolarAngleAxis,
@@ -25,7 +22,6 @@ import {
   Leaf,
   Route as RouteIcon,
   Timer,
-  TrendingUp,
   Users,
 } from 'lucide-react'
 import { PageHeader, StatCard } from '@/components/common'
@@ -40,14 +36,6 @@ import {
 } from '@/components/ui/chart'
 import { useFleet } from '@/lib/store'
 import { formatMiles } from '@/lib/labels'
-
-const FUNNEL_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-]
 
 export default function AnalyticsPage() {
   const fleet = useFleet()
@@ -65,31 +53,6 @@ export default function AnalyticsPage() {
     return ratios.length ? Math.round((ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100) : 0
   }, [allTrips, fleet])
   const onTimeRate = allTrips.length ? Math.round((completed.length / allTrips.length) * 100) || 92 : 92
-
-  // Service delivery funnel — participants moving through the transport lifecycle.
-  const funnelData = useMemo(() => {
-    const total = fleet.participants.length
-    const scheduled = fleet.participants.filter((p) => p.status !== 'registered').length
-    const assigned = fleet.participants.filter((p) =>
-      ['vehicle-assigned', 'driver-assigned', 'driver-approaching', 'picked-up', 'dropped-off', 'completed'].includes(p.status),
-    ).length
-    const pickedUp = fleet.participants.filter((p) =>
-      ['picked-up', 'dropped-off', 'completed'].includes(p.status),
-    ).length
-    const delivered = fleet.participants.filter((p) =>
-      ['dropped-off', 'completed'].includes(p.status),
-    ).length
-    return [
-      { stage: 'Registered', value: Math.max(total, 1), fill: FUNNEL_COLORS[0] },
-      { stage: 'Scheduled', value: scheduled, fill: FUNNEL_COLORS[1] },
-      { stage: 'Assigned', value: assigned, fill: FUNNEL_COLORS[2] },
-      { stage: 'Picked Up', value: pickedUp, fill: FUNNEL_COLORS[3] },
-      { stage: 'Delivered', value: delivered, fill: FUNNEL_COLORS[4] },
-    ]
-  }, [fleet.participants])
-  const funnelConversion = funnelData[0].value
-    ? Math.round((funnelData[4].value / funnelData[0].value) * 100)
-    : 0
 
   // Weekly trend (synthetic distribution of trips across the week for a trend view).
   const weeklyData = useMemo(() => {
@@ -158,97 +121,38 @@ export default function AnalyticsPage() {
           <StatCard label="Riders Served" value={totalRiders} icon={Accessibility} />
         </div>
 
-        {/* Funnel + gauges row */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <div>
-                <h2 className="text-sm font-semibold">Service Delivery Funnel</h2>
-                <p className="text-xs text-muted-foreground">Participants moving from registration to delivery</p>
-              </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
-                <TrendingUp className="size-3.5" /> {funnelConversion}% conversion
-              </span>
-            </div>
-            <div className="grid gap-4 p-4 sm:grid-cols-5">
-              <ChartContainer config={{}} className="h-[240px] w-full sm:col-span-3">
-                <FunnelChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="stage" />} />
-                  <Funnel dataKey="value" data={funnelData} isAnimationActive lastShapeType="rectangle">
-                    <LabelList
-                      position="right"
-                      dataKey="stage"
-                      className="fill-foreground text-xs font-medium"
-                      stroke="none"
-                    />
-                    <LabelList
-                      position="left"
-                      dataKey="value"
-                      className="fill-muted-foreground text-xs tabular-nums"
-                      stroke="none"
-                    />
-                    {funnelData.map((d) => (
-                      <Cell key={d.stage} fill={d.fill} />
-                    ))}
-                  </Funnel>
-                </FunnelChart>
-              </ChartContainer>
-              <div className="flex flex-col justify-center gap-2 sm:col-span-2">
-                {funnelData.map((d, i) => {
-                  const pct = funnelData[0].value ? Math.round((d.value / funnelData[0].value) * 100) : 0
-                  return (
-                    <div key={d.stage} className="rounded-lg border border-border p-2.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <span className="size-2.5 rounded-full" style={{ background: FUNNEL_COLORS[i] }} />
-                          {d.stage}
-                        </span>
-                        <span className="font-semibold tabular-nums">{d.value}</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: FUNNEL_COLORS[i] }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">Fleet Utilization</h2>
-            </div>
-            <div className="flex flex-col items-center p-4">
-              <ChartContainer config={gaugeConfig} className="mx-auto aspect-square h-[200px]">
+        {/* Utilization gauge + quick stats */}
+        <Card>
+          <div className="border-b border-border px-5 py-3">
+            <h2 className="text-sm font-semibold">Fleet Utilization</h2>
+          </div>
+          <div className="grid items-center gap-4 p-4 sm:grid-cols-[220px_1fr]">
+            <div className="relative mx-auto aspect-square w-[200px]">
+              <ChartContainer config={gaugeConfig} className="size-full">
                 <RadialBarChart
                   data={[{ name: 'util', value: avgUtil, fill: 'var(--chart-1)' }]}
                   startAngle={90}
                   endAngle={90 - (avgUtil / 100) * 360}
-                  innerRadius={70}
+                  innerRadius={72}
                   outerRadius={100}
                 >
                   <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
                   <RadialBar background dataKey="value" cornerRadius={8} />
                 </RadialBarChart>
               </ChartContainer>
-              <div className="-mt-32 mb-16 text-center">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                 <div className="text-3xl font-bold tabular-nums">{avgUtil}%</div>
                 <div className="text-xs text-muted-foreground">avg seats filled</div>
               </div>
-              <div className="grid w-full grid-cols-2 gap-2 text-center">
-                <div className="rounded-lg border border-border p-2">
-                  <div className="text-lg font-semibold tabular-nums">{onTimeRate}%</div>
-                  <div className="text-xs text-muted-foreground">On-Time</div>
-                </div>
-                <div className="rounded-lg border border-border p-2">
-                  <div className="text-lg font-semibold tabular-nums">{fleet.vehicles.length}</div>
-                  <div className="text-xs text-muted-foreground">Vehicles</div>
-                </div>
-              </div>
             </div>
-          </Card>
-        </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <GaugeStat label="On-Time" value={`${onTimeRate}%`} />
+              <GaugeStat label="Vehicles" value={`${fleet.vehicles.length}`} />
+              <GaugeStat label="Active Trips" value={`${allTrips.length}`} />
+              <GaugeStat label="Riders Served" value={`${totalRiders}`} />
+            </div>
+          </div>
+        </Card>
 
         {/* Weekly trend */}
         <Card>
@@ -377,6 +281,15 @@ export default function AnalyticsPage() {
           </Card>
         </div>
       </div>
+    </div>
+  )
+}
+
+function GaugeStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border p-3 text-center">
+      <div className="text-xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
     </div>
   )
 }
