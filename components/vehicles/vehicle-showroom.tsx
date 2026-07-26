@@ -1,21 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import dynamic from 'next/dynamic'
-import { Loader2, Rotate3d } from 'lucide-react'
+import { Rotate3d } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { VehicleStage } from '@/components/vehicles/vehicle-stage'
 import { vehicleTypeDescriptions, vehicleTypeImages } from '@/lib/vehicle-images'
 import type { VehicleType } from '@/lib/types'
-
-const Vehicle3D = dynamic(() => import('@/components/vehicles/vehicle-3d'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex size-full items-center justify-center">
-      <Loader2 className="size-6 animate-spin text-white/40" />
-    </div>
-  ),
-})
 
 const TYPES = Object.keys(vehicleTypeImages) as VehicleType[]
 
@@ -39,7 +30,7 @@ export function VehicleShowroom({ count }: { count?: Partial<Record<VehicleType,
       <div className="grid lg:grid-cols-[1.35fr_1fr]">
         {/* 3D stage */}
         <div className="relative min-h-[340px] bg-[radial-gradient(circle_at_50%_35%,oklch(0.32_0.03_258),oklch(0.16_0.02_258))] lg:min-h-[440px]">
-          <Vehicle3D type={active} />
+          <VehicleStage type={active} />
           <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
             <Rotate3d className="size-3.5" /> Drag to rotate
           </div>
