@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table'
 import { RowActions } from '@/components/crud/row-actions'
 import { VehicleDialog } from '@/components/crud/vehicle-dialog'
+import { VehicleShowroom } from '@/components/vehicles/vehicle-showroom'
 import {
   CheckboxGroupFilter,
   DataToolbar,
@@ -109,6 +110,12 @@ export default function VehiclesPage() {
   const wheelchairCapable = fleet.vehicles.filter((v) => v.wheelchairCapacity > 0).length
   const needService = fleet.vehicles.filter((v) => v.maintenanceStatus === 'service-required').length
 
+  const typeCounts = useMemo(() => {
+    const counts: Partial<Record<VehicleType, number>> = {}
+    for (const v of fleet.vehicles) counts[v.type] = (counts[v.type] ?? 0) + 1
+    return counts
+  }, [fleet.vehicles])
+
   const activeFilterCount =
     (types.length ? 1 : 0) +
     (statuses.length ? 1 : 0) +
@@ -176,6 +183,8 @@ export default function VehiclesPage() {
       />
 
       <div className="flex flex-col gap-6 p-6">
+        <VehicleShowroom count={typeCounts} />
+
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="Total Fleet" value={fleet.vehicles.length} icon={Bus} />
           <StatCard label="Available Now" value={available} icon={Bus} tone="success" />
