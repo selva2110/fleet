@@ -1,25 +1,41 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import { Providers } from './providers';
-import { AppShell } from '@/components/layout/app-shell';
+import { Analytics } from '@vercel/analytics/next'
+import type { Metadata, Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { AppShell } from '@/components/app-shell'
+import { FleetProvider } from '@/lib/store'
+import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] });
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'FleetIQ — Smart Fleet Event Transportation',
+  title: 'FleetCare | Event Transportation Management',
   description:
-    'Automated fleet dispatch, route optimization, and live tracking for medical and community event transportation.',
-};
+    'Smart Fleet Event Transportation Management Platform for coordinating participant transport to healthcare and community events.',
+  generator: 'v0.app',
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport: Viewport = {
+  themeColor: '#2563eb',
+  colorScheme: 'light',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} bg-background`}>
+      <body className="font-sans antialiased">
+        <FleetProvider>
+          <TooltipProvider delay={200}>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
+        </FleetProvider>
+        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
-  );
+  )
 }

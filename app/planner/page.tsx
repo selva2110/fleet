@@ -1,0 +1,524 @@
+'use client'
+
+import { useMemo, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  Bus,
+  Check,
+  CircleAlert,
+  Gauge,
+  Map as MapIcon,
+  Route as RouteIcon,
+  Sparkles,
+  TriangleAlert,
+  UserRound,
+  Users,
+  Wallet,
+} from 'lucide-react'
+import { PageHeader, StatCard } from '@/components/common'
+import { FleetMap } from '@/components/map/fleet-map-dynamic'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
+import { formatMiles } from '@/lib/labels'
+import { useFleet } from '@/lib/store'
+import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
+
+type Phase = 'idle' | 'planning' | 'results'
+
+const PLANNING_STEPS = [
+  'Analyzing participant locations & needs',
+  'Matching medical constraints to vehicles',
+  'Grouping participants by proximity',
+  'Optimizing pickup sequences',
+  'Assigning certified drivers',
+  'Scoring route efficiency',
+]
+
+export default function PlannerPage() {
+  const fleet = useFleet()
+  const router = useRouter()
+  const plannableEvents = fleet.events.filter((e) => e.status !== 'completed')
+  const defaultEventId = useMemo(() => {
+    const committedPids = new Set(
+      fleet.trips
+        .filter((t) => t.status !== 'cancelled')
+        .flatMap((t) => t.stops.map((s) => s.participantId)),
+    )
+    const withPending = plannableEvents.find((e) =>
+      e.participantIds.some((pid) => !committedPids.has(pid)),
+    )
+    return withPending?.id ?? plannableEvents[0]?.id ?? ''
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const [eventId, setEventId] = useState(defaultEventId)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const sp = new URLSearchParams(window.location.search)
+    const id = sp.get('id')
+    if (id) setEventId(id)
+  }, [])
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [step, setStep] = useState(0)
+  const [recs, setRecs] = useState<PlanRecommendation[]>([])
+  const [unassigned, setUnassigned] = useState<UnassignedParticipant[]>([])
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [committed, setCommitted] = useState(false)
+
+  const event = fleet.eventById(eventId)
+  const center = event ? fleet.centerById(event.centerId) : undefined
+
+  const pending = useMemo(() => {
+    if (!event) return []
+    const committedPids = new Set(
+      fleet.trips
+        .filter((t) => t.eventId === eventId && t.status !== 'cancelled')
+        .flatMap((t) => t.stops.map((s) => s.participantId)),
+    )
+    return fleet.participants.filter(
+      (p) => event.participantIds.includes(p.id) && !committedPids.has(p.id),
+    )
+  }, [event, eventId, fleet])
+
+  function runPlanner() {
+      fleet.simRunning && fleet.toggleSim()
+    setPhase('planning')
+    setStep(0)
+    setCommitted(false)
+    setUnassigned([])
+    const interval = setInterval(() => {
+      setStep((s) => {
+        if (s >= PLANNING_STEPS.length - 1) {
+          clearInterval(interval)
+          void fleet.generatePlan(eventId).then((result) => {
+            setRecs(result.recommendations)
+            setUnassigned(result.unassigned)
+            setSelectedRouteId(result.recommendations[0]?.id ?? null)
+            setPhase('results')
+          })
+          return s
+        }
+        return s + 1
+      })
+    }, 550
+  )
+  }
+
+  async function commit() {
+    await fleet.commitPlan(eventId, recs)
+    setCommitted(true)
+  }
+
+  const totalDistance = recs.reduce((s, r) => s + r.distanceKm, 0)
+  const totalCost = recs.reduce((s, r) => s + r.estimatedCost, 0)
+  const avgScore = recs.length ? Math.round(recs.reduce((s, r) => s + r.routeScore, 0) / recs.length) : 0
+  const totalViolations = recs.reduce((s, r) => s + r.violations.length, 0)
+  const anyDriverAssigned = recs.some((r) => r.driverId)
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <PageHeader
+        title="AI Route Planner"
+        description="Automatically generate optimized, constraint-aware transportation plans."
+        actions={
+          <div className="flex items-center gap-2">
+            <Select
+              value={eventId}
+              onValueChange={(v) => {
+                setEventId(v ?? '')
+                setPhase('idle')
+                setRecs([])
+                setUnassigned([])
+                setSelectedRouteId(null)
+              }}
+            >
+              <SelectTrigger className="w-55">
+                <SelectValue placeholder="Select event">
+                  {(value) =>
+                    plannableEvents.find((e) => e.id === value)?.name ?? 'Select event'
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {plannableEvents.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={runPlanner} disabled={phase === 'planning' || pending.length === 0}>
+              <Sparkles className="size-4" />
+              {phase === 'results' ? 'Re-plan' : 'Generate Plan'}
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="flex flex-col gap-6 p-6">
+        {/* Event summary */}
+        {event ? (
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div className="flex flex-col items-center justify-center">
+              <h2 className="text-sm font-semibold text-balance">{event.name}</h2>
+              <p className="text-xs text-muted-foreground">
+                {center?.name} · {event.date} at {event.startTime}
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
+                  {pending.length}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Awaiting transport</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
+                  {pending.filter((p) => p.constraints.wheelchair || p.constraints.poweredWheelchair).length}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Wheelchair</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
+                  {pending.filter((p) => p.medicalPriority !== 'routine').length}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Priority</p>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {/* Idle */}
+        {phase === 'idle' ? (
+          <Card className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Sparkles className="size-7" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                {pending.length === 0
+                  ? 'All participants for this event are already assigned.'
+                  : 'Ready to plan transportation'}
+              </p>
+              <p className="mt-1 max-w-md text-xs text-muted-foreground text-pretty">
+                {pending.length === 0
+                  ? 'Select another event or review committed trips in Dispatch.'
+                  : `The planner will optimize routes for ${pending.length} participants across your available fleet, respecting every medical and accessibility constraint.`}
+              </p>
+            </div>
+          </Card>
+        ) : null}
+
+        {/* Planning animation */}
+        {phase === 'planning' ? (
+          <Card className="p-6">
+            <div className="mx-auto max-w-md space-y-3">
+              {PLANNING_STEPS.map((label, i) => {
+                const active = i === step
+                const done = i < step
+                return (
+                  <div key={label} className="flex items-center gap-3">
+                    <span
+                      className={cn(
+                        'flex size-6 shrink-0 items-center justify-center rounded-full text-xs',
+                        done
+                          ? 'bg-success text-success-foreground'
+                          : active
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      {done ? <Check className="size-3.5" /> : active ? (
+                        <span className="size-2 animate-ping rounded-full bg-primary-foreground" />
+                      ) : (
+                        i + 1
+                      )}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-sm',
+                        done ? 'text-muted-foreground line-through' : active ? 'font-medium text-foreground' : 'text-muted-foreground',
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        ) : null}
+
+        {/* Results */}
+        {phase === 'results' ? (
+          <>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard label="Vehicles Used" value={recs.length} icon={Bus} tone="primary" />
+              <StatCard label="Avg Route Score" value={avgScore} icon={Gauge} tone={avgScore >= 70 ? 'success' : 'warning'} hint="out of 100" />
+              <StatCard label="Total Distance" value={formatMiles(totalDistance)} icon={RouteIcon} />
+              <StatCard
+                label="Est. Cost"
+                value={`$${totalCost}`}
+                icon={Wallet}
+                hint={`${totalViolations + unassigned.length} need${totalViolations + unassigned.length === 1 ? 's' : ''} review`}
+                tone={totalViolations + unassigned.length ? 'warning' : 'default'}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">
+                {recs.length} recommended {recs.length === 1 ? 'route' : 'routes'}
+              </h2>
+              {committed ? (
+                <Badge className="bg-success/20 text-success">
+                  <Check className="mr-1 size-3.5" /> Committed to Dispatch
+                </Badge>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {recs.length > 0 && !anyDriverAssigned ? (
+                    <span className="text-xs text-muted-foreground">No driver assigned to any route</span>
+                  ) : null}
+                  <Button size="sm" onClick={commit} disabled={recs.length === 0 || !anyDriverAssigned}>
+                    <Check className="size-4" />
+                    Commit {recs.length} {recs.length === 1 ? 'route' : 'routes'} to Dispatch
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {recs.map((rec, i) => (
+                <RecommendationCard
+                  key={rec.id}
+                  rec={rec}
+                  index={i}
+                  selected={rec.id === selectedRouteId}
+                  onSelect={() => setSelectedRouteId(rec.id)}
+                />
+              ))}
+            </div>
+
+            {unassigned.length > 0 ? (
+              <Card className="border-warning/40 bg-warning/5 p-4">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-warning-foreground">
+                  <TriangleAlert className="size-4" />
+                  {unassigned.length} participant{unassigned.length === 1 ? '' : 's'} need scheduler review
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {unassigned.map((u) => (
+                    <li key={u.participantId} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <CircleAlert className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
+                      {u.reason}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Add a vehicle, driver, or shift coverage that meets these riders&apos; needs, or arrange transport manually.
+                </p>
+              </Card>
+            ) : null}
+
+            {selectedRouteId ? (
+              <Card className="overflow-hidden">
+                <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                  <MapIcon className="size-4 text-primary" />
+                  <div>
+                    <h2 className="text-sm font-semibold">Recommended route map</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Route {recs.findIndex((r) => r.id === selectedRouteId) + 1} with pickup stops
+                    </p>
+                  </div>
+                </div>
+                <div className="h-105">
+                  <FleetMap
+                    centers={center ? [center] : []}
+                    vehicles={fleet.vehicles}
+                    trips={[]}
+                    participants={pending}
+                    recommendedRoute={(() => {
+                      const selected = recs.find((r) => r.id === selectedRouteId)
+                      const vehicle = selected ? fleet.vehicleById(selected.vehicleId) : undefined
+                      return selected
+                        ? {
+                            ...selected,
+                            origin: vehicle?.location,
+                            destination: center?.location,
+                            fallbackMinutes: selected.durationMinutes,
+                          }
+                        : null
+                    })()}
+                    fitTo={recs.find((r) => r.id === selectedRouteId)?.routePath}
+                  />
+                </div>
+              </Card>
+            ) : null}
+
+            {committed ? (
+              <Card className="flex items-center justify-between gap-4 border-success/40 bg-success/5 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Routes committed. Track them live in the Command Center.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => router.push('/command-center')}>
+                  Open Command Center
+                </Button>
+              </Card>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function RecommendationCard({
+  rec,
+  index,
+  selected,
+  onSelect,
+}: {
+  rec: PlanRecommendation
+  index: number
+  selected: boolean
+  onSelect: () => void
+}) {
+  const fleet = useFleet()
+  const vehicle = fleet.vehicleById(rec.vehicleId)
+  const driver = rec.driverId ? fleet.driverById(rec.driverId) : undefined
+  const scoreTone = rec.routeScore >= 75 ? 'text-success' : rec.routeScore >= 55 ? 'text-warning-foreground' : 'text-destructive'
+
+  return (
+    <Card
+      className={cn('cursor-pointer overflow-hidden transition-colors', selected && 'border-primary ring-1 ring-primary/30')}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onSelect()
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Bus className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Route {index + 1}</p>
+            <p className="text-xs text-muted-foreground">{vehicle?.name} · {vehicle?.type}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="mb-1 text-[10px] font-medium text-primary">{selected ? 'Showing on map' : 'View on map'}</p>
+          <p className={cn('text-lg font-semibold tabular-nums leading-none', scoreTone)}>{rec.routeScore}</p>
+          <p className="text-[10px] text-muted-foreground">route score</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
+        {rec.vehiclePickupTime ? (
+          <Badge variant="outline" className="bg-primary/5 text-primary">
+            Vehicle pickup {rec.vehiclePickupTime}
+          </Badge>
+        ) : null}
+        {rec.scheduledArrivalTime ? (
+          <Badge variant="outline" className="bg-success/10 text-success">
+            Arrive by {rec.scheduledArrivalTime}
+          </Badge>
+        ) : null}
+        {rec.programStartTime ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            Program start {rec.programStartTime}
+          </Badge>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-4 gap-px bg-border">
+        <MiniMetric label="Riders" value={String(rec.participantIds.length)} icon={Users} />
+        <MiniMetric label="Distance" value={formatMiles(rec.distanceKm)} icon={RouteIcon} />
+        <MiniMetric label="Time" value={`${rec.durationMinutes}m`} icon={Gauge} />
+        <MiniMetric label="Cost" value={`$${rec.estimatedCost}`} icon={Wallet} />
+      </div>
+
+      <div className="px-4 py-3">
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <UserRound className="size-3.5" />
+            {driver?.name ?? <span className="text-destructive">No driver available</span>}
+          </span>
+          <span className="text-muted-foreground">{Math.round(rec.capacityUtilization * 100)}% full</span>
+        </div>
+        <Progress value={rec.capacityUtilization * 100} className="h-1" />
+
+        <ol className="mt-3 space-y-1.5">
+          {rec.stops.map((s) => {
+            const p = fleet.participantById(s.participantId)
+            return (
+              <li key={s.participantId} className="flex items-center gap-2 text-xs">
+                <span className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground">
+                  {s.order}
+                </span>
+                <span className="flex-1 truncate">{p?.name}</span>
+                <span className="text-right tabular-nums text-muted-foreground">
+                  {s.scheduledPickupTime ? (
+                    <span className="block text-[11px] font-medium text-foreground">{s.scheduledPickupTime}</span>
+                  ) : null}
+                  <span className="block">+{s.etaMinutes}m</span>
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+
+        {rec.violations.length > 0 ? (
+          <div className="mt-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-warning-foreground">
+              <TriangleAlert className="size-3.5" />
+              {rec.violations.length} constraint {rec.violations.length === 1 ? 'flag' : 'flags'}
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {rec.violations.map((v) => (
+                <li key={v} className="flex items-start gap-1 text-[11px] text-muted-foreground">
+                  <CircleAlert className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
+                  {v}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-success">
+            <Check className="size-3.5" /> All constraints satisfied
+          </p>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function MiniMetric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  icon: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <div className="bg-card px-3 py-2.5">
+      <div className="flex items-center gap-1 text-muted-foreground">
+        <Icon className="size-3" />
+        <span className="text-[10px]">{label}</span>
+      </div>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums">{value}</p>
+    </div>
+  )
+}

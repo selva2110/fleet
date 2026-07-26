@@ -1,245 +1,151 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Car, Accessibility, Wind, Users, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { useVehicles, useCreateVehicle, useUpdateVehicle, useDeleteVehicle } from '@/lib/hooks';
-import { useFleetStore } from '@/lib/store';
-import { useLiveTracking } from '@/lib/use-live-tracking';
-import { StatusBadge, VehicleTypeBadge, formatEta } from '@/components/shared/badges';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import type { Vehicle } from '@/lib/types';
+import { useState } from 'react'
+import {
+  Accessibility,
+  Bus,
+  Fuel,
+  HeartPulse,
+  Plus,
+  Stethoscope,
+  TriangleAlert,
+  Users,
+  Wrench,
+} from 'lucide-react'
+import { PageHeader, StatCard, StatusBadge } from '@/components/common'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { RowActions } from '@/components/crud/row-actions'
+import { VehicleDialog } from '@/components/crud/vehicle-dialog'
+import { useFleet } from '@/lib/store'
+import { vehicleStatusMeta } from '@/lib/labels'
+import { cn } from '@/lib/utils'
+import type { Vehicle } from '@/lib/types'
 
-interface FormState {
-  name: string; plate: string; vehicle_type: string; capacity: string;
-  wheelchair_capacity: string; has_oxygen: boolean; has_lift: boolean;
-  status: string; lng: string; lat: string;
+const maintMeta: Record<Vehicle['maintenanceStatus'], { label: string; cls: string }> = {
+  good: { label: 'Good', cls: 'text-success' },
+  'due-soon': { label: 'Service due soon', cls: 'text-warning-foreground' },
+  'service-required': { label: 'Service required', cls: 'text-destructive' },
 }
 
-const emptyForm: FormState = {
-  name: '', plate: '', vehicle_type: 'minivan', capacity: '8',
-  wheelchair_capacity: '0', has_oxygen: false, has_lift: false,
-  status: 'available', lng: '-96.78', lat: '32.78',
-};
-
 export default function VehiclesPage() {
-  useLiveTracking();
-  const vehicles = useVehicles().data;
-  const isLoading = !vehicles;
-  const liveVehicles = useFleetStore((s) => s.liveVehicles);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Vehicle | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const { toast } = useToast();
+  const fleet = useFleet()
+  const available = fleet.vehicles.filter((v) => v.status === 'available').length
+  const wheelchairCapable = fleet.vehicles.filter((v) => v.wheelchairCapacity > 0).length
+  const needService = fleet.vehicles.filter((v) => v.maintenanceStatus === 'service-required').length
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Vehicle | null>(null)
 
-  const createMut = useCreateVehicle();
-  const updateMut = useUpdateVehicle();
-  const deleteMut = useDeleteVehicle();
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
+  function openAdd() {
+    setEditing(null)
+    setDialogOpen(true)
   }
-
-  function openCreate() { setEditing(null); setForm(emptyForm); setDialogOpen(true); }
   function openEdit(v: Vehicle) {
-    setEditing(v);
-    setForm({
-      name: v.name, plate: v.plate, vehicle_type: v.vehicle_type,
-      capacity: String(v.capacity), wheelchair_capacity: String(v.wheelchair_capacity),
-      has_oxygen: v.has_oxygen, has_lift: v.has_lift, status: v.status,
-      lng: v.current_location ? String(v.current_location.coordinates[0]) : '-96.78',
-      lat: v.current_location ? String(v.current_location.coordinates[1]) : '32.78',
-    });
-    setDialogOpen(true);
+    setEditing(v)
+    setDialogOpen(true)
   }
-
-  async function handleSubmit() {
-    if (!form.name || !form.plate) { toast({ title: 'Name and plate are required', variant: 'destructive' }); return; }
-    const payload = {
-      name: form.name, plate: form.plate, vehicle_type: form.vehicle_type,
-      capacity: parseInt(form.capacity) || 0, wheelchair_capacity: parseInt(form.wheelchair_capacity) || 0,
-      has_oxygen: form.has_oxygen, has_lift: form.has_lift, status: form.status,
-      lng: parseFloat(form.lng), lat: parseFloat(form.lat),
-    };
-    try {
-      if (editing) { await updateMut.mutateAsync({ id: editing.id, ...payload }); toast({ title: 'Vehicle updated' }); }
-      else { await createMut.mutateAsync(payload); toast({ title: 'Vehicle added' }); }
-      setDialogOpen(false);
-    } catch (e) { toast({ title: 'Error saving vehicle', description: (e as Error).message, variant: 'destructive' }); }
-  }
-
-  async function handleDelete() {
-    if (!deleteId) return;
-    try { await deleteMut.mutateAsync(deleteId); toast({ title: 'Vehicle removed' }); setDeleteId(null); }
-    catch (e) { toast({ title: 'Error deleting', description: (e as Error).message, variant: 'destructive' }); }
-  }
-
-  const saving = createMut.isPending || updateMut.isPending;
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Vehicles</h1>
-          <p className="text-sm text-muted-foreground">{vehicles?.length} vehicles in fleet</p>
-        </div>
-        <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Add Vehicle</Button>
-      </div>
+    <div className="flex min-h-full flex-col">
+      <PageHeader
+        title="Vehicles"
+        description="Fleet inventory, capabilities, and maintenance status."
+        actions={
+          <Button onClick={openAdd} size="sm">
+            <Plus className="size-4" /> Add vehicle
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {(vehicles ?? []).map((v) => {
-          const live = liveVehicles[v.id];
-          return (
-            <Card key={v.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-6 p-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Total Fleet" value={fleet.vehicles.length} icon={Bus} />
+          <StatCard label="Available Now" value={available} icon={Bus} tone="success" />
+          <StatCard label="Wheelchair Capable" value={wheelchairCapable} icon={Accessibility} tone="primary" />
+          <StatCard label="Need Service" value={needService} icon={Wrench} tone={needService ? 'warning' : 'default'} />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {fleet.vehicles.map((v) => {
+            const meta = vehicleStatusMeta[v.status]
+            const maint = maintMeta[v.maintenanceStatus]
+            return (
+              <Card key={v.id} className="overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg',
-                      v.status === 'in_service' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20' :
-                      v.status === 'available' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' :
-                      'bg-zinc-100 text-zinc-500 dark:bg-zinc-800')}>
-                      <Car className="h-5 w-5" />
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Bus className="size-4" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">{v.name}</h3>
-                      <p className="text-xs text-muted-foreground">{v.plate}</p>
+                      <p className="text-sm font-semibold">{v.name}</p>
+                      <p className="text-xs text-muted-foreground">{v.type}</p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <StatusBadge status={v.status} />
-                    <VehicleTypeBadge type={v.vehicle_type} />
+                  <div className="flex items-center gap-1">
+                    <StatusBadge label={meta.label} cls={meta.cls} />
+                    <RowActions
+                      onEdit={() => openEdit(v)}
+                      onDelete={() => fleet.deleteVehicle(v.id, v.name)}
+                      deleteTitle="Delete vehicle"
+                      deleteMessage={`Remove ${v.name} from the fleet?`}
+                    />
                   </div>
                 </div>
-
-                {live && (
-                  <div className="mt-3 rounded-lg bg-amber-50 p-2.5 dark:bg-amber-900/20">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 font-medium text-amber-700 dark:text-amber-300">
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-                        </span>
-                        Live Tracking
-                      </span>
-                      <span className="text-amber-600 dark:text-amber-400">{Math.round(live.speedKmh)} km/h</span>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400">
-                      <span>ETA: {formatEta(live.etaSeconds)}</span>
-                      <span>{Math.round(live.progress * 100)}% route complete</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-muted-foreground"><Users className="h-3.5 w-3.5" /> Capacity: {v.capacity}</div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground"><Accessibility className="h-3.5 w-3.5" /> WC: {v.wheelchair_capacity}</div>
-                  <div className={cn('flex items-center gap-1.5', v.has_oxygen ? 'text-cyan-600 dark:text-cyan-400' : 'text-muted-foreground')}><Wind className="h-3.5 w-3.5" /> Oxygen: {v.has_oxygen ? 'Yes' : 'No'}</div>
-                  <div className={cn('flex items-center gap-1.5', v.has_lift ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground')}><Accessibility className="h-3.5 w-3.5" /> Lift: {v.has_lift ? 'Yes' : 'No'}</div>
+                <div className="grid grid-cols-2 gap-px bg-border">
+                  <Spec icon={Users} label="Capacity" value={`${v.capacity} seats`} />
+                  <Spec icon={Accessibility} label="Wheelchair" value={`${v.wheelchairCapacity} spaces`} />
+                  <Spec icon={Fuel} label="Fuel" value={v.fuelType} />
+                  <Spec icon={Wrench} label="Maintenance" value={maint.label} valueCls={maint.cls} />
                 </div>
-
-                <div className="mt-3 flex justify-end gap-1 border-t border-border pt-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => setDeleteId(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <div className="flex flex-wrap gap-1.5 px-4 py-3">
+                  {v.liftAvailable ? <Cap icon={Accessibility} label="Lift" /> : null}
+                  {v.oxygenEquipment ? <Cap icon={HeartPulse} label="Oxygen" /> : null}
+                  {v.bariatricCapable ? <Cap icon={Users} label="Bariatric" /> : null}
+                  {v.stretcherCapable ? <Cap icon={Stethoscope} label="Stretcher" /> : null}
+                  {v.maintenanceStatus === 'service-required' ? (
+                    <Badge className="gap-1 bg-destructive/15 px-1.5 py-0 text-[10px] text-destructive">
+                      <TriangleAlert className="size-3" /> Out of service
+                    </Badge>
+                  ) : null}
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              </Card>
+            )
+          })}
+        </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
-            <DialogDescription>{editing ? 'Update vehicle details' : 'Register a new vehicle'}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2"><Label htmlFor="v-name">Name</Label><Input id="v-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div className="grid gap-2"><Label htmlFor="v-plate">Plate</Label><Input id="v-plate" value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>Vehicle Type</Label>
-                <Select value={form.vehicle_type} onValueChange={(v) => setForm({ ...form, vehicle_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="minivan">Minivan</SelectItem>
-                    <SelectItem value="wheelchair_van">Wheelchair Van</SelectItem>
-                    <SelectItem value="bus">Bus</SelectItem>
-                    <SelectItem value="ambulance">Ambulance</SelectItem>
-                    <SelectItem value="sedan">Sedan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="in_service">In Service</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="offline">Offline</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2"><Label htmlFor="v-cap">Capacity</Label><Input id="v-cap" type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} /></div>
-              <div className="grid gap-2"><Label htmlFor="v-wc">Wheelchair Capacity</Label><Input id="v-wc" type="number" value={form.wheelchair_capacity} onChange={(e) => setForm({ ...form, wheelchair_capacity: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <Label htmlFor="v-o2">Has Oxygen</Label>
-                <Switch id="v-o2" checked={form.has_oxygen} onCheckedChange={(v) => setForm({ ...form, has_oxygen: v })} />
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <Label htmlFor="v-lift">Has Lift</Label>
-                <Switch id="v-lift" checked={form.has_lift} onCheckedChange={(v) => setForm({ ...form, has_lift: v })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2"><Label htmlFor="v-lng">Longitude</Label><Input id="v-lng" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} /></div>
-              <div className="grid gap-2"><Label htmlFor="v-lat">Latitude</Label><Input id="v-lat" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editing ? 'Save Changes' : 'Add Vehicle'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Vehicle?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete the vehicle from the fleet.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <VehicleDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
     </div>
-  );
+  )
+}
+
+function Spec({
+  icon: Icon,
+  label,
+  value,
+  valueCls,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: string
+  valueCls?: string
+}) {
+  return (
+    <div className="bg-card px-4 py-2.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="size-3.5" />
+        <span className="text-[11px]">{label}</span>
+      </div>
+      <p className={cn('mt-0.5 text-sm font-medium', valueCls)}>{value}</p>
+    </div>
+  )
+}
+
+function Cap({ icon: Icon, label }: { icon: React.ComponentType<{ className?: string }>; label: string }) {
+  return (
+    <Badge variant="secondary" className="gap-1 px-1.5 py-0 text-[10px] font-medium">
+      <Icon className="size-3" /> {label}
+    </Badge>
+  )
 }

@@ -1,166 +1,234 @@
-export type CenterType =
-  | 'hospital'
-  | 'clinic'
-  | 'rehabilitation'
-  | 'dialysis'
-  | 'community_hall'
-  | 'senior_center';
+// Domain types for the Smart Fleet Event Transportation Management Platform.
+// This module is the single source of truth for entity shapes and is designed
+// to map cleanly onto a relational schema (each interface ~ one table) so the
+// in-memory mock store can later be swapped for a real database.
 
-export type EventStatus =
+export type Role =
+  | 'admin'
+  | 'dispatcher'
+  | 'operations'
+  | 'driver'
+  | 'center'
+  | 'participant'
+  | 'caregiver'
+
+export type LatLng = { lat: number; lng: number }
+
+export type CenterType =
+  | 'Hospital'
+  | 'Clinic'
+  | 'Dialysis Center'
+  | 'Rehabilitation Center'
+  | 'Community Hall'
+  | 'Senior Care Center'
+  | 'Therapy Center'
+
+export interface Center {
+  id: string
+  name: string
+  type: CenterType
+  address: string
+  location: LatLng
+  operatingHours: string
+  capacity: number
+}
+
+export type MobilityLevel = 'independent' | 'assisted' | 'wheelchair' | 'stretcher'
+export type MedicalPriority = 'routine' | 'elevated' | 'critical'
+
+export interface TransportConstraints {
+  wheelchair?: boolean
+  poweredWheelchair?: boolean
+  walker?: boolean
+  oxygen?: boolean
+  caregiverRequired?: boolean
+  bariatric?: boolean
+  visualAssist?: boolean
+  cognitiveAssist?: boolean
+  serviceAnimal?: boolean
+}
+
+export type ParticipantStatus =
+  | 'registered'
   | 'scheduled'
-  | 'enrolling'
-  | 'route_planning'
-  | 'dispatched'
-  | 'in_progress'
+  | 'vehicle-assigned'
+  | 'driver-assigned'
+  | 'driver-approaching'
+  | 'picked-up'
+  | 'dropped-off'
   | 'completed'
-  | 'cancelled';
+
+export interface Participant {
+  id: string
+  name: string
+  phone: string
+  emergencyContact: string
+  address: string
+  location: LatLng
+  medicalNotes: string
+  constraints: TransportConstraints
+  maxTravelMinutes: number
+  pickupWindow: string
+  mobilityLevel: MobilityLevel
+  medicalPriority: MedicalPriority
+  eligible: boolean
+  status: ParticipantStatus
+  eventId: string | null
+}
 
 export type VehicleType =
-  | 'minivan'
-  | 'wheelchair_van'
-  | 'bus'
-  | 'ambulance'
-  | 'sedan';
+  | 'Sedan'
+  | 'SUV'
+  | 'Van'
+  | 'Wheelchair Accessible Van'
+  | 'Medical Transport Vehicle'
+  | 'Mini Bus'
+  | 'Shuttle Bus'
+  | 'Ambulance'
 
 export type VehicleStatus =
   | 'available'
   | 'assigned'
-  | 'in_service'
-  | 'maintenance'
-  | 'offline';
-
-export type DriverStatus = 'available' | 'assigned' | 'on_break' | 'off_duty';
-
-export type TripStatus = 'planned' | 'assigned' | 'started' | 'completed' | 'cancelled';
-
-export type StopStatus = 'pending' | 'arrived' | 'completed' | 'skipped';
-
-export type StopType = 'pickup' | 'dropoff';
-
-export type MedicalPriority = 'low' | 'normal' | 'high' | 'critical';
-
-export type PgPoint = { type: 'Point'; coordinates: [number, number] };
-
-export interface Center {
-  id: string;
-  name: string;
-  center_type: CenterType;
-  address: string;
-  phone: string | null;
-  location: PgPoint;
-  created_at: string;
-}
-
-export interface EventRow {
-  id: string;
-  center_id: string;
-  name: string;
-  description: string | null;
-  start_time: string;
-  duration_minutes: number;
-  enrollment_threshold: number;
-  status: EventStatus;
-  created_at: string;
-  center?: Center;
-  enrollment_count?: number;
-}
-
-export interface Participant {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  home_location: PgPoint;
-  home_address: string;
-  needs_wheelchair: boolean;
-  needs_power_wheelchair: boolean;
-  needs_oxygen: boolean;
-  needs_caregiver: boolean;
-  needs_bariatric: boolean;
-  needs_mobility_assistance: boolean;
-  pickup_window_start: string | null;
-  pickup_window_end: string | null;
-  max_travel_minutes: number | null;
-  medical_priority: MedicalPriority;
-  created_at: string;
-}
+  | 'heading-to-pickup'
+  | 'onboard'
+  | 'at-destination'
+  | 'returning'
+  | 'offline'
 
 export interface Vehicle {
-  id: string;
-  name: string;
-  plate: string;
-  vehicle_type: VehicleType;
-  capacity: number;
-  wheelchair_capacity: number;
-  has_oxygen: boolean;
-  has_lift: boolean;
-  current_location: PgPoint | null;
-  status: VehicleStatus;
-  created_at: string;
+  id: string
+  name: string
+  address: string
+  type: VehicleType
+  capacity: number
+  wheelchairCapacity: number
+  oxygenEquipment: boolean
+  liftAvailable: boolean
+  bariatricCapable: boolean
+  stretcherCapable: boolean
+  fuelType: 'Gas' | 'Diesel' | 'Hybrid' | 'Electric'
+  maintenanceStatus: 'good' | 'due-soon' | 'service-required'
+  status: VehicleStatus
+  location: LatLng
+  imageUrl?: string | null
 }
 
+export type DriverStatus = 'available' | 'on-trip' | 'break' | 'offline'
+
 export interface Driver {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  license_class: string;
-  status: DriverStatus;
-  assigned_vehicle_id: string | null;
-  rating: number;
-  created_at: string;
+  id: string
+  name: string
+  phone: string
+  address: string
+  location: LatLng
+  license: string
+  certifications: {
+    wheelchairAssist: boolean
+    medicalTransport: boolean
+  }
+  assignedVehicleId: string | null
+  status: DriverStatus
+  rating: number
+  // Shift window, 24h "HH:MM". shiftEnd < shiftStart means an overnight shift
+  // that wraps past midnight.
+  shiftStart: string
+  shiftEnd: string
+  // Days the driver works, 0 = Sunday .. 6 = Saturday (matches Date#getDay()).
+  shiftDays: number[]
+  imageUrl?: string | null
+}
+
+export type EventType =
+  | 'Dialysis Session'
+  | 'Clinical Appointment'
+  | 'Vaccination Camp'
+  | 'Community Program'
+  | 'Therapy Session'
+  | 'Rehabilitation Session'
+  | 'Health Screening'
+
+export type EventStatus = 'scheduled' | 'planning' | 'active' | 'completed'
+
+export interface FleetEvent {
+  id: string
+  name: string
+  type: EventType
+  centerId: string
+  date: string
+  startTime: string
+  endTime: string
+  expectedAttendance: number
+  participantIds: string[]
+  status: EventStatus
+}
+
+export type TripStatus =
+  | 'planned'
+  | 'vehicle-assigned'
+  | 'driver-assigned'
+  | 'en-route'
+  | 'pickup-in-progress'
+  | 'onboard'
+  | 'arrived'
+  | 'completed'
+  | 'cancelled'
+
+export interface TripStop {
+  participantId: string
+  location: LatLng
+  order: number
+  etaMinutes: number
+  scheduledPickupTime?: string
+  pickupOffsetMinutes?: number
+  status: 'pending' | 'approaching' | 'picked-up' | 'skipped'
 }
 
 export interface Trip {
-  id: string;
-  event_id: string;
-  vehicle_id: string;
-  driver_id: string;
-  status: TripStatus;
-  route_geojson: { type: 'LineString'; coordinates: [number, number][] } | null;
-  total_distance_km: number;
-  estimated_duration_minutes: number;
-  started_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-  event?: EventRow;
-  vehicle?: Vehicle;
-  driver?: Driver;
-  stops?: TripStop[];
+  id: string
+  tripNumber: string
+  eventId: string
+  vehicleId: string | null
+  driverId: string | null
+  stops: TripStop[]
+  destinationCenterId: string
+  status: TripStatus
+  distanceKm: number
+  durationMinutes: number
+  etaCenter: string
+  progress: number // 0..1 along the route
+  currentLocation: LatLng
+  routePath: LatLng[]
+  startedAt: string | null
 }
 
-export interface TripStop {
-  id: string;
-  trip_id: string;
-  participant_id: string;
-  sequence_index: number;
-  stop_type: StopType;
-  location: PgPoint;
-  address: string | null;
-  planned_eta: string | null;
-  actual_time: string | null;
-  status: StopStatus;
-  participant?: Participant;
+// Output of the planning engine before trips are committed.
+export interface PlanRecommendation {
+  id: string
+  vehicleId: string
+  driverId: string
+  participantIds: string[]
+  routePath: LatLng[]
+  stops: TripStop[]
+  distanceKm: number
+  durationMinutes: number
+  estimatedCost: number
+  capacityUtilization: number
+  routeScore: number
+  efficiencyScore: number
+  vehiclePickupTime?: string
+  vehiclePickupOffsetMinutes?: number
+  scheduledArrivalTime?: string
+  programStartTime?: string
+  violations: string[]
 }
 
-export interface SystemEvent {
-  id: string;
-  event_type: string;
-  payload: Record<string, unknown>;
-  created_at: string;
+// A participant the planner could not place in any route, with a human-readable reason.
+export interface UnassignedParticipant {
+  participantId: string
+  reason: string
 }
 
-export interface LngLat {
-  lng: number;
-  lat: number;
-}
-
-export interface LiveVehicleState {
-  vehicleId: string;
-  position: [number, number];
-  heading: number;
-  speedKmh: number;
-  progress: number;
-  tripId: string | null;
-  stopIndex: number;
-  status: VehicleStatus;
-  etaSeconds: number | null;
+export interface PlanResult {
+  recommendations: PlanRecommendation[]
+  unassigned: UnassignedParticipant[]
 }

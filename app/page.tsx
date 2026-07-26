@@ -1,327 +1,184 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
+import Link from 'next/link'
 import {
-  Car,
-  Users,
-  Route as RouteIcon,
-  Building2,
-  CalendarDays,
-  TrendingUp,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
   Activity,
   ArrowRight,
-  Radar,
-} from 'lucide-react';
-import { useCenters, useDrivers, useEvents, useParticipants, useTrips, useVehicles, useSystemEvents } from '@/lib/hooks';
-import { useFleetStore } from '@/lib/store';
-import { useLiveTracking } from '@/lib/use-live-tracking';
-import { StatusBadge, PriorityBadge, formatRelativeTime, formatEta } from '@/components/shared/badges';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+  Bus,
+  CalendarDays,
+  MapPin,
+  Route,
+  TriangleAlert,
+  UserRound,
+  Users,
+} from 'lucide-react'
+import { PageHeader, StatCard, StatusBadge } from '@/components/common'
+import { WeeklySchedule } from '@/components/dashboard/weekly-schedule'
+import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { useFleet } from '@/lib/store'
+import { tripStatusMeta, vehicleStatusMeta } from '@/lib/labels'
 
 export default function DashboardPage() {
-  useLiveTracking();
-  const centers = useCenters().data;
-  const events = useEvents().data;
-  const participants = useParticipants().data;
-  const vehicles = useVehicles().data;
-  const drivers = useDrivers().data;
-  const trips = useTrips().data;
-  const systemEvents = useSystemEvents().data;
-  const liveVehicles = useFleetStore((s) => s.liveVehicles);
+  const fleet = useFleet()
+  const activeTrips = fleet.trips.filter((t) =>
+    ['en-route', 'pickup-in-progress', 'onboard', 'driver-assigned'].includes(t.status),
+  )
+  const onboard = fleet.trips.filter((t) => t.status === 'onboard').length
+  const availableVehicles = fleet.vehicles.filter((v) => v.status === 'available').length
+  const availableDrivers = fleet.drivers.filter((d) => d.status === 'available').length
+  const scheduledParticipants = fleet.participants.filter((p) =>
+    ['scheduled', 'driver-assigned', 'vehicle-assigned'].includes(p.status),
+  ).length
+  const upcomingEvents = fleet.events.filter((e) => e.status !== 'completed')
 
-  const isLoading = !centers || !events || !participants || !vehicles || !drivers || !trips;
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-sm">Loading dashboard…</span>
-        </div>
-      </div>
-    );
-  }
-
-  const activeTrips = trips.filter((t) => t.status === 'started' || t.status === 'assigned');
-  const inServiceVehicles = vehicles.filter((v) => v.status === 'in_service' || v.status === 'assigned');
-  const availableVehicles = vehicles.filter((v) => v.status === 'available');
-  const availableDrivers = drivers.filter((d) => d.status === 'available');
-  const criticalParticipants = participants.filter((p) => p.medical_priority === 'critical');
-  const upcomingEvents = events
-    .filter((e) => new Date(e.start_time).getTime() > Date.now())
-    .slice(0, 5);
-
-  const kpis = [
-    {
-      label: 'Active Trips',
-      value: activeTrips.length,
-      icon: RouteIcon,
-      color: 'text-blue-500',
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-    },
-    {
-      label: 'Vehicles In Service',
-      value: inServiceVehicles.length,
-      sub: `${availableVehicles.length} available`,
-      icon: Car,
-      color: 'text-amber-500',
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
-    },
-    {
-      label: 'Available Drivers',
-      value: availableDrivers.length,
-      sub: `${drivers.length} total`,
-      icon: Users,
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    },
-    {
-      label: 'Total Participants',
-      value: participants.length,
-      sub: `${criticalParticipants.length} critical`,
-      icon: Users,
-      color: 'text-violet-500',
-      bg: 'bg-violet-50 dark:bg-violet-900/20',
-    },
-  ];
+  const unassigned = fleet.participants.filter(
+    (p) => p.status === 'registered' || p.status === 'scheduled',
+  ).length
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Hero banner */}
-      <div className="overflow-hidden rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 p-6 text-white">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Fleet Operations Dashboard</h1>
-            <p className="mt-1 text-sm text-sky-100">
-              Real-time overview of fleet, trips, and event transportation
-            </p>
-          </div>
-          <Link
-            href="/dispatch"
-            className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2.5 text-sm font-medium backdrop-blur transition-colors hover:bg-white/30"
-          >
-            <Radar className="h-4 w-4" />
-            Open Dispatch Center
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+    <div className="flex min-h-full flex-col">
+      <PageHeader
+        title="Operations Overview"
+        description="Real-time snapshot of transportation across all care centers."
+        actions={
+          <Button size="sm" nativeButton={false} render={<Link href="/command-center" />}>
+            <MapPin className="size-4" />
+            Command Center
+          </Button>
+        }
+      />
+
+      <div className="flex flex-col gap-6 p-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Active Trips" value={activeTrips.length} icon={Route} tone="primary" hint={`${onboard} with participants onboard`} />
+          <StatCard label="Participants Today" value={scheduledParticipants} icon={Users} tone="default" hint={`${unassigned} awaiting assignment`} />
+          <StatCard label="Available Vehicles" value={availableVehicles} icon={Bus} tone="success" hint={`of ${fleet.vehicles.length} in fleet`} />
+          <StatCard label="Available Drivers" value={availableDrivers} icon={UserRound} tone="success" hint={`of ${fleet.drivers.length} on roster`} />
         </div>
-      </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <Card key={kpi.label}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-1 text-2xl font-bold">{kpi.value}</p>
-                    {kpi.sub && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.sub}</p>}
-                  </div>
-                  <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', kpi.bg)}>
-                    <Icon className={cn('h-6 w-6', kpi.color)} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        <WeeklySchedule />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Active trips */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <RouteIcon className="h-5 w-5 text-blue-500" /> Active Trips
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeTrips.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No active trips</p>
-            ) : (
-              <div className="space-y-3">
-                {activeTrips.map((trip) => {
-                  const v = vehicles.find((x) => x.id === trip.vehicle_id);
-                  const d = drivers.find((x) => x.id === trip.driver_id);
-                  const live = v ? liveVehicles[v.id] : undefined;
-                  return (
-                    <div
-                      key={trip.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20">
-                          <RouteIcon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">{trip.event.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {v?.name} · {d?.full_name}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {live && (
-                          <div className="hidden text-right sm:block">
-                            <div className="text-xs font-medium text-amber-600">
-                              ETA {formatEta(live.etaSeconds)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {Math.round(live.progress * 100)}% complete
-                            </div>
-                          </div>
-                        )}
-                        <StatusBadge status={trip.status} />
-                      </div>
-                    </div>
-                  );
-                })}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <div className="flex items-center gap-2">
+                <Activity className="size-4 text-primary" />
+                <h2 className="text-sm font-semibold">Live Trips</h2>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Live vehicle positions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Car className="h-5 w-5 text-amber-500" /> Live Vehicle Positions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {inServiceVehicles.map((v) => {
-                const live = liveVehicles[v.id];
-                return (
-                  <div key={v.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-                      </span>
-                      <span className="text-sm font-medium">{v.name}</span>
-                    </div>
-                    {live ? (
-                      <span className="text-xs text-muted-foreground">
-                        {Math.round(live.speedKmh)} km/h · {Math.round(live.progress * 100)}%
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Idle</span>
-                    )}
-                  </div>
-                );
-              })}
-              {inServiceVehicles.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">No vehicles in service</p>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" nativeButton={false} render={<Link href="/trips" />}>
+                View all <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+            <div className="divide-y divide-border">
+              {activeTrips.length === 0 ? (
+                <p className="px-5 py-8 text-center text-sm text-muted-foreground">No active trips right now.</p>
+              ) : (
+                activeTrips.map((t) => {
+                  const vehicle = fleet.vehicleById(t.vehicleId)
+                  const driver = t.driverId ? fleet.driverById(t.driverId) : undefined
+                  const meta = tripStatusMeta[t.status]
+                  const picked = t.stops.filter((s) => s.status === 'picked-up').length
+                  return (
+                    <Link
+                      key={t.id}
+                      href="/command-center"
+                      className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Bus className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium">{vehicle?.name ?? 'Vehicle'}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground">{t.tripNumber}</span>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {driver?.name ?? 'Unassigned'} · {picked}/{t.stops.length} picked up · ETA {t.etaCenter}
+                        </p>
+                        <Progress value={t.progress * 100} className="mt-1.5 h-1" />
+                      </div>
+                      <StatusBadge label={meta.label} cls={meta.cls} />
+                    </Link>
+                  )
+                })
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Upcoming events */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {upcomingEvents.map((e) => (
-                <div key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <span className="text-[10px] font-medium uppercase">
-                        {new Date(e.start_time).toLocaleDateString('en-US', { month: 'short' })}
-                      </span>
-                      <span className="text-sm font-bold leading-none">
-                        {new Date(e.start_time).getDate()}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">{e.name}</div>
-                      <div className="text-xs text-muted-foreground">{e.center?.name}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(e.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <StatusBadge status={e.status} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Event log */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-5 w-5 text-emerald-500" /> System Event Log
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-72">
-              <div className="space-y-2">
-                {systemEvents?.map((ev) => (
-                  <div key={ev.id} className="flex items-start gap-2.5">
-                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="flex-1 pb-2">
-                      <div className="text-xs font-medium">{ev.event_type}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {formatRelativeTime(ev.created_at)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          <div className="flex flex-col gap-6">
+            <Card>
+              <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+                <CalendarDays className="size-4 text-primary" />
+                <h2 className="text-sm font-semibold">Upcoming Events</h2>
               </div>
-            </ScrollArea>
-          </CardContent>
+              <div className="divide-y divide-border">
+                {upcomingEvents.map((e) => {
+                  const center = fleet.centerById(e.centerId)
+                  return (
+                    <div key={e.id} className="px-5 py-3">
+                      <p className="text-sm font-medium leading-tight text-pretty">{e.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {center?.name} · {e.date} at {e.startTime}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {e.participantIds.length} participants expected
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <Card className="border-warning/40 bg-warning/5">
+              <div className="flex items-center gap-2 border-b border-warning/30 px-5 py-3">
+                <TriangleAlert className="size-4 text-warning-foreground" />
+                <h2 className="text-sm font-semibold">Attention Needed</h2>
+              </div>
+              <div className="px-5 py-3 text-sm">
+                {unassigned > 0 ? (
+                  <p className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">{unassigned}</span> participants still need
+                    transport assigned.{' '}
+                    <Link href="/planner" className="font-medium text-primary hover:underline">
+                      Open AI Planner
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">All participants are assigned. Fleet running smoothly.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <Card>
+          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+            <Bus className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold">Fleet Status</h2>
+          </div>
+          <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
+            {fleet.vehicles.map((v) => {
+              const meta = vehicleStatusMeta[v.status]
+              return (
+                <div key={v.id} className="flex items-center gap-3 bg-card px-5 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Bus className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{v.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {v.capacity} seats · {v.wheelchairCapacity} WC
+                    </p>
+                  </div>
+                  <StatusBadge label={meta.label} cls={meta.cls} />
+                </div>
+              )
+            })}
+          </div>
         </Card>
       </div>
-
-      {/* Critical participants alert */}
-      {criticalParticipants.length > 0 && (
-        <Card className="border-l-4 border-l-red-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-5 w-5 text-red-500" /> Critical Priority Participants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {criticalParticipants.map((p) => (
-                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <div className="text-sm font-medium">{p.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{p.home_address}</div>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {p.needs_wheelchair && <span className="text-[10px] rounded bg-violet-100 px-1.5 py-0.5 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Wheelchair</span>}
-                      {p.needs_oxygen && <span className="text-[10px] rounded bg-cyan-100 px-1.5 py-0.5 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">Oxygen</span>}
-                      {p.needs_caregiver && <span className="text-[10px] rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Caregiver</span>}
-                    </div>
-                  </div>
-                  <PriorityBadge priority={p.medical_priority} />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
-  );
+  )
 }
