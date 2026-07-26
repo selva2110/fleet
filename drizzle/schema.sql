@@ -50,11 +50,15 @@ CREATE TABLE IF NOT EXISTS vehicles (
   fuel_type text NOT NULL,
   maintenance_status text NOT NULL,
   status text NOT NULL,
-  location jsonb NOT NULL
+  location jsonb NOT NULL,
+  image_url text
 );
 
 -- Idempotent for databases created before stretcher_capable existed.
 ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS stretcher_capable boolean NOT NULL DEFAULT false;
+-- Idempotent for databases created before per-vehicle imagery existed.
+-- Left NULL by default; the UI falls back to a rendered image chosen by vehicle type.
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS image_url text;
 
 CREATE TABLE IF NOT EXISTS drivers (
   id text PRIMARY KEY,
@@ -69,13 +73,15 @@ CREATE TABLE IF NOT EXISTS drivers (
   rating real NOT NULL DEFAULT 4.5,
   shift_start text NOT NULL DEFAULT '00:00',
   shift_end text NOT NULL DEFAULT '23:59',
-  shift_days jsonb NOT NULL DEFAULT '[0,1,2,3,4,5,6]'
+  shift_days jsonb NOT NULL DEFAULT '[0,1,2,3,4,5,6]',
+  image_url text
 );
 
 -- Idempotent for databases created before shift timing existed.
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS shift_start text NOT NULL DEFAULT '00:00';
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS shift_end text NOT NULL DEFAULT '23:59';
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS shift_days jsonb NOT NULL DEFAULT '[0,1,2,3,4,5,6]';
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS image_url text;
 
 CREATE TABLE IF NOT EXISTS events (
   id text PRIMARY KEY,
