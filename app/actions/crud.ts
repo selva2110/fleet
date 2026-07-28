@@ -246,6 +246,7 @@ export async function saveEvent(
     expectedAttendance: input.expectedAttendance,
     participantIds: input.participantIds,
     reminders,
+    registrationDeadline: input.registrationDeadline ?? null,
     status: input.status,
   }
   if (isNew) {
@@ -272,6 +273,27 @@ export async function deleteEvent(id: string, name: string, actorRole = 'admin')
     aggregateId: id,
     actorRole,
     summary: `Deleted event ${name}`,
+  })
+}
+
+// Moves an event to a new date (used by drag-and-drop on the calendar).
+// Reminder schedule is recomputed relative to the new date.
+export async function rescheduleEvent(id: string, newDate: string, actorRole = 'dispatcher') {
+  const [row] = await db.select().from(events).where(eq(events.id, id))
+  if (!row) return
+  const reminders = buildEventReminders({
+    date: newDate,
+    startTime: row.startTime,
+    reminders: row.reminders,
+  })
+  await db.update(events).set({ date: newDate, reminders }).where(eq(events.id, id))
+  await emit({
+    eventType: 'event.updated',
+    aggregateType: 'event',
+    aggregateId: id,
+    actorRole,
+    summary: `Rescheduled ${row.name} to ${newDate}`,
+    payload: { date: newDate },
   })
 }
 

@@ -45,11 +45,17 @@ import {
   saveEvent as saveEventAction,
   saveParticipant as saveParticipantAction,
   saveVehicle as saveVehicleAction,
+  rescheduleEvent as rescheduleEventAction,
   type DriverInput,
   type EventInput,
   type ParticipantInput,
   type VehicleInput,
 } from '@/app/actions/crud'
+import {
+  sendEventNotifications as sendEventNotificationsAction,
+  assignTransportForResponders as assignTransportAction,
+  type SendNotificationsResult,
+} from '@/app/actions/notifications'
 import type { DomainEvent } from '@/lib/events'
 import type {
   Center,
@@ -59,6 +65,7 @@ import type {
   PlanRecommendation,
   PlanResult,
   Role,
+  SmsNotification,
   Trip,
   Vehicle,
 } from './types'
@@ -70,6 +77,7 @@ const EMPTY: FleetSnapshot = {
   drivers: [],
   events: [],
   trips: [],
+  smsNotifications: [],
   eventLog: [],
   seeded: false,
 }
@@ -83,6 +91,7 @@ interface FleetContextValue {
   drivers: Driver[]
   events: FleetEvent[]
   trips: Trip[]
+  smsNotifications: SmsNotification[]
   eventLog: DomainEvent[]
   simRunning: boolean
   setRole: (r: Role) => void
@@ -105,6 +114,10 @@ interface FleetContextValue {
   deleteDriver: (id: string, name: string) => Promise<void>
   saveEvent: (input: EventInput & { id?: string }) => Promise<void>
   deleteEvent: (id: string, name: string) => Promise<void>
+  rescheduleEvent: (id: string, newDate: string) => Promise<void>
+  // notifications
+  sendEventNotifications: (eventId: string) => Promise<SendNotificationsResult>
+  assignTransport: (eventId: string) => Promise<{ assigned: number }>
   // lookups
   centerById: (id: string | null | undefined) => Center | undefined
   vehicleById: (id: string | null | undefined) => Vehicle | undefined
@@ -261,6 +274,44 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     },
     [mutate],
   )
+  // Drag-and-drop reschedule with optimistic snapshot update for instant UI.
+  const rescheduleEvent = useCallback(
+    async (id: string, newDate: string) => {
+      await mutate(
+        (current) =>
+          current
+            ? {
+                ...current,
+                events: current.events.map((e) =>
+                  e.id === id ? { ...e, date: newDate } : e,
+                ),
+              }
+            : current,
+        { revalidate: false },
+      )
+      await rescheduleEventAction(id, newDate, roleRef.current)
+      await mutate()
+    },
+    [mutate],
+  )
+
+  // Notifications
+  const sendEventNotifications = useCallback(
+    async (eventId: string) => {
+      const result = await sendEventNotificationsAction(eventId, roleRef.current)
+      await mutate()
+      return result
+    },
+    [mutate],
+  )
+  const assignTransport = useCallback(
+    async (eventId: string) => {
+      const result = await assignTransportAction(eventId, roleRef.current)
+      await mutate()
+      return result
+    },
+    [mutate],
+  )
 
   const byId = useCallback(
     <T extends { id: string }>(arr: T[], id: string | null | undefined) =>
@@ -278,6 +329,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       drivers: snapshot.drivers,
       events: snapshot.events,
       trips: snapshot.trips,
+      smsNotifications: snapshot.smsNotifications,
       eventLog: snapshot.eventLog,
       simRunning,
       setRole,
@@ -298,6 +350,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       deleteDriver,
       saveEvent,
       deleteEvent,
+      rescheduleEvent,
+      sendEventNotifications,
+      assignTransport,
       centerById: (id) => byId(snapshot.centers, id),
       vehicleById: (id) => byId(snapshot.vehicles, id),
       driverById: (id) => byId(snapshot.drivers, id),
@@ -326,6 +381,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       deleteDriver,
       saveEvent,
       deleteEvent,
+      rescheduleEvent,
+      sendEventNotifications,
+      assignTransport,
       byId,
     ],
   )

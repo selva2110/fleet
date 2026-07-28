@@ -147,7 +147,7 @@ export type EventType =
   | 'Rehabilitation Session'
   | 'Health Screening'
 
-export type EventStatus = 'scheduled' | 'planning' | 'active' | 'completed'
+export type EventStatus = 'draft' | 'scheduled' | 'planning' | 'active' | 'completed'
 
 export interface EventReminder {
   id: string
@@ -167,7 +167,41 @@ export interface FleetEvent {
   expectedAttendance: number
   participantIds: string[]
   status: EventStatus
+  // ISO datetime after which SMS responses are no longer accepted. When unset,
+  // the app falls back to one hour before the event start time.
+  registrationDeadline?: string | null
   reminders?: EventReminder[]
+}
+
+// SMS program-notification response captured from a participant reply.
+//   1 -> attending with own transport
+//   2 -> attending and requires transport
+//   3 -> not attending
+export type SmsResponseCode =
+  | 'attending_self'
+  | 'attending_transport'
+  | 'not_attending'
+
+export type SmsDeliveryStatus =
+  | 'queued'
+  | 'sent'
+  | 'delivered'
+  | 'undelivered'
+  | 'failed'
+  | 'received'
+
+export interface SmsNotification {
+  id: string
+  eventId: string
+  participantId: string
+  phone: string
+  messageSid: string | null
+  deliveryStatus: SmsDeliveryStatus
+  response: SmsResponseCode | null
+  responseBody: string | null
+  respondedAt: string | null
+  sentAt: string
+  updatedAt: string
 }
 
 export type TripStatus =

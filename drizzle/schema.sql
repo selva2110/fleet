@@ -94,8 +94,31 @@ CREATE TABLE IF NOT EXISTS events (
   expected_attendance integer NOT NULL DEFAULT 0,
   participant_ids jsonb NOT NULL DEFAULT '[]',
   reminders jsonb NOT NULL DEFAULT '[]',
+  registration_deadline text,
   status text NOT NULL
 );
+
+-- Idempotent for databases created before program notifications existed.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_deadline text;
+
+-- Per-participant SMS program notifications: Twilio delivery status + the
+-- participant's latest attendance/transport response.
+CREATE TABLE IF NOT EXISTS sms_notifications (
+  id text PRIMARY KEY,
+  event_id text NOT NULL,
+  participant_id text NOT NULL,
+  phone text NOT NULL,
+  message_sid text,
+  delivery_status text NOT NULL DEFAULT 'queued',
+  response text,
+  response_body text,
+  responded_at timestamptz,
+  sent_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sms_notifications_event_idx ON sms_notifications (event_id);
+CREATE INDEX IF NOT EXISTS sms_notifications_phone_idx ON sms_notifications (phone);
 
 CREATE TABLE IF NOT EXISTS trips (
   id text PRIMARY KEY,

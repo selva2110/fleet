@@ -135,7 +135,7 @@ export function DataToolbar({
   onToggleSortDir,
   view,
   onViewChange,
-  activeFilterCount,
+  activeFilterCount = 0,
   onOpenFilters,
   resultCount,
 }: {
@@ -149,8 +149,9 @@ export function DataToolbar({
   onToggleSortDir: () => void
   view: ViewMode
   onViewChange: (v: ViewMode) => void
-  activeFilterCount: number
-  onOpenFilters: () => void
+  activeFilterCount?: number
+  /** When omitted, the Filters button is hidden (filters live in a side rail). */
+  onOpenFilters?: () => void
   resultCount?: number
 }) {
   const activeSort = sortOptions.find((s) => s.key === sortKey)
@@ -202,15 +203,72 @@ export function DataToolbar({
 
       <ViewToggle view={view} onChange={onViewChange} />
 
-      <Button variant="outline" size="sm" onClick={onOpenFilters} className="gap-2">
-        <SlidersHorizontal className="size-4" />
-        <span className="hidden sm:inline">Filters</span>
-        {activeFilterCount > 0 ? (
-          <Badge className="ml-0.5 size-5 justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
-            {activeFilterCount}
-          </Badge>
-        ) : null}
-      </Button>
+      {onOpenFilters ? (
+        <Button variant="outline" size="sm" onClick={onOpenFilters} className="gap-2">
+          <SlidersHorizontal className="size-4" />
+          <span className="hidden sm:inline">Filters</span>
+          {activeFilterCount > 0 ? (
+            <Badge className="ml-0.5 size-5 justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
+              {activeFilterCount}
+            </Badge>
+          ) : null}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+// -------------------------------------------------------------------------
+// Filter rail: persistent left-hand filter panel (mirrors the SMS Responses
+// layout). Pairs with <ListLayout> to place filters beside the results.
+// -------------------------------------------------------------------------
+export function ListLayout({
+  filters,
+  children,
+}: {
+  filters: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start">
+      <aside className="lg:sticky lg:top-4">{filters}</aside>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+export function FilterRail({
+  activeCount,
+  onReset,
+  children,
+}: {
+  activeCount: number
+  onReset: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="size-4 text-primary" />
+          <h2 className="text-sm font-semibold">Filters</h2>
+          {activeCount > 0 ? (
+            <Badge className="size-5 justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
+              {activeCount}
+            </Badge>
+          ) : null}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs"
+          onClick={onReset}
+          disabled={activeCount === 0}
+        >
+          <RotateCcw className="size-3.5" /> Reset
+        </Button>
+      </div>
+      <div className="flex flex-col divide-y divide-border">{children}</div>
     </div>
   )
 }

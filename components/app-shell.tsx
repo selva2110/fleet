@@ -12,6 +12,7 @@ import {
   Database,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   Radio,
   Route,
   Trash2,
@@ -26,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,6 +57,7 @@ const NAV: NavSection[] = [
     title: 'Vehicles & People',
     items: [
       { href: '/events', label: 'Events', icon: CalendarDays },
+      { href: '/responses', label: 'SMS Responses', icon: MessageSquare },
       { href: '/participants', label: 'Participants', icon: Users },
       { href: '/vehicles', label: 'Vehicles', icon: Truck },
       { href: '/drivers', label: 'Drivers', icon: UserRound },
@@ -70,13 +73,44 @@ const NAV: NavSection[] = [
   },
 ]
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+const FLAT_NAV: NavItem[] = NAV.flatMap((s) => s.items)
+
+/** Horizontal, scrollable navigation used in the top bar on desktop. */
+function TopNavLinks() {
+  const pathname = usePathname()
+  return (
+    <nav className="flex items-center gap-1">
+      {FLAT_NAV.map((item) => {
+        const active = pathname === item.href
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+              active
+                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            <span>{item.label}</span>
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+/** Vertical, grouped navigation used inside the mobile sheet. */
+function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   return (
     <nav className="flex flex-col gap-6 px-3 py-4">
       {NAV.map((section) => (
         <div key={section.title} className="flex flex-col gap-1">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             {section.title}
           </p>
           {section.items.map((item) => {
@@ -90,8 +124,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 className={cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Icon className="size-4 shrink-0" />
@@ -105,17 +139,17 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function Brand() {
+function Brand({ className }: { className?: string }) {
   return (
-    <div className="flex items-center gap-2.5 px-5 py-4">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+    <Link href="/" className={cn('flex items-center gap-2.5', className)}>
+      <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <Bus className="size-5" />
       </div>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-sidebar-foreground">CareMove</p>
-        <p className="text-[11px] text-sidebar-foreground/50">Event Transport Ops</p>
+        <p className="text-sm font-semibold text-foreground">CareMove</p>
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">NEMT Operations</p>
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -149,14 +183,16 @@ function RoleSwitcher() {
         }
       />
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>View as role</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {ROLES.map((r) => (
-          <DropdownMenuItem key={r.id} onClick={() => setRole(r.id)} className="gap-2">
-            <Check className={cn('size-4', r.id === role ? 'opacity-100' : 'opacity-0')} />
-            {r.label}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>View as role</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {ROLES.map((r) => (
+            <DropdownMenuItem key={r.id} onClick={() => setRole(r.id)} className="gap-2">
+              <Check className={cn('size-4', r.id === role ? 'opacity-100' : 'opacity-0')} />
+              {r.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -336,53 +372,50 @@ export function NotificationCenter() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  return (
-    <div className="flex h-dvh overflow-hidden bg-background">
-      <ReminderMonitorRoot />
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <Brand />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <NavLinks />
-        </div>
-      </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <ReminderMonitorRoot />
+
+      {/* Top navigation */}
+      <header className="shrink-0 border-b border-border bg-card">
+        <div className="flex h-14 items-center gap-3 px-4">
+          {/* Mobile menu */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               render={
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button variant="ghost" size="icon" className="xl:hidden">
                   <Menu className="size-5" />
                 </Button>
               }
             />
-            <SheetContent side="left" className="w-64 bg-sidebar p-0 text-sidebar-foreground">
+            <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <Brand />
-              <NavLinks onNavigate={() => setOpen(false)} />
+              <div className="border-b border-border px-5 py-4">
+                <Brand />
+              </div>
+              <MobileNavLinks onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
 
-          <div className="flex items-center gap-2">
-            <span className="flex size-2 items-center justify-center">
-              <span className="size-2 animate-ping rounded-full bg-success/60" />
-              <span className="absolute size-2 rounded-full bg-success" />
-            </span>
-            <span className="text-sm font-medium">Live Operations</span>
+          <Brand className="shrink-0" />
+
+          {/* Desktop horizontal nav */}
+          <div className="ml-4 hidden min-w-0 flex-1 overflow-x-auto xl:block">
+            <TopNavLinks />
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
             <LiveClock />
             <NotificationCenter />
             <SimToggle />
             <ThemeToggle />
             <RoleSwitcher />
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   )
 }

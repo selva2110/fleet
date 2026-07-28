@@ -16,8 +16,9 @@ import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -164,7 +165,29 @@ export default function ParticipantsPage() {
         }
       />
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="p-6">
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Mobility level">
+                <CheckboxGroupFilter options={MOBILITY_OPTIONS} selected={mobility} onChange={setMobility} />
+              </FilterSection>
+              <FilterSection title="Medical priority">
+                <CheckboxGroupFilter options={PRIORITY_OPTIONS} selected={priority} onChange={setPriority} />
+              </FilterSection>
+              <FilterSection title="Status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Eligibility">
+                <CheckboxGroupFilter options={ELIGIBILITY_OPTIONS} selected={eligibility} onChange={setEligibility} />
+              </FilterSection>
+              <FilterSection title="Special needs">
+                <CheckboxGroupFilter options={NEEDS_OPTIONS} selected={needs} onChange={setNeeds} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -176,8 +199,6 @@ export default function ParticipantsPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -275,34 +296,9 @@ export default function ParticipantsPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
-
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Mobility level">
-          <CheckboxGroupFilter options={MOBILITY_OPTIONS} selected={mobility} onChange={setMobility} />
-        </FilterSection>
-        <FilterSection title="Medical priority">
-          <CheckboxGroupFilter options={PRIORITY_OPTIONS} selected={priority} onChange={setPriority} />
-        </FilterSection>
-        <FilterSection title="Status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Eligibility">
-          <CheckboxGroupFilter
-            options={ELIGIBILITY_OPTIONS}
-            selected={eligibility}
-            onChange={setEligibility}
-          />
-        </FilterSection>
-        <FilterSection title="Special needs">
-          <CheckboxGroupFilter options={NEEDS_OPTIONS} selected={needs} onChange={setNeeds} />
-        </FilterSection>
-      </FilterSheet>
 
       <ParticipantDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
     </div>

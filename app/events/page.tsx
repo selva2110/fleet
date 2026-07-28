@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, Plus, Sparkles, Users } from 'lucide-react'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
@@ -16,13 +17,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { RowActions } from '@/components/crud/row-actions'
-import { EventDialog } from '@/components/crud/event-dialog'
+import { EventDetail } from '@/components/events/event-detail'
 import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -32,6 +34,7 @@ import { formatMonthDayYear } from '@/lib/date'
 import type { FleetEvent } from '@/lib/types'
 
 const eventStatusMeta: Record<FleetEvent['status'], { label: string; cls: string }> = {
+  draft: { label: 'Draft', cls: 'bg-muted text-muted-foreground' },
   scheduled: { label: 'Scheduled', cls: 'bg-accent text-accent-foreground' },
   planning: { label: 'Planning', cls: 'bg-warning/20 text-warning-foreground' },
   active: { label: 'Active', cls: 'bg-primary/15 text-primary' },
@@ -63,9 +66,9 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function EventsPage() {
   const fleet = useFleet()
+  const router = useRouter()
   const dv = useDataView('date')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<FleetEvent | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const [types, setTypes] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([])
@@ -109,13 +112,17 @@ export default function EventsPage() {
   }
 
   function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
+    router.push('/events/new')
   }
   function openEdit(e: FleetEvent) {
-    setEditing(e)
-    setDialogOpen(true)
+    router.push(`/events/new?id=${e.id}`)
   }
+  // Toggle the detail panel: clicking the same event again closes it.
+  function toggleDetail(e: FleetEvent) {
+    setDetailId((prev) => (prev === e.id ? null : e.id))
+  }
+
+  const detailEvent = detailId ? fleet.events.find((e) => e.id === detailId) ?? null : null
 
   return (
     <div className="flex min-h-full flex-col">
@@ -129,7 +136,23 @@ export default function EventsPage() {
         }
       />
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="p-6">
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Event type">
+                <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
+              </FilterSection>
+              <FilterSection title="Status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Center">
+                <CheckboxGroupFilter options={CENTER_OPTIONS} selected={centerIds} onChange={setCenterIds} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -141,8 +164,6 @@ export default function EventsPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -155,13 +176,17 @@ export default function EventsPage() {
               const meta = eventStatusMeta[e.status]
               const { assignedCount, total } = assignedInfo(e)
               return (
-                <Card key={e.id} className="flex flex-col overflow-hidden">
+                <Card
+                  key={e.id}
+                  onClick={() => toggleDetail(e)}
+                  className="flex cursor-pointer flex-col overflow-hidden transition-colors hover:border-primary/40"
+                >
                   <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-pretty">{e.name}</p>
                       <p className="text-xs text-muted-foreground">{e.type}</p>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={(ev) => ev.stopPropagation()}>
                       <StatusBadge label={meta.label} cls={meta.cls} />
                       <RowActions
                         onEdit={() => openEdit(e)}
@@ -185,7 +210,7 @@ export default function EventsPage() {
                       <Users className="size-3.5 shrink-0" /> {total} participants
                     </p>
                   </div>
-                  <div className="border-t border-border px-4 py-3">
+                  <div className="border-t border-border px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
                     <div className="mb-1 flex items-center justify-between text-[11px]">
                       <span className="font-medium text-foreground">Transport assigned</span>
                       <span className="tabular-nums text-muted-foreground">
@@ -230,7 +255,12 @@ export default function EventsPage() {
                     const meta = eventStatusMeta[e.status]
                     const { assignedCount, total } = assignedInfo(e)
                     return (
-                      <TableRow key={e.id}>
+                      <TableRow
+                        key={e.id}
+                        onClick={() => toggleDetail(e)}
+                        data-active={detailId === e.id}
+                        className="cursor-pointer data-[active=true]:bg-muted/60"
+                      >
                         <TableCell>
                           <p className="text-sm font-medium">{e.name}</p>
                           <p className="text-xs text-muted-foreground">{e.type}</p>
@@ -254,7 +284,7 @@ export default function EventsPage() {
                         <TableCell>
                           <StatusBadge label={meta.label} cls={meta.cls} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(ev) => ev.stopPropagation()}>
                           <RowActions
                             onEdit={() => openEdit(e)}
                             onDelete={() => fleet.deleteEvent(e.id, e.name)}
@@ -270,26 +300,15 @@ export default function EventsPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
 
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Event type">
-          <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
-        </FilterSection>
-        <FilterSection title="Status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Center">
-          <CheckboxGroupFilter options={CENTER_OPTIONS} selected={centerIds} onChange={setCenterIds} />
-        </FilterSection>
-      </FilterSheet>
-
-      <EventDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
+      <EventDetail
+        open={detailId !== null}
+        onOpenChange={(v) => !v && setDetailId(null)}
+        event={detailEvent}
+      />
     </div>
   )
 }

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X } from 'lucide-react'
+import { MessageSquare, X } from 'lucide-react'
 import { Field, NumberField, SelectField, TextField } from './form-fields'
 import { useFleet } from '@/lib/store'
 import type { EventStatus, EventType, FleetEvent } from '@/lib/types'
@@ -28,6 +28,7 @@ const TYPES: { value: EventType; label: string }[] = [
   { value: 'Health Screening', label: 'Health Screening' },
 ]
 const STATUS: { value: EventStatus; label: string }[] = [
+  { value: 'draft', label: 'Draft' },
   { value: 'planning', label: 'Planning' },
   { value: 'scheduled', label: 'Scheduled' },
   { value: 'active', label: 'Active' },
@@ -45,8 +46,25 @@ function blank(centerId: string): Omit<FleetEvent, 'id'> {
     expectedAttendance: 0,
     participantIds: [],
     reminders: [],
-    status: 'planning',
+    registrationDeadline: null,
+    status: 'draft',
   }
+}
+
+// Convert a stored ISO datetime to the value a datetime-local input expects
+// ("YYYY-MM-DDTHH:MM" in local time), and back.
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function localInputToIso(value: string): string | null {
+  if (!value) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 function parseReminderOffsets(value: string) {
@@ -140,7 +158,7 @@ export function EventDialog({
     [fleet.participants],
   )
 
-  async function submit() {
+  async function submit(statusOverride?: EventStatus) {
     if (!form.name.trim()) return
     setSaving(true)
     try {
@@ -155,6 +173,7 @@ export function EventDialog({
 
       await fleet.saveEvent({
         ...form,
+        status: statusOverride ?? form.status,
         expectedAttendance: form.expectedAttendance || form.participantIds.length,
         reminders: reminderPayload.length > 0 ? reminderPayload : editing?.reminders ?? [],
         id: editing?.id,
@@ -195,6 +214,36 @@ export function EventDialog({
             <NumberField label="Expected attendance" value={form.expectedAttendance} onChange={(v) => set('expectedAttendance', v)} />
             <SelectField label="Status" value={form.status} options={STATUS} onChange={(v) => set('status', v)} />
           </div>
+
+          <TextField
+            label="Registration deadline"
+            type="datetime-local"
+            value={isoToLocalInput(form.registrationDeadline)}
+            onChange={(v) => set('registrationDeadline', localInputToIso(v))}
+          />
+          <p className="-mt-1 text-xs text-muted-foreground">
+            Latest time to accept SMS responses. Responses always close one hour before the event
+            starts, whichever comes first.
+          </p>
+
+          <Field label="Notification preference">
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2.5">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <MessageSquare className="size-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">SMS</p>
+                  <p className="text-xs text-muted-foreground">
+                    Bulk text with reply options 1 / 2 / 3
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+                Enabled
+              </span>
+            </div>
+          </Field>
 
           <Field label="Reminders (hours:minutes before start)">
             <div className="space-y-2">
@@ -252,7 +301,14 @@ export function EventDialog({
         </ScrollArea>
 
         <DialogFooter showCloseButton className="shrink-0 border-t border-border mt-4">
-          <Button onClick={submit} disabled={saving || !form.name.trim()}>
+          <Button
+            variant="outline"
+            onClick={() => submit('draft')}
+            disabled={saving || !form.name.trim()}
+          >
+            Save as draft
+          </Button>
+          <Button onClick={() => submit()} disabled={saving || !form.name.trim()}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create event'}
           </Button>
         </DialogFooter>

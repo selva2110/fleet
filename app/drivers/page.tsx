@@ -29,8 +29,9 @@ import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -147,6 +148,22 @@ export default function DriversPage() {
           <StatCard label="Medically Certified" value={certified} icon={HeartPulse} tone="primary" />
         </div>
 
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Certifications">
+                <CheckboxGroupFilter options={CERT_OPTIONS} selected={certs} onChange={setCerts} />
+              </FilterSection>
+              <FilterSection title="Vehicle assignment">
+                <CheckboxGroupFilter options={ASSIGNMENT_OPTIONS} selected={assignment} onChange={setAssignment} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -158,8 +175,6 @@ export default function DriversPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -314,28 +329,9 @@ export default function DriversPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
-
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Certifications">
-          <CheckboxGroupFilter options={CERT_OPTIONS} selected={certs} onChange={setCerts} />
-        </FilterSection>
-        <FilterSection title="Vehicle assignment">
-          <CheckboxGroupFilter
-            options={ASSIGNMENT_OPTIONS}
-            selected={assignment}
-            onChange={setAssignment}
-          />
-        </FilterSection>
-      </FilterSheet>
 
       <DriverDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
     </div>

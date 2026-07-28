@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, GripVertical, MapPin, Users } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useFleet } from '@/lib/store'
@@ -13,6 +13,11 @@ import { cn } from '@/lib/utils'
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const statusAccent: Record<EventStatus, { bar: string; chip: string; dot: string }> = {
+  draft: {
+    bar: 'border-l-muted-foreground/40',
+    chip: 'bg-muted/50 hover:bg-muted/70',
+    dot: 'bg-muted-foreground',
+  },
   active: { bar: 'border-l-primary', chip: 'bg-primary/5 hover:bg-primary/10', dot: 'bg-primary' },
   planning: {
     bar: 'border-l-warning',
@@ -55,7 +60,21 @@ function to12h(hhmm: string) {
 
 export function WeeklySchedule() {
   const fleet = useFleet()
+  const router = useRouter()
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date()))
+  // Drag-and-drop reschedule state.
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+
+  function handleDrop(targetKey: string) {
+    const id = draggingId
+    setDragOverKey(null)
+    setDraggingId(null)
+    if (!id) return
+    const ev = fleet.events.find((e) => e.id === id)
+    if (!ev || ev.date === targetKey) return
+    void fleet.rescheduleEvent(id, targetKey)
+  }
 
   const days = useMemo(
     () =>
@@ -99,6 +118,9 @@ export function WeeklySchedule() {
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
           </span>
+          <span className="hidden items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-flex">
+            <GripVertical className="size-3" /> Drag to reschedule
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="mr-1 text-xs font-medium text-muted-foreground">{rangeLabel}</span>
@@ -137,8 +159,32 @@ export function WeeklySchedule() {
             const key = dateKey(d)
             const isToday = key === todayKey
             const dayEvents = eventsByDay.get(key) ?? []
+            const isDropTarget = dragOverKey === key && draggingId !== null
             return (
-              <div key={key} className="flex min-h-64 flex-col">
+              <div
+                key={key}
+                onDragOver={(e) => {
+                  if (draggingId) {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverKey !== key) setDragOverKey(key)
+                  }
+                }}
+                onDragLeave={(e) => {
+                  // Only clear when the pointer actually leaves the column.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setDragOverKey((prev) => (prev === key ? null : prev))
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  handleDrop(key)
+                }}
+                className={cn(
+                  'flex min-h-64 flex-col transition-colors',
+                  isDropTarget && 'bg-primary/5 ring-2 ring-inset ring-primary/40',
+                )}
+              >
                 <div
                   className={cn(
                     'flex items-center justify-between px-3 py-2',
@@ -174,15 +220,35 @@ export function WeeklySchedule() {
                     dayEvents.map((ev) => {
                       const center = fleet.centerById(ev.centerId)
                       const accent = statusAccent[ev.status]
+                      const isDragging = draggingId === ev.id
                       return (
-                        <Link
+                        <div
                           key={ev.id}
-                          href="/events"
-                          title={`${ev.name} · ${to12h(ev.startTime)}–${to12h(ev.endTime)}`}
+                          role="button"
+                          tabIndex={0}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggingId(ev.id)
+                            e.dataTransfer.effectAllowed = 'move'
+                            e.dataTransfer.setData('text/plain', ev.id)
+                          }}
+                          onDragEnd={() => {
+                            setDraggingId(null)
+                            setDragOverKey(null)
+                          }}
+                          onClick={() => router.push('/events')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              router.push('/events')
+                            }
+                          }}
+                          title={`${ev.name} · ${to12h(ev.startTime)}–${to12h(ev.endTime)} · drag to reschedule`}
                           className={cn(
-                            'block rounded-md border border-border border-l-2 px-2 py-1.5 transition-colors',
+                            'block cursor-grab rounded-md border border-border border-l-2 px-2 py-1.5 transition-colors active:cursor-grabbing',
                             accent.bar,
                             accent.chip,
+                            isDragging && 'opacity-40',
                           )}
                         >
                           <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
@@ -202,7 +268,7 @@ export function WeeklySchedule() {
                             <Users className="size-2.5 shrink-0" />
                             {ev.participantIds.length || ev.expectedAttendance} riders
                           </p>
-                        </Link>
+                        </div>
                       )
                     })
                   )}
