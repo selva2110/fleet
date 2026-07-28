@@ -45,6 +45,7 @@ import {
   saveEvent as saveEventAction,
   saveParticipant as saveParticipantAction,
   saveVehicle as saveVehicleAction,
+  rescheduleEvent as rescheduleEventAction,
   type DriverInput,
   type EventInput,
   type ParticipantInput,
@@ -113,6 +114,7 @@ interface FleetContextValue {
   deleteDriver: (id: string, name: string) => Promise<void>
   saveEvent: (input: EventInput & { id?: string }) => Promise<void>
   deleteEvent: (id: string, name: string) => Promise<void>
+  rescheduleEvent: (id: string, newDate: string) => Promise<void>
   // notifications
   sendEventNotifications: (eventId: string) => Promise<SendNotificationsResult>
   assignTransport: (eventId: string) => Promise<{ assigned: number }>
@@ -272,6 +274,26 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     },
     [mutate],
   )
+  // Drag-and-drop reschedule with optimistic snapshot update for instant UI.
+  const rescheduleEvent = useCallback(
+    async (id: string, newDate: string) => {
+      await mutate(
+        (current) =>
+          current
+            ? {
+                ...current,
+                events: current.events.map((e) =>
+                  e.id === id ? { ...e, date: newDate } : e,
+                ),
+              }
+            : current,
+        { revalidate: false },
+      )
+      await rescheduleEventAction(id, newDate, roleRef.current)
+      await mutate()
+    },
+    [mutate],
+  )
 
   // Notifications
   const sendEventNotifications = useCallback(
@@ -328,6 +350,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       deleteDriver,
       saveEvent,
       deleteEvent,
+      rescheduleEvent,
       sendEventNotifications,
       assignTransport,
       centerById: (id) => byId(snapshot.centers, id),
@@ -358,6 +381,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       deleteDriver,
       saveEvent,
       deleteEvent,
+      rescheduleEvent,
       sendEventNotifications,
       assignTransport,
       byId,
