@@ -1,0 +1,99 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import {
+  BarChart3,
+  Bus,
+  CalendarDays,
+  MessageSquare,
+  Route,
+  TrendingUp,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
+import {
+  AURORA_ACCENTS,
+  type AuroraAccent,
+  accentClasses,
+  GlassCard,
+  Sparkline,
+  TrendPill,
+} from './aurora-ui'
+import { cn } from '@/lib/utils'
+
+const ICONS: Record<string, LucideIcon> = {
+  route: Route,
+  calendar: CalendarDays,
+  bus: Bus,
+  user: UserRound,
+  trend: TrendingUp,
+  sms: MessageSquare,
+}
+
+export interface KpiItem {
+  id: string
+  label: string
+  value: string | number
+  accent: AuroraAccent
+  icon: keyof typeof ICONS
+  trendUp: boolean
+  trend: string
+  series: number[]
+}
+
+export function AuroraKpis({ items }: { items: KpiItem[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {items.map((item, i) => (
+        <KpiCard key={item.id} item={item} index={i} />
+      ))}
+    </div>
+  )
+}
+
+function KpiCard({ item, index }: { item: KpiItem; index: number }) {
+  const Icon = ICONS[item.icon] ?? Route
+  const accent = accentClasses[item.accent]
+  const color = AURORA_ACCENTS[item.accent]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
+    >
+      <GlassCard interactive className={cn('group h-full p-4', accent.glow)}>
+        {/* accent wash */}
+        <div
+          className={cn(
+            'pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-gradient-to-br opacity-40 blur-2xl transition-opacity duration-300 group-hover:opacity-70',
+            accent.from,
+            'to-transparent',
+          )}
+        />
+        <div className="relative flex items-start justify-between">
+          <span
+            className={cn(
+              'flex size-9 items-center justify-center rounded-xl bg-white/5 ring-1',
+              accent.text,
+              accent.ring,
+            )}
+          >
+            <Icon className="size-4" />
+          </span>
+          <TrendPill up={item.trendUp} value={item.trend} />
+        </div>
+
+        <div className="relative mt-3">
+          <p className="text-2xl font-semibold tabular-nums tracking-tight text-white">{item.value}</p>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-300/70">{item.label}</p>
+        </div>
+
+        <div className="relative mt-2 -mb-1">
+          <Sparkline data={item.series} color={color} height={34} />
+        </div>
+      </GlassCard>
+    </motion.div>
+  )
+}
