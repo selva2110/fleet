@@ -23,6 +23,8 @@ import type {
   MedicalPriority,
   MobilityLevel,
   ParticipantStatus,
+  SmsDeliveryStatus,
+  SmsResponseCode,
   TransportConstraints,
   TripStatus,
   TripStop,
@@ -106,7 +108,24 @@ export const events = pgTable('events', {
   expectedAttendance: integer('expected_attendance').notNull().default(0),
   participantIds: jsonb('participant_ids').$type<string[]>().notNull().default([]),
   reminders: jsonb('reminders').$type<EventReminder[]>().notNull().default([]),
+  registrationDeadline: text('registration_deadline'),
   status: text('status').$type<EventStatus>().notNull(),
+})
+
+// Per-participant SMS program notifications: tracks Twilio delivery status and
+// captures the participant's latest attendance/transport response.
+export const smsNotifications = pgTable('sms_notifications', {
+  id: text('id').primaryKey(),
+  eventId: text('event_id').notNull(),
+  participantId: text('participant_id').notNull(),
+  phone: text('phone').notNull(),
+  messageSid: text('message_sid'),
+  deliveryStatus: text('delivery_status').$type<SmsDeliveryStatus>().notNull().default('queued'),
+  response: text('response').$type<SmsResponseCode>(),
+  responseBody: text('response_body'),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const trips = pgTable('trips', {

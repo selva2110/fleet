@@ -10,6 +10,10 @@ export type DomainEventType =
   | 'event.updated'
   | 'event.deleted'
   | 'event.reminder.sent'
+  | 'notification.sent'
+  | 'notification.delivered'
+  | 'notification.failed'
+  | 'notification.response'
   | 'participant.created'
   | 'participant.updated'
   | 'participant.deleted'
@@ -80,6 +84,10 @@ export const EVENT_META: Record<
   'event.updated': { label: 'Event updated', tone: 'info' },
   'event.deleted': { label: 'Event deleted', tone: 'danger' },
   'event.reminder.sent': { label: 'Reminder sent', tone: 'warning' },
+  'notification.sent': { label: 'SMS notifications sent', tone: 'info' },
+  'notification.delivered': { label: 'SMS delivered', tone: 'success' },
+  'notification.failed': { label: 'SMS failed', tone: 'danger' },
+  'notification.response': { label: 'Participant responded', tone: 'success' },
   'participant.created': { label: 'Participant added', tone: 'info' },
   'participant.updated': { label: 'Participant updated', tone: 'info' },
   'participant.deleted': { label: 'Participant removed', tone: 'danger' },

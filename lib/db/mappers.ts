@@ -3,6 +3,7 @@ import type {
   Driver,
   FleetEvent,
   Participant,
+  SmsNotification,
   Trip,
   Vehicle,
 } from '@/lib/types'
@@ -11,6 +12,7 @@ import type {
   drivers,
   events,
   participants,
+  smsNotifications,
   trips,
   vehicles,
 } from './schema'
@@ -21,6 +23,7 @@ type VehicleRow = typeof vehicles.$inferSelect
 type DriverRow = typeof drivers.$inferSelect
 type EventRow = typeof events.$inferSelect
 type TripRow = typeof trips.$inferSelect
+type SmsNotificationRow = typeof smsNotifications.$inferSelect
 
 export function toCenter(r: CenterRow): Center {
   return {
@@ -103,7 +106,24 @@ export function toEvent(r: EventRow): FleetEvent {
     expectedAttendance: r.expectedAttendance,
     participantIds: r.participantIds,
     reminders: r.reminders,
+    registrationDeadline: r.registrationDeadline,
     status: r.status as FleetEvent['status'],
+  }
+}
+
+export function toSmsNotification(r: SmsNotificationRow): SmsNotification {
+  return {
+    id: r.id,
+    eventId: r.eventId,
+    participantId: r.participantId,
+    phone: r.phone,
+    messageSid: r.messageSid,
+    deliveryStatus: r.deliveryStatus,
+    response: r.response,
+    responseBody: r.responseBody,
+    respondedAt: r.respondedAt ? r.respondedAt.toISOString() : null,
+    sentAt: r.sentAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
   }
 }
 

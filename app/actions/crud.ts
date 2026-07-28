@@ -246,6 +246,7 @@ export async function saveEvent(
     expectedAttendance: input.expectedAttendance,
     participantIds: input.participantIds,
     reminders,
+    registrationDeadline: input.registrationDeadline ?? null,
     status: input.status,
   }
   if (isNew) {
