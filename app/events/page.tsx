@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, Plus, Sparkles, Users } from 'lucide-react'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
@@ -16,7 +17,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { RowActions } from '@/components/crud/row-actions'
-import { EventDialog } from '@/components/crud/event-dialog'
 import { EventDetail } from '@/components/events/event-detail'
 import {
   CheckboxGroupFilter,
@@ -65,9 +65,8 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function EventsPage() {
   const fleet = useFleet()
+  const router = useRouter()
   const dv = useDataView('date')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<FleetEvent | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
 
   const [types, setTypes] = useState<string[]>([])
@@ -112,12 +111,10 @@ export default function EventsPage() {
   }
 
   function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
+    router.push('/events/new')
   }
   function openEdit(e: FleetEvent) {
-    setEditing(e)
-    setDialogOpen(true)
+    router.push(`/events/new?id=${e.id}`)
   }
   // Toggle the detail panel: clicking the same event again closes it.
   function toggleDetail(e: FleetEvent) {
@@ -306,8 +303,6 @@ export default function EventsPage() {
           <CheckboxGroupFilter options={CENTER_OPTIONS} selected={centerIds} onChange={setCenterIds} />
         </FilterSection>
       </FilterSheet>
-
-      <EventDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
 
       <EventDetail
         open={detailId !== null}
