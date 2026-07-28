@@ -62,7 +62,7 @@ export default function AuroraPage() {
                 <span className="text-xs font-medium uppercase tracking-widest">Aurora Command Center</span>
               </div>
               <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-white text-balance sm:text-3xl">
-                {greeting ? `${greeting}, Casey` : 'Welcome back'}
+                {greeting ? `${greeting.greeting}, Casey` : 'Welcome back'}
               </h1>
               <p className="mt-1 text-sm text-slate-400">
                 Here&apos;s what&apos;s happening across your operations.

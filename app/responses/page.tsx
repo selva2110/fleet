@@ -3,15 +3,18 @@
 import { useMemo, useState } from 'react'
 import {
   Bus,
+  CalendarDays,
   CheckCircle2,
   Clock,
   Download,
+  Filter,
   Inbox,
   Loader2,
   MessageSquare,
   Phone,
   Search,
   Send,
+  SlidersHorizontal,
   Users,
   XCircle,
 } from 'lucide-react'
@@ -52,22 +55,6 @@ interface Row {
   notif: SmsNotification | null
 }
 
-const RESPONSE_FILTERS: { value: ResponseFilter; label: string }[] = [
-  { value: 'all', label: 'All responses' },
-  { value: 'attending_transport', label: 'Needs transport' },
-  { value: 'attending_self', label: 'Own transport' },
-  { value: 'not_attending', label: 'Not attending' },
-  { value: 'none', label: 'No response' },
-]
-
-const DELIVERY_FILTERS: { value: DeliveryFilter; label: string }[] = [
-  { value: 'all', label: 'All delivery' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'replied', label: 'Replied' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'failed', label: 'Failed' },
-]
-
 function initials(name: string) {
   return name
     .split(' ')
@@ -93,35 +80,85 @@ function downloadCsv(filename: string, rows: string[][]) {
   URL.revokeObjectURL(url)
 }
 
-/** Small styled native select for the filter bar. */
-function FilterSelect<T extends string>({
-  label,
+/** Section label inside the left filter rail. */
+function RailLabel({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <span className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <Icon className="size-3.5" />
+      {children}
+    </span>
+  )
+}
+
+/** Styled native select used for the long event list in the rail. */
+function RailSelect<T extends string>({
   value,
   onChange,
   options,
 }: {
-  label: string
   value: T
   onChange: (v: T) => void
   options: { value: T; label: string }[]
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-        className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as T)}
+      className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+/** Vertical segmented pill list; the active option glows in the accent color. */
+function PillGroup<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: { value: T; label: string; count?: number; dot?: string }[]
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            className={cn(
+              'flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+              active
+                ? 'border-primary/40 bg-primary/10 font-medium text-primary shadow-sm'
+                : 'border-transparent text-foreground hover:bg-muted',
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {o.dot ? <span className={cn('size-2 shrink-0 rounded-full', o.dot)} /> : null}
+              <span className="truncate">{o.label}</span>
+            </span>
+            {typeof o.count === 'number' ? (
+              <span
+                className={cn(
+                  'shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
+                  active ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {o.count}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -242,6 +279,42 @@ export default function ResponsesPage() {
       })
   }, [scopedRows, responseFilter, deliveryFilter, query])
 
+  // Counts per response filter, so the rail pills can show live badges.
+  const responseOptions = useMemo(
+    () => [
+      { value: 'all' as ResponseFilter, label: 'All responses', count: stats.total },
+      { value: 'attending_transport' as ResponseFilter, label: 'Needs transport', count: stats.needTransport, dot: 'bg-primary' },
+      { value: 'attending_self' as ResponseFilter, label: 'Own transport', count: stats.attendingSelf, dot: 'bg-success' },
+      { value: 'not_attending' as ResponseFilter, label: 'Not attending', count: stats.notAttending, dot: 'bg-destructive' },
+      { value: 'none' as ResponseFilter, label: 'No response', count: stats.noResponse, dot: 'bg-muted-foreground' },
+    ],
+    [stats],
+  )
+
+  const deliveryOptions = useMemo(
+    () => [
+      { value: 'all' as DeliveryFilter, label: 'All delivery' },
+      { value: 'delivered' as DeliveryFilter, label: 'Delivered', dot: 'bg-success' },
+      { value: 'replied' as DeliveryFilter, label: 'Replied', dot: 'bg-primary' },
+      { value: 'pending' as DeliveryFilter, label: 'Pending', dot: 'bg-warning' },
+      { value: 'failed' as DeliveryFilter, label: 'Failed', dot: 'bg-destructive' },
+    ],
+    [],
+  )
+
+  const activeFilterCount =
+    (eventFilter !== 'all' ? 1 : 0) +
+    (responseFilter !== 'all' ? 1 : 0) +
+    (deliveryFilter !== 'all' ? 1 : 0) +
+    (query.trim() ? 1 : 0)
+
+  function resetFilters() {
+    setEventFilter('all')
+    setResponseFilter('all')
+    setDeliveryFilter('all')
+    setQuery('')
+  }
+
   const singleEvent = eventFilter === 'all' ? null : fleet.events.find((e) => e.id === eventFilter) ?? null
 
   async function handleSend() {
@@ -327,91 +400,123 @@ export default function ResponsesPage() {
         }
       />
 
-      <div className="flex-1 space-y-5 p-6">
-        {/* Summary stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatCard label="Notifications" value={stats.sent} icon={MessageSquare} hint={`${stats.total} on roster`} />
-          <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle2} tone="success" />
-          <StatCard label="Needs transport" value={stats.needTransport} icon={Bus} tone="primary" />
-          <StatCard label="Own transport" value={stats.attendingSelf} icon={CheckCircle2} tone="success" />
-          <StatCard label="Not attending" value={stats.notAttending} icon={XCircle} tone="danger" />
-          <StatCard label="No response" value={stats.noResponse} icon={Users} tone="warning" />
-        </div>
-
-        {/* Filters */}
-        <Card className="p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <FilterSelect label="Event" value={eventFilter} onChange={setEventFilter} options={eventOptions} />
-            <FilterSelect label="Response" value={responseFilter} onChange={setResponseFilter} options={RESPONSE_FILTERS} />
-            <FilterSelect label="Delivery" value={deliveryFilter} onChange={setDeliveryFilter} options={DELIVERY_FILTERS} />
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Search
-              </span>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Name or phone"
-                  className="pl-9"
-                />
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+          {/* Left filter rail */}
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <Card className="overflow-hidden p-0">
+              <div className="flex items-center justify-between gap-2 border-b border-border bg-gradient-to-br from-primary/10 to-accent/10 px-4 py-3">
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <SlidersHorizontal className="size-4 text-primary" />
+                  Filters
+                </span>
+                {activeFilterCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="rounded-full bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Clear ({activeFilterCount})
+                  </button>
+                ) : null}
               </div>
-            </label>
-          </div>
 
-          {/* Per-event actions appear when a single event is selected */}
-          {singleEvent ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-              <span
+              <div className="space-y-5 p-4">
+                <div>
+                  <RailLabel icon={Search}>Search</RailLabel>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Name or phone"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <RailLabel icon={CalendarDays}>Event</RailLabel>
+                  <RailSelect value={eventFilter} onChange={setEventFilter} options={eventOptions} />
+                </div>
+
+                <div>
+                  <RailLabel icon={MessageSquare}>Response</RailLabel>
+                  <PillGroup value={responseFilter} onChange={setResponseFilter} options={responseOptions} />
+                </div>
+
+                <div>
+                  <RailLabel icon={Filter}>Delivery</RailLabel>
+                  <PillGroup value={deliveryFilter} onChange={setDeliveryFilter} options={deliveryOptions} />
+                </div>
+              </div>
+
+              {/* Per-event actions appear when a single event is selected */}
+              {singleEvent ? (
+                <div className="space-y-2 border-t border-border p-4">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                      isResponseWindowOpen(singleEvent)
+                        ? 'bg-success/15 text-success'
+                        : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'size-1.5 rounded-full',
+                        isResponseWindowOpen(singleEvent) ? 'bg-success' : 'bg-muted-foreground',
+                      )}
+                    />
+                    {isResponseWindowOpen(singleEvent) ? 'Responses open' : 'Responses closed'}
+                  </span>
+                  <Button size="sm" className="w-full" onClick={handleSend} disabled={sending}>
+                    {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                    {stats.sent > 0 ? 'Resend SMS' : `Send SMS to ${stats.total}`}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleAssign}
+                    disabled={assigning || stats.needTransport === 0}
+                  >
+                    {assigning ? <Loader2 className="size-4 animate-spin" /> : <Bus className="size-4" />}
+                    Assign transport ({stats.needTransport})
+                  </Button>
+                </div>
+              ) : null}
+            </Card>
+          </aside>
+
+          {/* Main content */}
+          <div className="min-w-0 space-y-5">
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatCard label="Notifications" value={stats.sent} icon={MessageSquare} hint={`${stats.total} on roster`} />
+              <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle2} tone="success" />
+              <StatCard label="Needs transport" value={stats.needTransport} icon={Bus} tone="primary" />
+              <StatCard label="Own transport" value={stats.attendingSelf} icon={CheckCircle2} tone="success" />
+              <StatCard label="Not attending" value={stats.notAttending} icon={XCircle} tone="danger" />
+              <StatCard label="No response" value={stats.noResponse} icon={Users} tone="warning" />
+            </div>
+
+            {banner ? (
+              <div
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  isResponseWindowOpen(singleEvent)
-                    ? 'bg-success/15 text-success'
-                    : 'bg-muted text-muted-foreground',
+                  'flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
+                  banner.tone === 'success'
+                    ? 'border-success/30 bg-success/10 text-success'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive',
                 )}
               >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    isResponseWindowOpen(singleEvent) ? 'bg-success' : 'bg-muted-foreground',
-                  )}
-                />
-                {isResponseWindowOpen(singleEvent) ? 'Responses open' : 'Responses closed'}
-              </span>
-              <Button size="sm" onClick={handleSend} disabled={sending}>
-                {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                {stats.sent > 0 ? 'Resend SMS' : `Send SMS to ${stats.total}`}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAssign}
-                disabled={assigning || stats.needTransport === 0}
-              >
-                {assigning ? <Loader2 className="size-4 animate-spin" /> : <Bus className="size-4" />}
-                Assign transport ({stats.needTransport})
-              </Button>
-            </div>
-          ) : null}
+                {banner.tone === 'success' ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
+                <span>{banner.text}</span>
+              </div>
+            ) : null}
 
-          {banner ? (
-            <div
-              className={cn(
-                'mt-3 flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
-                banner.tone === 'success'
-                  ? 'border-success/30 bg-success/10 text-success'
-                  : 'border-destructive/30 bg-destructive/10 text-destructive',
-              )}
-            >
-              {banner.tone === 'success' ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
-              <span>{banner.text}</span>
-            </div>
-          ) : null}
-        </Card>
-
-        {/* Response table */}
-        <Card className="overflow-hidden p-0">
+            {/* Response table */}
+            <Card className="overflow-hidden p-0">
           {rows.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -498,7 +603,9 @@ export default function ResponsesPage() {
               </TableBody>
             </Table>
           )}
-        </Card>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

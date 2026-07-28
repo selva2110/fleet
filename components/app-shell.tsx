@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Radio,
   Route,
+  Sparkles,
   Trash2,
   Truck,
   UserRound,
@@ -49,6 +50,7 @@ const NAV: NavSection[] = [
     title: 'Operations',
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/aurora', label: 'Aurora Command Center', icon: Sparkles },
       { href: '/command-center', label: 'Dispatch Command Center', icon: Radio },
       { href: '/planner', label: 'Route Planner', icon: Waypoints },
     ],
@@ -341,6 +343,21 @@ export function NotificationCenter() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+
+  // The Aurora Command Center is a full-bleed premium experience that ships
+  // its own glass top navigation, so it renders without the standard sidebar
+  // chrome. All providers (fleet store, notifications, theme) still wrap it via
+  // the root layout, so no functionality changes.
+  if (pathname?.startsWith('/aurora')) {
+    return (
+      <div className="min-h-dvh bg-background">
+        <ReminderMonitorRoot />
+        {children}
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
       <ReminderMonitorRoot />

@@ -222,7 +222,7 @@ function Metric({
   value,
   color,
 }: {
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
   label: string
   value: number
   color: string
