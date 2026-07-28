@@ -169,7 +169,7 @@ export default function VehiclesPage() {
     <div className="flex min-h-full flex-col">
       <PageHeader
         title="Vehicles"
-        description="Fleet inventory, capabilities, and maintenance status."
+        description="Vehicle inventory, capabilities, and maintenance status."
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setGuideOpen(true)}>
@@ -186,7 +186,7 @@ export default function VehiclesPage() {
         <VehicleShowroom count={typeCounts} />
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Total Fleet" value={fleet.vehicles.length} icon={Bus} />
+          <StatCard label="Total Vehicles" value={fleet.vehicles.length} icon={Bus} />
           <StatCard label="Available Now" value={available} icon={Bus} tone="success" />
           <StatCard label="Wheelchair Capable" value={wheelchairCapable} icon={Accessibility} tone="primary" />
           <StatCard label="Need Service" value={needService} icon={Wrench} tone={needService ? 'warning' : 'default'} />

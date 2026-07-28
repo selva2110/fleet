@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
 
       <div className="flex flex-col gap-6 p-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Fleet Utilization" value={`${avgUtil}%`} icon={Gauge} tone="primary" hint="avg seats filled" />
+          <StatCard label="Vehicles Utilization" value={`${avgUtil}%`} icon={Gauge} tone="primary" hint="avg seats filled" />
           <StatCard label="On-Time Rate" value={`${onTimeRate}%`} icon={Timer} tone="success" />
           <StatCard label="Total Distance" value={formatMiles(totalDistance, 0)} icon={RouteIcon} hint="across all trips" />
           <StatCard label="Riders Served" value={totalRiders} icon={Accessibility} />
@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
         {/* Utilization gauge + quick stats */}
         <Card>
           <div className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-semibold">Fleet Utilization</h2>
+            <h2 className="text-sm font-semibold">Vehicles Utilization</h2>
           </div>
           <div className="grid items-center gap-4 p-4 sm:grid-cols-[220px_1fr]">
             <div className="relative mx-auto aspect-square w-[200px]">
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
                 </ChartContainer>
               ) : (
                 <p className="py-16 text-center text-sm text-muted-foreground">
-                  No trip data yet. Commit routes from the AI Planner to see analytics.
+                  No trip data yet. Commit routes from the Planner to see analytics.
                 </p>
               )}
             </div>
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
 
           <Card>
             <div className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">Fleet Status</h2>
+              <h2 className="text-sm font-semibold">Vehicles Status</h2>
             </div>
             <div className="p-4">
               <ChartContainer config={statusConfig} className="mx-auto aspect-square h-[220px]">

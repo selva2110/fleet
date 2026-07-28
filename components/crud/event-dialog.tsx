@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { X } from 'lucide-react'
 import { Field, NumberField, SelectField, TextField } from './form-fields'
 import { useFleet } from '@/lib/store'
 import type { EventStatus, EventType, FleetEvent } from '@/lib/types'
@@ -43,8 +44,16 @@ function blank(centerId: string): Omit<FleetEvent, 'id'> {
     endTime: '12:00',
     expectedAttendance: 0,
     participantIds: [],
+    reminders: [],
     status: 'planning',
   }
+}
+
+function parseReminderOffsets(value: string) {
+  return value
+    .split(',')
+    .map((segment) => Number.parseInt(segment.trim(), 10))
+    .filter((offset): offset is number => Number.isFinite(offset) && offset > 0)
 }
 
 export function EventDialog({
@@ -60,14 +69,21 @@ export function EventDialog({
   const centerOptions = fleet.centers.map((c) => ({ value: c.id, label: c.name }))
   const [form, setForm] = useState(() => blank(fleet.centers[0]?.id ?? ''))
   const [saving, setSaving] = useState(false)
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>([240])
 
   useEffect(() => {
     if (editing) {
       const { id, ...rest } = editing
       void id
       setForm(rest)
+      setReminderOffsets(
+        editing.reminders?.length
+          ? editing.reminders.map((reminder) => reminder.offsetMinutes)
+          : [240],
+      )
     } else {
       setForm(blank(fleet.centers[0]?.id ?? ''))
+      setReminderOffsets([240])
     }
     // Only reset the form when the dialog is opened/closed or switches between
     // add/edit — not on every background data refresh (the live-tracking poll
@@ -83,6 +99,33 @@ export function EventDialog({
   const today = new Date()
   const todayStr = today.toISOString().slice(0, 10)
   const nowTimeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`
+
+  const updateReminder = (index: number, minutes: number) => {
+    setReminderOffsets((current) => {
+      const next = [...current]
+      next[index] = minutes
+      return next
+    })
+  }
+
+  const removeReminder = (index: number) => {
+    setReminderOffsets((current) => current.filter((_, i) => i !== index))
+  }
+
+  const addReminder = () => {
+    setReminderOffsets((current) => [...current, 240])
+  }
+
+  const minutesToTimeString = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+  }
+
+  const timeStringToMinutes = (timeStr: string): number => {
+    const [hours, mins] = timeStr.split(':').map((part) => Number.parseInt(part, 10))
+    return hours * 60 + mins
+  }
 
   const toggleParticipant = (id: string) =>
     setForm((f) => ({
@@ -101,9 +144,19 @@ export function EventDialog({
     if (!form.name.trim()) return
     setSaving(true)
     try {
+      const reminderPayload = reminderOffsets
+        .filter((minutes) => minutes > 0)
+        .map((offsetMinutes) => ({
+          id: `${form.date}-${form.startTime}-${offsetMinutes}`,
+          offsetMinutes,
+          scheduledAt: '',
+          sent: false,
+        }))
+
       await fleet.saveEvent({
         ...form,
         expectedAttendance: form.expectedAttendance || form.participantIds.length,
+        reminders: reminderPayload.length > 0 ? reminderPayload : editing?.reminders ?? [],
         id: editing?.id,
       })
       onOpenChange(false)
@@ -114,13 +167,14 @@ export function EventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg flex flex-col h-[90vh] max-h-[90vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{editing ? 'Edit event' : 'Create event'}</DialogTitle>
           <DialogDescription>Schedule a session and assign the participants who need transport.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="flex flex-col gap-3 px-4">
           <TextField label="Event name" value={form.name} onChange={(v) => set('name', v)} />
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Type" value={form.type} options={TYPES} onChange={(v) => set('type', v)} />
@@ -142,6 +196,39 @@ export function EventDialog({
             <SelectField label="Status" value={form.status} options={STATUS} onChange={(v) => set('status', v)} />
           </div>
 
+          <Field label="Reminders (hours:minutes before start)">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {reminderOffsets.map((minutes, index) => (
+                  <div key={index} className="flex items-center gap-1 bg-muted/50 rounded-md p-1.5">
+                    <TextField
+                      label=""
+                      type="time"
+                      value={minutesToTimeString(minutes)}
+                      onChange={(v) => updateReminder(index, timeStringToMinutes(v))}
+                    />
+                    {reminderOffsets.length > 1 ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removeReminder(index)}
+                        className="shrink-0 h-auto p-0.5"
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" onClick={addReminder} className="w-full">
+                + Add reminder
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Set reminders using a clock interface. New events default to 4 hours before the event starts.
+            </p>
+          </Field>
+
           <Field label={`Participants (${form.participantIds.length} selected)`}>
             <ScrollArea className="h-40 rounded-md border border-border">
               <div className="divide-y divide-border">
@@ -161,9 +248,10 @@ export function EventDialog({
               </div>
             </ScrollArea>
           </Field>
-        </div>
+          </div>
+        </ScrollArea>
 
-        <DialogFooter showCloseButton>
+        <DialogFooter showCloseButton className="shrink-0 border-t border-border mt-4">
           <Button onClick={submit} disabled={saving || !form.name.trim()}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create event'}
           </Button>

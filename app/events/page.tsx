@@ -28,6 +28,7 @@ import {
   type SortOption,
 } from '@/components/data-view/data-view'
 import { useFleet } from '@/lib/store'
+import { formatMonthDayYear } from '@/lib/date'
 import type { FleetEvent } from '@/lib/types'
 
 const eventStatusMeta: Record<FleetEvent['status'], { label: string; cls: string }> = {
@@ -175,7 +176,7 @@ export default function EventsPage() {
                       <MapPin className="size-3.5 shrink-0" /> {center?.name}
                     </p>
                     <p className="flex items-center gap-2">
-                      <CalendarDays className="size-3.5 shrink-0" /> {e.date}
+                      <CalendarDays className="size-3.5 shrink-0" /> {formatMonthDayYear(e.date)}
                     </p>
                     <p className="flex items-center gap-2">
                       <Clock className="size-3.5 shrink-0" /> {e.startTime} – {e.endTime}
@@ -235,7 +236,7 @@ export default function EventsPage() {
                           <p className="text-xs text-muted-foreground">{e.type}</p>
                         </TableCell>
                         <TableCell className="text-sm">{center?.name}</TableCell>
-                        <TableCell className="text-sm tabular-nums">{e.date}</TableCell>
+                        <TableCell className="text-sm tabular-nums">{formatMonthDayYear(e.date)}</TableCell>
                         <TableCell className="text-sm tabular-nums text-muted-foreground">
                           {e.startTime}–{e.endTime}
                         </TableCell>

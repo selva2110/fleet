@@ -1,7 +1,7 @@
 'use client'
 
 import L from 'leaflet'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   MapContainer,
   Marker,
@@ -80,58 +80,75 @@ type TrafficResult = {
 }
 
 function LiveTraffic({
-  route,
+  routes,
   onResult,
 }: {
-  route: { origin: LatLng; stops: TripStop[]; destination: LatLng; fallbackMinutes: number }
-  onResult: (result: TrafficResult) => void
+  routes: {
+    origin: LatLng;
+    stops: TripStop[];
+    destination: LatLng;
+    fallbackMinutes: number;
+  }[];
+  onResult: (index: number, result: TrafficResult) => void;
 }) {
   useEffect(() => {
-    let cancelled = false
-    const points = [route.origin, ...route.stops.map((stop) => stop.location), route.destination]
-
+    let cancelled = false;
     async function loadTraffic() {
-      try {
-        const response = await fetch('/api/traffic/route', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ points }),
+      await Promise.all(
+        routes.map(async (route, index) => {
+          const points = [
+            route.origin,
+            ...route.stops.map((stop) => stop.location),
+            route.destination,
+          ];
+          try {
+            const response = await fetch("/api/traffic/route", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ points }),
+            });
+            const result = (await response.json()) as TrafficResult;
+            if (!cancelled) {
+              onResult(index, result);
+            }
+          } catch {
+            if (!cancelled) {
+              onResult(index, { available: false });
+            }
+          }
         })
-        const result = (await response.json()) as TrafficResult
-        if (!cancelled) onResult(result)
-      } catch {
-        if (!cancelled) onResult({ available: false })
-      }
+      );
     }
-
-    void loadTraffic()
-    const refresh = window.setInterval(() => void loadTraffic(), 60_000)
+    void loadTraffic();
+    const refresh = window.setInterval(() => { void loadTraffic(); }, 60_000);
     return () => {
-      cancelled = true
-      window.clearInterval(refresh)
-    }
-  }, [onResult, route])
-
-  return null
+      cancelled = true;
+      window.clearInterval(refresh);
+    };
+  }, [routes, onResult]);
+  return null;
 }
 
 export interface FleetMapProps {
-  centers: Center[]
-  vehicles: Vehicle[]
-  trips: Trip[]
-  participants?: Participant[]
-  highlightTripId?: string | null
-  highlightVehicleId?: string | null
-  onSelectTrip?: (tripId: string) => void
-  fitTo?: LatLng[]
+  centers: Center[];
+  vehicles: Vehicle[];
+  trips: Trip[];
+  participants?: Participant[];
+  highlightTripId?: string | null;
+  highlightVehicleId?: string | null;
+  onSelectTrip?: (tripId: string) => void;
+  fitTo?: LatLng[];
   recommendedRoute?: {
-    routePath: LatLng[]
-    stops: TripStop[]
-    origin?: LatLng
-    destination?: LatLng
-    fallbackMinutes?: number
-  } | null
-  className?: string
+    routePath: LatLng[];
+    stops: TripStop[];
+    routeId:string;
+    origin?: LatLng;
+    destination?: LatLng;
+    fallbackMinutes?: number;
+  }[];
+  className?: string;
+  recommendedRouteId?:string;
+  setRecommendedRoute?: (routeId: string | null) => void;
 }
 
 export default function FleetMap({
@@ -144,21 +161,30 @@ export default function FleetMap({
   onSelectTrip,
   fitTo,
   recommendedRoute,
+  setRecommendedRoute,
+  recommendedRouteId
 }: FleetMapProps) {
   const activeTrips = trips.filter((t) => !['cancelled'].includes(t.status))
   const [traffic, setTraffic] = useState<TrafficResult | null>(null)
-  const liveRoute = useMemo(
-    () => recommendedRoute?.origin && recommendedRoute.destination
-      ? {
-          origin: recommendedRoute.origin,
-          stops: recommendedRoute.stops,
-          destination: recommendedRoute.destination,
-          fallbackMinutes: recommendedRoute.fallbackMinutes ?? 0,
-        }
-      : null,
-    [recommendedRoute],
-  )
-  const displayedRoutePath = traffic?.routePath?.length ? traffic.routePath : recommendedRoute?.routePath
+ const selectedRoute = recommendedRoute?.find(
+   (route) => route.routeId === recommendedRouteId,
+ );
+ const liveRoute = useMemo(() => {
+   if (!selectedRoute?.origin || !selectedRoute.destination) return [];
+
+   return [
+     {
+       origin: selectedRoute.origin,
+       stops: selectedRoute.stops,
+       destination: selectedRoute.destination,
+       fallbackMinutes: selectedRoute.fallbackMinutes ?? 0,
+     },
+   ];
+ }, [selectedRoute]);
+ 
+  const displayedRoutePath = traffic?.routePath?.length
+    ? traffic.routePath
+    : selectedRoute?.routePath;
 
   return (
     <MapContainer
@@ -166,20 +192,27 @@ export default function FleetMap({
       zoom={MAP_ZOOM}
       zoomControl={false}
       className="h-full w-full"
-      style={{ height: '100%', width: '100%' }}
+      style={{ height: "100%", width: "100%" }}
     >
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; OpenStreetMap &copy; CARTO'
+        attribution="&copy; OpenStreetMap &copy; CARTO"
       />
 
       {fitTo && fitTo.length > 1 ? <FitBounds points={fitTo} /> : null}
-      {liveRoute ? <LiveTraffic route={liveRoute} onResult={setTraffic} /> : null}
+      {liveRoute ? (
+        <LiveTraffic
+          routes={liveRoute}
+          onResult={(_, result) => {
+            setTraffic(result);
+          }}
+        />
+      ) : null}
 
       {/* Route polylines */}
       {activeTrips.map((t) => {
-        const highlighted = t.id === highlightTripId
-        const color = tripStatusMeta[t.status].map
+        const highlighted = t.id === highlightTripId;
+        const color = tripStatusMeta[t.status].map;
         return (
           <Polyline
             key={`route-${t.id}`}
@@ -188,48 +221,76 @@ export default function FleetMap({
               color,
               weight: highlighted ? 5 : 3,
               opacity: highlightTripId && !highlighted ? 0.25 : 0.8,
-              dashArray: t.status === 'planned' ? '6 8' : undefined,
+              dashArray: t.status === "planned" ? "6 8" : undefined,
             }}
             eventHandlers={{ click: () => onSelectTrip?.(t.id) }}
           />
-        )
+        );
       })}
 
-      {recommendedRoute ? (
-        <>
-          <Polyline
-            positions={(displayedRoutePath ?? []).map(ll)}
-            pathOptions={{
-              color: traffic?.available && (traffic.trafficDelayMinutes ?? 0) >= 10 ? '#dc2626' : traffic?.available && (traffic.trafficDelayMinutes ?? 0) > 0 ? '#d97706' : '#2563eb',
-              weight: 6,
-              opacity: 0.9,
-            }}
-          />
-          {recommendedRoute.stops.map((s) => (
-            <Marker
-              key={`recommended-stop-${s.participantId}`}
-              position={ll(s.location)}
-              icon={participantIcon({ medicalPriority: 'routine' } as Participant, true)}
-            >
-              <Tooltip>Stop {s.order} · ETA {s.etaMinutes}m</Tooltip>
-            </Marker>
-          ))}
-        </>
-      ) : null}
+      {recommendedRoute?.map((route, index) => {
+        const path =
+          route.routeId === recommendedRouteId
+            ? (displayedRoutePath ?? route.routePath)
+            : route.routePath;
+        return (
+          <Fragment key={route.routeId}>
+            <Polyline
+              key={route.routeId}
+              positions={path.map(ll)}
+              pathOptions={{
+                color:
+                  recommendedRouteId === route.routeId ? "#2563eb" : "#000000",
+                weight: recommendedRouteId === route.routeId ? 6 : 4,
+                opacity: recommendedRouteId === route.routeId ? 1 : 0.5,
+              }}
+              eventHandlers={{
+                click: () => {
+                  setRecommendedRoute?.(
+                    recommendedRouteId === route.routeId ? null : route.routeId,
+                  );
+                },
+              }}
+            />
+            {route.stops.map((s) => (
+              <Marker
+                key={`${route.routeId}-${s.participantId}`}
+                position={ll(s.location)}
+                icon={participantIcon(
+                  { medicalPriority: "routine" } as Participant,
+                  true,
+                )}
+              >
+                <Tooltip>
+                  Route {index + 1} · Stop {s.order} · ETA {s.etaMinutes}m
+                </Tooltip>
+              </Marker>
+            ))}
+          </Fragment>
+        );
+      })}
 
-      {recommendedRoute ? (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      {recommendedRouteId && selectedRoute ? (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-500 rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
           <p className="font-semibold text-foreground">
-            {traffic?.available ? 'Live traffic' : 'Estimated traffic'}
+            {traffic?.available ? "Live traffic" : "Estimated traffic"}
           </p>
+
           <p className="text-muted-foreground">
             {traffic?.available
-              ? `${traffic.travelTimeMinutes} min travel time${traffic.trafficDelayMinutes ? ` · +${traffic.trafficDelayMinutes} min delay` : ' · no delay'}`
-              : `${recommendedRoute.fallbackMinutes ?? '--'} min estimated travel time`}
+              ? `${traffic.travelTimeMinutes} min travel time${
+                  traffic.trafficDelayMinutes
+                    ? ` · +${traffic.trafficDelayMinutes} min delay`
+                    : " · no delay"
+                }`
+              : `${selectedRoute.fallbackMinutes ?? "--"} min estimated travel time`}
           </p>
-          {traffic?.available && traffic.updatedAt ? (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Updated {new Date(traffic.updatedAt).toLocaleTimeString()}</p>
-          ) : null}
+
+          {traffic?.available && traffic.updatedAt && (
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              Updated {new Date(traffic.updatedAt).toLocaleTimeString()}
+            </p>
+          )}
         </div>
       ) : null}
 
@@ -291,5 +352,5 @@ export default function FleetMap({
         </Marker>
       ))}
     </MapContainer>
-  )
+  );
 }

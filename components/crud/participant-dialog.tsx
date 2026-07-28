@@ -133,12 +133,6 @@ export function ParticipantDialog({
                 value={form.emergencyContact}
                 onChange={(v) => set('emergencyContact', v)}
               />
-              <TextField
-                label="Pickup window"
-                value={form.pickupWindow}
-                placeholder="07:30 - 08:00"
-                onChange={(v) => set('pickupWindow', v)}
-              />
             </div>
             <AddressField
               label="Address"

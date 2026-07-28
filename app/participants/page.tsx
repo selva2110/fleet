@@ -214,7 +214,7 @@ export default function ParticipantsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="size-3" /> Pickup {p.pickupWindow} · ≤ {p.maxTravelMinutes} min
+                    <Clock className="size-3" /> ≤ {p.maxTravelMinutes} min
                   </div>
                   <div className="border-t border-border pt-2">
                     <ConstraintChips constraints={p.constraints} max={6} />
@@ -233,7 +233,6 @@ export default function ParticipantsPage() {
                     <TableHead>Mobility</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Special Needs</TableHead>
-                    <TableHead>Pickup Window</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
@@ -256,9 +255,6 @@ export default function ParticipantsPage() {
                         </TableCell>
                         <TableCell>
                           <ConstraintChips constraints={p.constraints} max={4} />
-                        </TableCell>
-                        <TableCell className="text-sm tabular-nums text-muted-foreground">
-                          {p.pickupWindow}
                         </TableCell>
                         <TableCell>
                           <StatusBadge label={meta.label} cls={meta.cls} />

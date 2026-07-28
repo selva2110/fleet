@@ -53,10 +53,10 @@ export function VehicleStage({ type }: { type: VehicleType }) {
       <div
         className="relative flex size-full cursor-grab touch-none select-none items-center justify-center px-8 active:cursor-grabbing"
         style={{ perspective: '1200px' }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        // onPointerDown={onPointerDown}
+        // onPointerMove={onPointerMove}
+        // onPointerUp={onPointerUp}
+        // onPointerLeave={onPointerUp}
         role="img"
         aria-label={`${type} — drag to rotate`}
       >
@@ -98,13 +98,13 @@ export function VehicleStage({ type }: { type: VehicleType }) {
       </div>
 
       {/* Reset view */}
-      <button
+      {/* <button
         type="button"
         onClick={() => setRot(START)}
         className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
       >
         <RotateCcw className="size-3" /> Reset
-      </button>
+      </button> */}
     </div>
   )
 }

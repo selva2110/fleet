@@ -118,9 +118,9 @@ export default function DispatchPage() {
       <div className="grid grid-cols-2 gap-px border-b border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={Bus} label="Active trips" value={String(liveTrips.length)} />
         <Kpi icon={Users} label="Onboard" value={String(onboardCount)} tone="primary" />
-        <Kpi icon={MapPin} label="Pickups left" value={String(pickupsRemaining)} tone="warning" />
+        <Kpi icon={MapPin} label="Pickups left" value={String(pickupsRemaining)} tone="default" />
         <Kpi icon={TrendingUp} label="Avg progress" value={`${avgProgress}%`} />
-        <Kpi icon={Gauge} label="Fleet in use" value={`${utilization}%`} />
+        <Kpi icon={Gauge} label="Vehicles in use" value={`${utilization}%`} />
         <Kpi icon={Clock} label="Next arrival" value={nextArrival ?? '—'} />
       </div>
 
@@ -181,7 +181,7 @@ export default function DispatchPage() {
                   })}
                   {liveTrips.length === 0 ? (
                     <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-                      No active trips. Commit a plan from the AI Route Planner to dispatch vehicles.
+                      No active trips. Commit a plan from the Route Planner to dispatch vehicles.
                     </p>
                   ) : null}
                 </div>
@@ -308,7 +308,7 @@ function TripDetail({ tripId, onClose }: { tripId: string; onClose: () => void }
     : null
 
   return (
-    <div className="absolute right-0 top-0 z-[600] flex h-full w-full max-w-sm flex-col border-l border-border bg-card shadow-xl">
+    <div className="absolute right-0 top-0 z-600 overflow-y-auto flex h-full w-full max-w-sm flex-col border-l border-border bg-card shadow-xl">
       <div className="flex items-start justify-between border-b border-border p-4">
         <div>
           <div className="flex items-center gap-2">

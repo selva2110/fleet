@@ -1,4 +1,4 @@
-// Domain types for the Smart Fleet Event Transportation Management Platform.
+// Domain types for the Smart Vehicle Event Transportation Management Platform.
 // This module is the single source of truth for entity shapes and is designed
 // to map cleanly onto a relational schema (each interface ~ one table) so the
 // in-memory mock store can later be swapped for a real database.
@@ -149,6 +149,13 @@ export type EventType =
 
 export type EventStatus = 'scheduled' | 'planning' | 'active' | 'completed'
 
+export interface EventReminder {
+  id: string
+  offsetMinutes: number
+  scheduledAt: string
+  sent: boolean
+}
+
 export interface FleetEvent {
   id: string
   name: string
@@ -160,6 +167,7 @@ export interface FleetEvent {
   expectedAttendance: number
   participantIds: string[]
   status: EventStatus
+  reminders?: EventReminder[]
 }
 
 export type TripStatus =
