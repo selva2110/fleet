@@ -39,8 +39,9 @@ import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -192,6 +193,28 @@ export default function VehiclesPage() {
           <StatCard label="Need Service" value={needService} icon={Wrench} tone={needService ? 'warning' : 'default'} />
         </div>
 
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Vehicle type">
+                <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
+              </FilterSection>
+              <FilterSection title="Status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Fuel type">
+                <CheckboxGroupFilter options={FUEL_OPTIONS} selected={fuels} onChange={setFuels} />
+              </FilterSection>
+              <FilterSection title="Maintenance">
+                <CheckboxGroupFilter options={MAINT_OPTIONS} selected={maints} onChange={setMaints} />
+              </FilterSection>
+              <FilterSection title="Capabilities">
+                <CheckboxGroupFilter options={CAPABILITY_OPTIONS} selected={caps} onChange={setCaps} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -203,8 +226,6 @@ export default function VehiclesPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -280,30 +301,9 @@ export default function VehiclesPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
-
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Vehicle type">
-          <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
-        </FilterSection>
-        <FilterSection title="Status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Fuel type">
-          <CheckboxGroupFilter options={FUEL_OPTIONS} selected={fuels} onChange={setFuels} />
-        </FilterSection>
-        <FilterSection title="Maintenance">
-          <CheckboxGroupFilter options={MAINT_OPTIONS} selected={maints} onChange={setMaints} />
-        </FilterSection>
-        <FilterSection title="Capabilities">
-          <CheckboxGroupFilter options={CAPABILITY_OPTIONS} selected={caps} onChange={setCaps} />
-        </FilterSection>
-      </FilterSheet>
 
       <VehicleDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
       <TypeGuideDialog open={guideOpen} onOpenChange={setGuideOpen} />

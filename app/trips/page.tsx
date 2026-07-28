@@ -27,8 +27,9 @@ import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -162,7 +163,23 @@ export default function TripsPage() {
         }
       />
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="p-6">
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Quick groups">
+                <CheckboxGroupFilter options={GROUP_OPTIONS} selected={groups} onChange={setGroups} />
+              </FilterSection>
+              <FilterSection title="Exact status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Crew assignment">
+                <CheckboxGroupFilter options={CREW_OPTIONS} selected={crew} onChange={setCrew} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -174,8 +191,6 @@ export default function TripsPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -282,24 +297,9 @@ export default function TripsPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
-
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Quick groups">
-          <CheckboxGroupFilter options={GROUP_OPTIONS} selected={groups} onChange={setGroups} />
-        </FilterSection>
-        <FilterSection title="Exact status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Crew assignment">
-          <CheckboxGroupFilter options={CREW_OPTIONS} selected={crew} onChange={setCrew} />
-        </FilterSection>
-      </FilterSheet>
 
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent className="sm:max-w-sm">

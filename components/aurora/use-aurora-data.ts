@@ -208,7 +208,7 @@ export function useAuroraData() {
         severity: 'info',
         title: 'All systems nominal',
         detail: 'No operational alerts across your care centers.',
-        href: '/aurora',
+        href: '/',
       })
     }
 

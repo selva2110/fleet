@@ -22,8 +22,9 @@ import {
   CheckboxGroupFilter,
   DataToolbar,
   EmptyState,
+  FilterRail,
   FilterSection,
-  FilterSheet,
+  ListLayout,
   compareValues,
   useDataView,
   type SortOption,
@@ -135,7 +136,23 @@ export default function EventsPage() {
         }
       />
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="p-6">
+        <ListLayout
+          filters={
+            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+              <FilterSection title="Event type">
+                <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
+              </FilterSection>
+              <FilterSection title="Status">
+                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
+              </FilterSection>
+              <FilterSection title="Center">
+                <CheckboxGroupFilter options={CENTER_OPTIONS} selected={centerIds} onChange={setCenterIds} />
+              </FilterSection>
+            </FilterRail>
+          }
+        >
+          <div className="flex flex-col gap-6">
         <DataToolbar
           query={dv.query}
           onQueryChange={dv.setQuery}
@@ -147,8 +164,6 @@ export default function EventsPage() {
           onToggleSortDir={dv.toggleSortDir}
           view={dv.view}
           onViewChange={dv.setView}
-          activeFilterCount={activeFilterCount}
-          onOpenFilters={() => dv.setFiltersOpen(true)}
           resultCount={filtered.length}
         />
 
@@ -285,24 +300,9 @@ export default function EventsPage() {
             </div>
           </Card>
         )}
+          </div>
+        </ListLayout>
       </div>
-
-      <FilterSheet
-        open={dv.filtersOpen}
-        onOpenChange={dv.setFiltersOpen}
-        activeCount={activeFilterCount}
-        onReset={resetFilters}
-      >
-        <FilterSection title="Event type">
-          <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
-        </FilterSection>
-        <FilterSection title="Status">
-          <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-        </FilterSection>
-        <FilterSection title="Center">
-          <CheckboxGroupFilter options={CENTER_OPTIONS} selected={centerIds} onChange={setCenterIds} />
-        </FilterSection>
-      </FilterSheet>
 
       <EventDetail
         open={detailId !== null}
