@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS events (
   end_time text NOT NULL,
   expected_attendance integer NOT NULL DEFAULT 0,
   participant_ids jsonb NOT NULL DEFAULT '[]',
+  reminders jsonb NOT NULL DEFAULT '[]',
   status text NOT NULL
 );
 

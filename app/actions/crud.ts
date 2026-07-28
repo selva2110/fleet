@@ -6,6 +6,7 @@ import { emit } from '@/lib/db/emit'
 import { MAP_CENTER } from '@/lib/geo'
 import type {
   Driver,
+  EventReminder,
   FleetEvent,
   Participant,
   Vehicle,
@@ -14,6 +15,36 @@ import { eq } from 'drizzle-orm'
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`
+}
+
+const DEFAULT_REMINDER_OFFSETS_MINUTES = [240]
+
+function buildEventReminders(
+  input: Pick<FleetEvent, 'date' | 'startTime'> & { reminders?: EventReminder[] },
+): EventReminder[] {
+  const reminderOffsets = Array.isArray(input.reminders) && input.reminders.length > 0
+    ? input.reminders
+        .map((reminder) => Number(reminder?.offsetMinutes))
+        .filter((value): value is number => Number.isFinite(value) && value > 0)
+    : DEFAULT_REMINDER_OFFSETS_MINUTES
+
+  if (!input.date || !input.startTime) return []
+
+  const [hours, minutes] = input.startTime.split(':').map((part) => Number.parseInt(part, 10))
+  if ([hours, minutes].some((value) => Number.isNaN(value))) return []
+
+  const startDateTime = new Date(`${input.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`)
+  if (Number.isNaN(startDateTime.getTime())) return []
+
+  return reminderOffsets.map((offsetMinutes, index) => {
+    const scheduledAt = new Date(startDateTime.getTime() - offsetMinutes * 60_000)
+    return {
+      id: `${input.date}-${input.startTime}-${offsetMinutes}-${index}`,
+      offsetMinutes,
+      scheduledAt: scheduledAt.toISOString(),
+      sent: false,
+    }
+  })
 }
 
 /* ----------------------------- Participants ----------------------------- */
@@ -199,6 +230,11 @@ export async function saveEvent(
 ) {
   const isNew = !input.id
   const id = input.id ?? newId('evt')
+  const reminders = buildEventReminders({
+    date: input.date,
+    startTime: input.startTime,
+    reminders: input.reminders,
+  })
   const values = {
     id,
     name: input.name,
@@ -209,6 +245,7 @@ export async function saveEvent(
     endTime: input.endTime,
     expectedAttendance: input.expectedAttendance,
     participantIds: input.participantIds,
+    reminders,
     status: input.status,
   }
   if (isNew) {
@@ -222,7 +259,7 @@ export async function saveEvent(
     aggregateId: id,
     actorRole,
     summary: `${isNew ? 'Created' : 'Updated'} event ${input.name}`,
-    payload: { type: input.type, status: input.status },
+    payload: { type: input.type, status: input.status, reminders: reminders.length },
   })
   return id
 }
@@ -235,6 +272,18 @@ export async function deleteEvent(id: string, name: string, actorRole = 'admin')
     aggregateId: id,
     actorRole,
     summary: `Deleted event ${name}`,
+  })
+}
+
+export async function markEventReminderSent(eventId: string, reminders: EventReminder[]) {
+  await db.update(events).set({ reminders }).where(eq(events.id, eventId))
+  await emit({
+    eventType: 'event.reminder.sent',
+    aggregateType: 'event',
+    aggregateId: eventId,
+    actorRole: 'admin',
+    summary: 'Sent reminder for event',
+    payload: { reminders: reminders.filter((reminder) => reminder.sent).length },
   })
 }
 

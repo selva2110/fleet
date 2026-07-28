@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { formatMonthDayYear } from '@/lib/date'
 import { formatMiles } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
 import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
@@ -77,7 +78,6 @@ export default function PlannerPage() {
 
   const event = fleet.eventById(eventId)
   const center = event ? fleet.centerById(event.centerId) : undefined
-
   const pending = useMemo(() => {
     if (!event) return []
     const committedPids = new Set(
@@ -128,7 +128,7 @@ export default function PlannerPage() {
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
-        title="AI Route Planner"
+        title="Route Planner"
         description="Automatically generate optimized, constraint-aware transportation plans."
         actions={
           <div className="flex items-center gap-2">
@@ -145,7 +145,8 @@ export default function PlannerPage() {
               <SelectTrigger className="w-55">
                 <SelectValue placeholder="Select event">
                   {(value) =>
-                    plannableEvents.find((e) => e.id === value)?.name ?? 'Select event'
+                    plannableEvents.find((e) => e.id === value)?.name ??
+                    "Select event"
                   }
                 </SelectValue>
               </SelectTrigger>
@@ -168,38 +169,90 @@ export default function PlannerPage() {
       <div className="flex flex-col gap-6 p-6">
         {/* Event summary */}
         {event ? (
-          <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div className="flex flex-col items-center justify-center">
-              <h2 className="text-sm font-semibold text-balance">{event.name}</h2>
-              <p className="text-xs text-muted-foreground">
-                {center?.name} · {event.date} at {event.startTime}
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
-                  {pending.length}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">Awaiting transport</p>
+          <div
+            className={`grid w-full gap-4 ${phase === "results" ? "lg:grid-cols-[2fr_1fr]" : "lg:grid-cols-[1fr_auto]"}`}
+          >
+            <Card className="p-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col items-center justify-center">
+                  <h2 className="text-sm font-semibold text-balance">
+                    {event.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {center?.name} · {formatMonthDayYear(event.date)} at {event.startTime}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-6 justify-center">
+                  <div className="text-center">
+                    <p className="text-xl font-semibold tabular-nums leading-none">
+                      {pending.length}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Participants
+                    </p>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-xl font-semibold tabular-nums leading-none">
+                      {
+                        pending.filter(
+                          (p) =>
+                            p.constraints.wheelchair ||
+                            p.constraints.poweredWheelchair,
+                        ).length
+                      }
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Wheelchair
+                    </p>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-xl font-semibold tabular-nums leading-none">
+                      {
+                        pending.filter((p) => p.medicalPriority === "critical")
+                          .length
+                      }
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Critical
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-semibold tabular-nums leading-none">
+                      {
+                        pending.filter((p) => p.medicalPriority === "elevated")
+                          .length
+                      }
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Elevated
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
-                  {pending.filter((p) => p.constraints.wheelchair || p.constraints.poweredWheelchair).length}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">Wheelchair</p>
+            </Card>
+            {phase === "results" ? (
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard
+                  label="Vehicles Used"
+                  value={recs.length}
+                  icon={Bus}
+                  tone="primary"
+                />
+                <StatCard
+                  label="Total Distance"
+                  value={formatMiles(totalDistance)}
+                  icon={RouteIcon}
+                />
               </div>
-              <div className="text-center">
-                <p className="text-xl font-semibold tabular-nums leading-none text-foreground">
-                  {pending.filter((p) => p.medicalPriority !== 'routine').length}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">Priority</p>
-              </div>
-            </div>
-          </Card>
+            ) : null}
+          </div>
         ) : null}
 
         {/* Idle */}
-        {phase === 'idle' ? (
+        {phase === "idle" ? (
           <Card className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Sparkles className="size-7" />
@@ -207,12 +260,12 @@ export default function PlannerPage() {
             <div>
               <p className="text-sm font-medium">
                 {pending.length === 0
-                  ? 'All participants for this event are already assigned.'
-                  : 'Ready to plan transportation'}
+                  ? "All participants for this event are already assigned."
+                  : "Ready to plan transportation"}
               </p>
               <p className="mt-1 max-w-md text-xs text-muted-foreground text-pretty">
                 {pending.length === 0
-                  ? 'Select another event or review committed trips in Dispatch.'
+                  ? "Select another event or review committed trips in Dispatch."
                   : `The planner will optimize routes for ${pending.length} participants across your available fleet, respecting every medical and accessibility constraint.`}
               </p>
             </div>
@@ -220,25 +273,27 @@ export default function PlannerPage() {
         ) : null}
 
         {/* Planning animation */}
-        {phase === 'planning' ? (
+        {phase === "planning" ? (
           <Card className="p-6">
             <div className="mx-auto max-w-md space-y-3">
               {PLANNING_STEPS.map((label, i) => {
-                const active = i === step
-                const done = i < step
+                const active = i === step;
+                const done = i < step;
                 return (
                   <div key={label} className="flex items-center gap-3">
                     <span
                       className={cn(
-                        'flex size-6 shrink-0 items-center justify-center rounded-full text-xs',
+                        "flex size-6 shrink-0 items-center justify-center rounded-full text-xs",
                         done
-                          ? 'bg-success text-success-foreground'
+                          ? "bg-success text-success-foreground"
                           : active
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground',
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {done ? <Check className="size-3.5" /> : active ? (
+                      {done ? (
+                        <Check className="size-3.5" />
+                      ) : active ? (
                         <span className="size-2 animate-ping rounded-full bg-primary-foreground" />
                       ) : (
                         i + 1
@@ -253,31 +308,19 @@ export default function PlannerPage() {
                       {label}
                     </span>
                   </div>
-                )
+                );
               })}
             </div>
           </Card>
         ) : null}
 
         {/* Results */}
-        {phase === 'results' ? (
+        {phase === "results" ? (
           <>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="Vehicles Used" value={recs.length} icon={Bus} tone="primary" />
-              <StatCard label="Avg Route Score" value={avgScore} icon={Gauge} tone={avgScore >= 70 ? 'success' : 'warning'} hint="out of 100" />
-              <StatCard label="Total Distance" value={formatMiles(totalDistance)} icon={RouteIcon} />
-              <StatCard
-                label="Est. Cost"
-                value={`$${totalCost}`}
-                icon={Wallet}
-                hint={`${totalViolations + unassigned.length} need${totalViolations + unassigned.length === 1 ? 's' : ''} review`}
-                tone={totalViolations + unassigned.length ? 'warning' : 'default'}
-              />
-            </div>
-
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">
-                {recs.length} recommended {recs.length === 1 ? 'route' : 'routes'}
+                {recs.length} recommended{" "}
+                {recs.length === 1 ? "route" : "routes"}
               </h2>
               {committed ? (
                 <Badge className="bg-success/20 text-success">
@@ -290,19 +333,58 @@ export default function PlannerPage() {
                   ) : null}
                   <Button size="sm" onClick={commit} disabled={recs.length === 0 || !anyDriverAssigned}>
                     <Check className="size-4" />
-                    Commit {recs.length} {recs.length === 1 ? 'route' : 'routes'} to Dispatch
+                    Commit {recs.length}{" "}
+                    {recs.length === 1 ? "route" : "routes"} to Dispatch
                   </Button>
                 </div>
               )}
             </div>
+            <Card className="overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-border px-4 py-1">
+                <MapIcon className="size-4 text-primary" />
+                <div>
+                  <h2 className="text-sm font-semibold">
+                    Recommended route map
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Route {recs.findIndex((r) => r.id === selectedRouteId) + 1}{" "}
+                    with pickup stops
+                  </p>
+                </div>
+              </div>
+              <div className="h-105">
+                <FleetMap
+                  centers={center ? [center] : []}
+                  vehicles={fleet.vehicles}
+                  trips={[]}
+                  participants={pending}
+                  recommendedRoute={(() => {
+                    const routes = recs;
+                    return routes.map((route) => {
+                      const vehicle = fleet.vehicleById(route.vehicleId);
 
+                      return {
+                        ...route,
+                        routeId: route.id,
+                        origin: vehicle?.location,
+                        destination: center?.location,
+                        fallbackMinutes: route.durationMinutes,
+                      };
+                    });
+                  })()}
+                  setRecommendedRoute={setSelectedRouteId}
+                  recommendedRouteId={selectedRouteId ?? ""}
+                  fitTo={recs.find((r) => r.id === selectedRouteId)?.routePath}
+                />
+              </div>
+            </Card>
             <div className="grid gap-4 lg:grid-cols-2">
               {recs.map((rec, i) => (
                 <RecommendationCard
                   key={rec.id}
                   rec={rec}
                   index={i}
-                  selected={rec.id === selectedRouteId}
+                  selected={selectedRouteId === rec.id}
                   onSelect={() => setSelectedRouteId(rec.id)}
                 />
               ))}
@@ -312,7 +394,8 @@ export default function PlannerPage() {
               <Card className="border-warning/40 bg-warning/5 p-4">
                 <p className="flex items-center gap-1.5 text-sm font-semibold text-warning-foreground">
                   <TriangleAlert className="size-4" />
-                  {unassigned.length} participant{unassigned.length === 1 ? '' : 's'} need scheduler review
+                  {unassigned.length} participant
+                  {unassigned.length === 1 ? "" : "s"} need scheduler review
                 </p>
                 <ul className="mt-2 space-y-1">
                   {unassigned.map((u) => (
@@ -328,47 +411,16 @@ export default function PlannerPage() {
               </Card>
             ) : null}
 
-            {selectedRouteId ? (
-              <Card className="overflow-hidden">
-                <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-                  <MapIcon className="size-4 text-primary" />
-                  <div>
-                    <h2 className="text-sm font-semibold">Recommended route map</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Route {recs.findIndex((r) => r.id === selectedRouteId) + 1} with pickup stops
-                    </p>
-                  </div>
-                </div>
-                <div className="h-105">
-                  <FleetMap
-                    centers={center ? [center] : []}
-                    vehicles={fleet.vehicles}
-                    trips={[]}
-                    participants={pending}
-                    recommendedRoute={(() => {
-                      const selected = recs.find((r) => r.id === selectedRouteId)
-                      const vehicle = selected ? fleet.vehicleById(selected.vehicleId) : undefined
-                      return selected
-                        ? {
-                            ...selected,
-                            origin: vehicle?.location,
-                            destination: center?.location,
-                            fallbackMinutes: selected.durationMinutes,
-                          }
-                        : null
-                    })()}
-                    fitTo={recs.find((r) => r.id === selectedRouteId)?.routePath}
-                  />
-                </div>
-              </Card>
-            ) : null}
-
             {committed ? (
               <Card className="flex items-center justify-between gap-4 border-success/40 bg-success/5 p-4">
                 <p className="text-sm text-muted-foreground">
                   Routes committed. Track them live in the Command Center.
                 </p>
-                <Button size="sm" variant="outline" onClick={() => router.push('/command-center')}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push("/command-center")}
+                >
                   Open Command Center
                 </Button>
               </Card>
@@ -377,7 +429,7 @@ export default function PlannerPage() {
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 function RecommendationCard({
@@ -398,7 +450,7 @@ function RecommendationCard({
 
   return (
     <Card
-      className={cn('cursor-pointer overflow-hidden transition-colors', selected && 'border-primary ring-1 ring-primary/30')}
+      className={cn('cursor-pointer overflow-hidden transition-colors', selected && 'border-primary ring-2 ring-primary/60')}
       onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onSelect()
@@ -415,11 +467,6 @@ function RecommendationCard({
             <p className="text-sm font-semibold">Route {index + 1}</p>
             <p className="text-xs text-muted-foreground">{vehicle?.name} · {vehicle?.type}</p>
           </div>
-        </div>
-        <div className="text-right">
-          <p className="mb-1 text-[10px] font-medium text-primary">{selected ? 'Showing on map' : 'View on map'}</p>
-          <p className={cn('text-lg font-semibold tabular-nums leading-none', scoreTone)}>{rec.routeScore}</p>
-          <p className="text-[10px] text-muted-foreground">route score</p>
         </div>
       </div>
 
@@ -441,11 +488,11 @@ function RecommendationCard({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-4 gap-px bg-border">
+      <div className="grid grid-cols-3 gap-px bg-border">
         <MiniMetric label="Riders" value={String(rec.participantIds.length)} icon={Users} />
         <MiniMetric label="Distance" value={formatMiles(rec.distanceKm)} icon={RouteIcon} />
         <MiniMetric label="Time" value={`${rec.durationMinutes}m`} icon={Gauge} />
-        <MiniMetric label="Cost" value={`$${rec.estimatedCost}`} icon={Wallet} />
+        {/* <MiniMetric label="Cost" value={`$${rec.estimatedCost}`} icon={Wallet} /> */}
       </div>
 
       <div className="px-4 py-3">

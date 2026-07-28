@@ -27,13 +27,12 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-# COPY --from=builder --chown=nextjs:nodejs /app/.next/ ./
-
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-# Copy package.json and full node_modules (including binaries)
-
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+# COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 
 USER nextjs
 EXPOSE 3000

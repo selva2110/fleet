@@ -102,6 +102,7 @@ export function toEvent(r: EventRow): FleetEvent {
     endTime: r.endTime,
     expectedAttendance: r.expectedAttendance,
     participantIds: r.participantIds,
+    reminders: r.reminders,
     status: r.status as FleetEvent['status'],
   }
 }

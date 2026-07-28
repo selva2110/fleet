@@ -260,8 +260,8 @@ export function AddressField({
               style={{ zIndex: 10000 }}
               className="absolute mt-1 w-full max-h-60 overflow-auto rounded-md border border-border bg-background shadow-lg"
             >
-              {suggestions.map((suggestion) => (
-                <li key={`${suggestion.displayName}-${suggestion.lat}-${suggestion.lng}`}>
+              {suggestions.map((suggestion, idx) => (
+                <li key={`${idx}`}>
                   <button
                     type="button"
                     role="option"
@@ -321,7 +321,7 @@ export function AddressField({
         {isGeocoding ? <p className="text-xs text-muted-foreground">Looking up the location…</p> : null}
       </div>
     </Field>
-  )
+  );
 }
 
 export function TextField({

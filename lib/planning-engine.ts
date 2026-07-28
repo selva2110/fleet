@@ -4,7 +4,7 @@
 // it groups participants, selects suitable vehicles, assigns drivers, sequences
 // pickups, builds routes, and scores each recommendation while flagging any
 // constraint violations. This is a deterministic heuristic optimizer (nearest
-// neighbour + constraint-aware greedy bin packing) that mimics an AI planner.
+// neighbour + constraint-aware greedy bin packing) that mimics an planner.
 
 import { buildRoutePath, estimateMinutes, formatMinutesToClock, haversineKm, parseClockTime, pathLengthKm } from './geo'
 import type {

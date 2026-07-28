@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'l
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useFleet } from '@/lib/store'
+import { formatMonthDayYear } from '@/lib/date'
 import type { EventStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -81,10 +82,7 @@ export function WeeklySchedule() {
 
   const weekEventCount = days.reduce((n, d) => n + (eventsByDay.get(dateKey(d))?.length ?? 0), 0)
 
-  const rangeLabel = `${days[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${days[6].toLocaleDateString(
-    'en-US',
-    { month: 'short', day: 'numeric', year: 'numeric' },
-  )}`
+  const rangeLabel = `${formatMonthDayYear(days[0])} – ${formatMonthDayYear(days[6])}`
 
   function shiftWeek(delta: number) {
     const next = new Date(anchor)

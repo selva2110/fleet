@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/app-shell'
 import { ThemeProvider, themeInitScript } from '@/components/theme-provider'
+import { NotificationProvider } from '@/components/notifications/notification-center'
 import { FleetProvider } from '@/lib/store'
 import './globals.css'
 
@@ -11,9 +12,9 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'FleetCare | Event Transportation Management',
+  title: 'CareMove | Event Transportation Management',
   description:
-    'Smart Fleet Event Transportation Management Platform for coordinating participant transport to healthcare and community events.',
+    'Smart Vehicles Event Transportation Management Platform for coordinating participant transport to healthcare and community events.',
   generator: 'v0.app',
 }
 
@@ -39,9 +40,11 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider>
           <FleetProvider>
-            <TooltipProvider delay={200}>
-              <AppShell>{children}</AppShell>
-            </TooltipProvider>
+            <NotificationProvider>
+              <TooltipProvider delay={200}>
+                <AppShell>{children}</AppShell>
+              </TooltipProvider>
+            </NotificationProvider>
           </FleetProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}

@@ -1,4 +1,4 @@
-// Drizzle schema for the Smart Fleet platform (Neon Postgres).
+// Drizzle schema for the Smart Vehicle platform (Neon Postgres).
 // Nested/structured fields are stored as JSONB so domain shapes in lib/types.ts
 // map 1:1 onto rows. No auth/user scoping: this is a single-tenant ops tool
 // driven by a mock role switcher.
@@ -16,6 +16,7 @@ import {
 import type {
   CenterType,
   DriverStatus,
+  EventReminder,
   EventStatus,
   EventType,
   LatLng,
@@ -104,6 +105,7 @@ export const events = pgTable('events', {
   endTime: text('end_time').notNull(),
   expectedAttendance: integer('expected_attendance').notNull().default(0),
   participantIds: jsonb('participant_ids').$type<string[]>().notNull().default([]),
+  reminders: jsonb('reminders').$type<EventReminder[]>().notNull().default([]),
   status: text('status').$type<EventStatus>().notNull(),
 })
 

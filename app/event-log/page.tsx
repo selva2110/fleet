@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { formatMonthDayYearTime, formatTime } from '@/lib/date'
 import { useFleet } from '@/lib/store'
 import { EVENT_META, type AggregateType } from '@/lib/events'
 
@@ -118,7 +119,7 @@ export default function EventLogPage() {
                       </Badge>
                       <span className="flex-1 truncate text-muted-foreground">{e.summary}</span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {new Date(e.createdAt).toLocaleTimeString()}
+                        {formatTime(e.createdAt)}
                       </span>
                     </button>
                     {isOpen ? (
@@ -129,7 +130,7 @@ export default function EventLogPage() {
                           <span className="text-muted-foreground">aggregateId</span>
                           <span>{e.aggregateId || '—'}</span>
                           <span className="text-muted-foreground">timestamp</span>
-                          <span>{new Date(e.createdAt).toISOString()}</span>
+                          <span>{formatMonthDayYearTime(e.createdAt)}</span>
                           <span className="text-muted-foreground">payload</span>
                           <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded bg-card p-2 text-[10px]">
                             {JSON.stringify(e.payload, null, 2)}

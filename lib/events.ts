@@ -9,6 +9,7 @@ export type DomainEventType =
   | 'event.created'
   | 'event.updated'
   | 'event.deleted'
+  | 'event.reminder.sent'
   | 'participant.created'
   | 'participant.updated'
   | 'participant.deleted'
@@ -78,6 +79,7 @@ export const EVENT_META: Record<
   'event.created': { label: 'Event created', tone: 'info' },
   'event.updated': { label: 'Event updated', tone: 'info' },
   'event.deleted': { label: 'Event deleted', tone: 'danger' },
+  'event.reminder.sent': { label: 'Reminder sent', tone: 'warning' },
   'participant.created': { label: 'Participant added', tone: 'info' },
   'participant.updated': { label: 'Participant updated', tone: 'info' },
   'participant.deleted': { label: 'Participant removed', tone: 'danger' },

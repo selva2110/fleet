@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { useFleet } from '@/lib/store'
+import { formatMonthDayYear } from '@/lib/date'
 import { tripStatusMeta, vehicleStatusMeta } from '@/lib/labels'
 
 export default function DashboardPage() {
@@ -120,7 +121,7 @@ export default function DashboardPage() {
                     <div key={e.id} className="px-5 py-3">
                       <p className="text-sm font-medium leading-tight text-pretty">{e.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {center?.name} · {e.date} at {e.startTime}
+                        {center?.name} · {formatMonthDayYear(e.date)} at {e.startTime}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {e.participantIds.length} participants expected
@@ -142,11 +143,11 @@ export default function DashboardPage() {
                     <span className="font-semibold text-foreground">{unassigned}</span> participants still need
                     transport assigned.{' '}
                     <Link href="/planner" className="font-medium text-primary hover:underline">
-                      Open AI Planner
+                      Open Planner
                     </Link>
                   </p>
                 ) : (
-                  <p className="text-muted-foreground">All participants are assigned. Fleet running smoothly.</p>
+                  <p className="text-muted-foreground">All participants are assigned. Vehicles running smoothly.</p>
                 )}
               </div>
             </Card>
@@ -156,7 +157,7 @@ export default function DashboardPage() {
         <Card>
           <div className="flex items-center gap-2 border-b border-border px-5 py-3">
             <Bus className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold">Fleet Status</h2>
+            <h2 className="text-sm font-semibold">Vehicles Status</h2>
           </div>
           <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
             {fleet.vehicles.map((v) => {

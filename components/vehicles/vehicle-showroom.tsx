@@ -31,15 +31,15 @@ export function VehicleShowroom({ count }: { count?: Partial<Record<VehicleType,
         {/* 3D stage */}
         <div className="relative min-h-[340px] bg-[radial-gradient(circle_at_50%_35%,oklch(0.32_0.03_258),oklch(0.16_0.02_258))] lg:min-h-[440px]">
           <VehicleStage type={active} />
-          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+          {/* <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
             <Rotate3d className="size-3.5" /> Drag to rotate
-          </div>
+          </div> */}
         </div>
 
         {/* Details */}
         <div className="flex flex-col justify-center gap-4 p-6">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-primary">Fleet showroom</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">Vehicle Showroom</p>
             <h2 className="mt-1 text-2xl font-bold text-balance">{active}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty">
               {vehicleTypeDescriptions[active]}
