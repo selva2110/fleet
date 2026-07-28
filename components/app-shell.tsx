@@ -12,6 +12,7 @@ import {
   Database,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   Radio,
   Route,
   Trash2,
@@ -26,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,6 +57,7 @@ const NAV: NavSection[] = [
     title: 'Vehicles & People',
     items: [
       { href: '/events', label: 'Events', icon: CalendarDays },
+      { href: '/responses', label: 'SMS Responses', icon: MessageSquare },
       { href: '/participants', label: 'Participants', icon: Users },
       { href: '/vehicles', label: 'Vehicles', icon: Truck },
       { href: '/drivers', label: 'Drivers', icon: UserRound },
@@ -149,14 +152,16 @@ function RoleSwitcher() {
         }
       />
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>View as role</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {ROLES.map((r) => (
-          <DropdownMenuItem key={r.id} onClick={() => setRole(r.id)} className="gap-2">
-            <Check className={cn('size-4', r.id === role ? 'opacity-100' : 'opacity-0')} />
-            {r.label}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>View as role</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {ROLES.map((r) => (
+            <DropdownMenuItem key={r.id} onClick={() => setRole(r.id)} className="gap-2">
+              <Check className={cn('size-4', r.id === role ? 'opacity-100' : 'opacity-0')} />
+              {r.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
