@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Bus,
@@ -48,6 +48,14 @@ const LIVE_STATUSES = ['en-route', 'pickup-in-progress', 'onboard', 'driver-assi
 export default function DispatchPage() {
   const fleet = useFleet()
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
+  // Top-level view: 'dispatch' (live trips) or 'meals' (meal delivery). Read
+  // an optional ?tab= deep link once on mount so links can open a given tab.
+  const [view, setView] = useState<'dispatch' | 'meals'>('dispatch')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    if (tab === 'meals' || tab === 'dispatch') setView(tab)
+  }, [])
 
   const liveTrips = useMemo(
     () => fleet.trips.filter((t) => LIVE_STATUSES.includes(t.status)),
@@ -133,7 +141,11 @@ export default function DispatchPage() {
         }
       />
 
-      <Tabs defaultValue="dispatch" className="flex min-h-0 flex-1 flex-col gap-0">
+      <Tabs
+        value={view}
+        onValueChange={(v) => setView(v as 'dispatch' | 'meals')}
+        className="flex min-h-0 flex-1 flex-col gap-0"
+      >
         <TabsList className="mx-4 mt-3 w-fit">
           <TabsTrigger value="dispatch">
             <Bus className="size-3.5" /> Live Dispatch

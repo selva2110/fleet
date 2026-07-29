@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { formatMonthDayYear } from '@/lib/date'
-import { formatMiles } from '@/lib/labels'
+import { formatMiles, tripStatusMeta } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
 import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
 
@@ -90,8 +90,9 @@ export default function PlannerPage() {
     )
   }, [event, eventId, fleet])
 
-  function runPlanner() {
+  function runPlanner(targetId: string = eventId) {
       fleet.simRunning && fleet.toggleSim()
+    if (targetId !== eventId) setEventId(targetId)
     setPhase('planning')
     setStep(0)
     setCommitted(false)
@@ -100,7 +101,7 @@ export default function PlannerPage() {
       setStep((s) => {
         if (s >= PLANNING_STEPS.length - 1) {
           clearInterval(interval)
-          void fleet.generatePlan(eventId).then((result) => {
+          void fleet.generatePlan(targetId).then((result) => {
             setRecs(result.recommendations)
             setUnassigned(result.unassigned)
             setSelectedRouteId(result.recommendations[0]?.id ?? null)
@@ -112,6 +113,19 @@ export default function PlannerPage() {
       })
     }, 550
   )
+  }
+
+  // Cancel an event's still-planned (not yet dispatched) trips and re-run the
+  // planner for that event so the dispatcher can generate a fresh plan.
+  async function replanEvent(evId: string) {
+    const toCancel = fleet.trips.filter(
+      (t) =>
+        t.eventId === evId &&
+        !t.startedAt &&
+        ['planned', 'vehicle-assigned', 'driver-assigned'].includes(t.status),
+    )
+    await Promise.all(toCancel.map((t) => fleet.cancelTrip(t.id)))
+    runPlanner(evId)
   }
 
   async function commit() {
@@ -270,6 +284,11 @@ export default function PlannerPage() {
               </p>
             </div>
           </Card>
+        ) : null}
+
+        {/* Recent planned routes — re-plan any that are not yet dispatched */}
+        {phase === 'idle' ? (
+          <RecentPlans onReplan={replanEvent} onOpenDispatch={() => router.push('/command-center')} />
         ) : null}
 
         {/* Planning animation */}
@@ -566,6 +585,126 @@ function MiniMetric({
         <span className="text-[10px]">{label}</span>
       </div>
       <p className="mt-0.5 text-sm font-semibold tabular-nums">{value}</p>
+      </div>
     </div>
+  )
+}
+
+const DISPATCHED_STATUSES = ['en-route', 'pickup-in-progress', 'onboard', 'arrived', 'completed']
+
+/**
+ * Lists recently planned routes grouped by event. A plan that has not been
+ * dispatched yet (all its trips are still planned/assigned and unstarted) can
+ * be re-planned in place; a dispatched plan links to the Command Center.
+ */
+function RecentPlans({
+  onReplan,
+  onOpenDispatch,
+}: {
+  onReplan: (eventId: string) => void | Promise<void>
+  onOpenDispatch: () => void
+}) {
+  const fleet = useFleet()
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const groups = useMemo(() => {
+    const byEvent = new Map<string, typeof fleet.trips>()
+    for (const t of fleet.trips) {
+      if (t.status === 'cancelled') continue
+      const list = byEvent.get(t.eventId) ?? []
+      list.push(t)
+      byEvent.set(t.eventId, list)
+    }
+    return Array.from(byEvent.entries())
+      .map(([eventId, trips]) => {
+        const dispatched = trips.some(
+          (t) => Boolean(t.startedAt) || DISPATCHED_STATUSES.includes(t.status),
+        )
+        const riders = new Set(trips.flatMap((t) => t.stops.map((s) => s.participantId))).size
+        const distance = trips.reduce((s, t) => s + t.distanceKm, 0)
+        return { eventId, trips, dispatched, riders, distance }
+      })
+      .sort((a, b) => Number(a.dispatched) - Number(b.dispatched))
+  }, [fleet.trips])
+
+  if (groups.length === 0) return null
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <RouteIcon className="size-4 text-primary" />
+        <div>
+          <h2 className="text-sm font-semibold">Recent planned routes</h2>
+          <p className="text-xs text-muted-foreground">
+            Routes committed from the planner. Re-plan any that have not been dispatched yet.
+          </p>
+        </div>
+      </div>
+      <div className="divide-y divide-border">
+        {groups.map((g) => {
+          const event = fleet.eventById(g.eventId)
+          const center = event ? fleet.centerById(event.centerId) : undefined
+          return (
+            <div key={g.eventId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-medium">{event?.name ?? 'Unknown event'}</p>
+                  {g.dispatched ? (
+                    <Badge className="bg-success/20 text-success">
+                      <Check className="mr-1 size-3" /> Dispatched
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-muted text-muted-foreground">Not dispatched</Badge>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {center?.name ? `${center.name} · ` : ''}
+                  {event ? `${formatMonthDayYear(event.date)} · ` : ''}
+                  {g.trips.length} {g.trips.length === 1 ? 'route' : 'routes'} · {g.riders} riders ·{' '}
+                  {formatMiles(g.distance)}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {g.trips.map((t) => {
+                    const meta = tripStatusMeta[t.status]
+                    return (
+                      <span
+                        key={t.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                      >
+                        {t.tripNumber}
+                        <span className="text-foreground/70">· {meta.label}</span>
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {g.dispatched ? (
+                  <Button size="sm" variant="outline" onClick={onOpenDispatch}>
+                    Open Dispatch
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={busyId === g.eventId}
+                    onClick={async () => {
+                      setBusyId(g.eventId)
+                      try {
+                        await onReplan(g.eventId)
+                      } finally {
+                        setBusyId(null)
+                      }
+                    }}
+                  >
+                    <Sparkles className="size-4" /> Re-plan
+                  </Button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }

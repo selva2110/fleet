@@ -11,18 +11,13 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import {
-  AURORA_ACCENTS,
   type AuroraAccent,
   accentClasses,
   GlassCard,
   TrendPill,
 } from './aurora-ui'
 import { cn } from '@/lib/utils'
-
-const KPI_AXIS = 'rgba(148,163,184,0.6)'
-const KPI_GRID = 'rgba(148,163,184,0.14)'
 
 const ICONS: Record<string, LucideIcon> = {
   route: Route,
@@ -58,7 +53,6 @@ export function AuroraKpis({ items }: { items: KpiItem[] }) {
 function KpiCard({ item, index }: { item: KpiItem; index: number }) {
   const Icon = ICONS[item.icon] ?? Route
   const accent = accentClasses[item.accent]
-  const color = AURORA_ACCENTS[item.accent]
 
   return (
     <motion.div
@@ -93,45 +87,7 @@ function KpiCard({ item, index }: { item: KpiItem; index: number }) {
           <p className="text-2xl font-semibold tabular-nums tracking-tight text-white">{item.value}</p>
           <p className="mt-0.5 text-[11px] font-medium text-slate-300/70">{item.label}</p>
         </div>
-
-        <div className="relative mt-2 h-14">
-          <KpiMiniChart data={item.series} color={color} />
-        </div>
       </GlassCard>
     </motion.div>
-  )
-}
-
-/**
- * Compact axis-based mini chart for KPI cards: a small bar chart with a
- * baseline x-axis, subtle horizontal gridlines, and a minimal y-scale so each
- * metric reads as a real chart rather than a free-floating sparkline.
- */
-function KpiMiniChart({ data, color }: { data: number[]; color: string }) {
-  const chartData = data.map((v, i) => ({ i, v: Math.round(v) }))
-  const max = Math.max(...data, 1)
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="2 3" stroke={KPI_GRID} vertical={false} />
-        <XAxis
-          dataKey="i"
-          tick={false}
-          tickLine={false}
-          axisLine={{ stroke: 'rgba(148,163,184,0.35)' }}
-          height={6}
-        />
-        <YAxis
-          width={22}
-          tick={{ fill: KPI_AXIS, fontSize: 8 }}
-          tickLine={false}
-          axisLine={{ stroke: 'rgba(148,163,184,0.35)' }}
-          ticks={[0, Math.round(max)]}
-          domain={[0, Math.ceil(max)]}
-          allowDecimals={false}
-        />
-        <Bar dataKey="v" fill={color} radius={[1.5, 1.5, 0, 0]} isAnimationActive={false} />
-      </BarChart>
-    </ResponsiveContainer>
   )
 }

@@ -54,7 +54,7 @@ function MealDeliveryWidget() {
         icon={UtensilsCrossed}
         accent="emerald"
         action={
-          <Link href="/meal-delivery" className="text-[11px] font-medium text-emerald-300 hover:text-emerald-200">
+          <Link href="/command-center?tab=meals" className="text-[11px] font-medium text-emerald-300 hover:text-emerald-200">
             View all
           </Link>
         }

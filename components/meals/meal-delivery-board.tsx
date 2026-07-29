@@ -14,8 +14,8 @@ import { formatMiles, mealStatusMeta } from '@/lib/labels'
 
 /**
  * Self-contained meal-delivery workspace (KPI strip, run list, live map, run
- * detail overlay, and the "new run" dialog). Rendered both on the standalone
- * /meal-delivery page and inside the Dispatch Command Center's Meal tab.
+ * detail overlay, and the "new run" dialog). Rendered inside the Dispatch
+ * Command Center's Meal Delivery tab.
  */
 export function MealDeliveryBoard() {
   const fleet = useFleet()

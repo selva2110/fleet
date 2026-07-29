@@ -3,11 +3,13 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, Users } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, UtensilsCrossed, Users } from 'lucide-react'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MealDeliveryTab, MealPlanningTab } from '@/components/events/meal-tabs'
 import {
   Table,
   TableBody,
@@ -137,9 +139,23 @@ export default function EventsPage() {
       />
 
       <div className="p-6">
-        <ListLayout
-          filters={
-            <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
+        <Tabs defaultValue="events" className="flex flex-col gap-4">
+          <TabsList className="w-fit">
+            <TabsTrigger value="events">
+              <CalendarDays className="size-4" /> Events
+            </TabsTrigger>
+            <TabsTrigger value="meal-delivery">
+              <UtensilsCrossed className="size-4" /> Meal Delivery
+            </TabsTrigger>
+            <TabsTrigger value="meal-planning">
+              <Sparkles className="size-4" /> Meal Planning
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="events">
+            <ListLayout
+              filters={
+                <FilterRail activeCount={activeFilterCount} onReset={resetFilters}>
               <FilterSection title="Event type">
                 <CheckboxGroupFilter options={TYPE_OPTIONS} selected={types} onChange={setTypes} />
               </FilterSection>
@@ -311,7 +327,17 @@ export default function EventsPage() {
           </Card>
         )}
           </div>
-        </ListLayout>
+            </ListLayout>
+          </TabsContent>
+
+          <TabsContent value="meal-delivery">
+            <MealDeliveryTab />
+          </TabsContent>
+
+          <TabsContent value="meal-planning">
+            <MealPlanningTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <EventDetail
