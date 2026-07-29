@@ -10,6 +10,7 @@ import {
   MapPin,
   MessageSquare,
   Plus,
+  Repeat,
   Search,
   Trash2,
   Users,
@@ -102,6 +103,8 @@ function blank(centerId: string): Omit<FleetEvent, 'id'> {
     participantIds: [],
     reminders: [],
     registrationDeadline: null,
+    roundTrip: false,
+    returnTime: null,
     status: 'draft',
   }
 }
@@ -302,6 +305,50 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 SMS responses are accepted until the deadline above, and always close one hour before
                 the event starts — whichever comes first.
               </p>
+
+              {/* Trip type: one-way vs round trip */}
+              <div className="rounded-lg border border-border p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Repeat className="size-4.5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium">Round trip</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
+                        {form.roundTrip
+                          ? 'Transport is assigned for both the outbound and return leg. A matching return trip (center → home) is created automatically when you dispatch.'
+                          : 'One-way only (home → center). Turn on to also schedule the return journey.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={!!form.roundTrip}
+                    onCheckedChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        roundTrip: v,
+                        returnTime: v ? (f.returnTime ?? f.endTime) : null,
+                      }))
+                    }
+                  />
+                </div>
+                {form.roundTrip ? (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label="Return departs center at"
+                      type="time"
+                      value={form.returnTime ?? form.endTime}
+                      onChange={(v) => set('returnTime', v)}
+                    />
+                    <div className="flex items-end">
+                      <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-primary">
+                        Both legs use the same vehicle, driver, and riders.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </SectionCard>
 

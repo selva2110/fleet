@@ -204,6 +204,77 @@ export async function tickSimulation(speed = 1) {
     }
   }
 
+  // --- Meal-delivery runs ------------------------------------------------
+  // Same time-based animation as trips, but stops are "delivered" (drop-off)
+  // rather than "picked-up". Runs loop so the map keeps showing live movement.
+  const activeMeals = await db
+    .select()
+    .from(mealDeliveries)
+    .where(ne(mealDeliveries.status, 'cancelled'))
+
+  for (const row of activeMeals) {
+    if (!row.startedAt) continue
+    const startedAt = new Date(row.startedAt).getTime()
+    const elapsedSec = ((now - startedAt) / 1000) * speed
+    const playbackSeconds = tripPlaybackSeconds(row.durationMinutes)
+    const path = row.routePath as MealDelivery['routePath']
+    const stops = row.stops as MealStop[]
+
+    // Loop the run once it finishes so deliveries stay live on the map.
+    if (row.status === 'completed' || elapsedSec >= playbackSeconds) {
+      const resetStops = stops.map((s) => ({ ...s, status: 'pending' as const }))
+      await db
+        .update(mealDeliveries)
+        .set({
+          startedAt: new Date(now),
+          lastTickAt: new Date(now),
+          progress: 0,
+          status: 'en-route',
+          stops: resetStops,
+          currentLocation: path[0] ?? row.currentLocation,
+        })
+        .where(eq(mealDeliveries.id, row.id))
+      continue
+    }
+
+    const nextProgress = Math.min(1, elapsedSec / playbackSeconds)
+    const newLocation = pointAlongPath(path, nextProgress)
+    const total = row.durationMinutes || 20
+    const thresholds = stops.map((s) =>
+      total > 0 ? Math.min(0.97, s.etaMinutes / total) : 0,
+    )
+    const updatedStops = stops.map((s, i) => {
+      if (nextProgress >= thresholds[i] && s.status !== 'delivered') {
+        return { ...s, status: 'delivered' as const }
+      }
+      if (nextProgress >= Math.max(0, thresholds[i] - 0.08) && s.status === 'pending') {
+        return { ...s, status: 'approaching' as const }
+      }
+      return s
+    })
+    const delivered = updatedStops.filter((s) => s.status === 'delivered').length
+    const nextStatus: MealDelivery['status'] =
+      nextProgress >= 1 ? 'completed' : delivered > 0 ? 'delivering' : 'en-route'
+
+    await db
+      .update(mealDeliveries)
+      .set({
+        progress: nextProgress,
+        currentLocation: newLocation,
+        stops: updatedStops,
+        status: nextStatus,
+        lastTickAt: new Date(now),
+      })
+      .where(eq(mealDeliveries.id, row.id))
+
+    if (row.vehicleId) {
+      await db
+        .update(vehicles)
+        .set({ location: newLocation, status: nextStatus === 'completed' ? 'available' : 'heading-to-pickup' })
+        .where(eq(vehicles.id, row.vehicleId))
+    }
+  }
+
   return { ok: true, tickedAt: new Date(now).toISOString() }
 }
 
@@ -217,6 +288,19 @@ export async function startSimulation(actorRole = 'dispatcher') {
         .update(trips)
         .set({ status: 'en-route', startedAt: now, lastTickAt: now })
         .where(eq(trips.id, t.id))
+    }
+  }
+  // Auto-start meal-delivery runs the same way.
+  const mealsNotStarted = await db
+    .select()
+    .from(mealDeliveries)
+    .where(ne(mealDeliveries.status, 'cancelled'))
+  for (const m of mealsNotStarted) {
+    if (!m.startedAt && m.status !== 'completed') {
+      await db
+        .update(mealDeliveries)
+        .set({ status: 'en-route', startedAt: now, lastTickAt: now })
+        .where(eq(mealDeliveries.id, m.id))
     }
   }
   await emit({

@@ -56,11 +56,18 @@ import {
   assignTransportForResponders as assignTransportAction,
   type SendNotificationsResult,
 } from '@/app/actions/notifications'
+import {
+  createMealDelivery as createMealDeliveryAction,
+  startMealDelivery as startMealDeliveryAction,
+  cancelMealDelivery as cancelMealDeliveryAction,
+  type MealDeliveryInput,
+} from '@/app/actions/meals'
 import type { DomainEvent } from '@/lib/events'
 import type {
   Center,
   Driver,
   FleetEvent,
+  MealDelivery,
   Participant,
   PlanRecommendation,
   PlanResult,
@@ -77,6 +84,7 @@ const EMPTY: FleetSnapshot = {
   drivers: [],
   events: [],
   trips: [],
+  mealDeliveries: [],
   smsNotifications: [],
   eventLog: [],
   seeded: false,
@@ -91,6 +99,7 @@ interface FleetContextValue {
   drivers: Driver[]
   events: FleetEvent[]
   trips: Trip[]
+  mealDeliveries: MealDelivery[]
   smsNotifications: SmsNotification[]
   eventLog: DomainEvent[]
   simRunning: boolean
@@ -115,6 +124,10 @@ interface FleetContextValue {
   saveEvent: (input: EventInput & { id?: string }) => Promise<void>
   deleteEvent: (id: string, name: string) => Promise<void>
   rescheduleEvent: (id: string, newDate: string) => Promise<void>
+  // meal delivery
+  createMealDelivery: (input: MealDeliveryInput) => Promise<void>
+  startMealDelivery: (id: string) => Promise<void>
+  cancelMealDelivery: (id: string) => Promise<void>
   // notifications
   sendEventNotifications: (eventId: string) => Promise<SendNotificationsResult>
   assignTransport: (eventId: string) => Promise<{ assigned: number }>
@@ -295,6 +308,29 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     [mutate],
   )
 
+  // Meal delivery
+  const createMealDelivery = useCallback(
+    async (input: MealDeliveryInput) => {
+      await createMealDeliveryAction(input, roleRef.current)
+      await mutate()
+    },
+    [mutate],
+  )
+  const startMealDelivery = useCallback(
+    async (id: string) => {
+      await startMealDeliveryAction(id, roleRef.current)
+      await mutate()
+    },
+    [mutate],
+  )
+  const cancelMealDelivery = useCallback(
+    async (id: string) => {
+      await cancelMealDeliveryAction(id, roleRef.current)
+      await mutate()
+    },
+    [mutate],
+  )
+
   // Notifications
   const sendEventNotifications = useCallback(
     async (eventId: string) => {
@@ -329,6 +365,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       drivers: snapshot.drivers,
       events: snapshot.events,
       trips: snapshot.trips,
+      mealDeliveries: snapshot.mealDeliveries,
       smsNotifications: snapshot.smsNotifications,
       eventLog: snapshot.eventLog,
       simRunning,
@@ -351,6 +388,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       saveEvent,
       deleteEvent,
       rescheduleEvent,
+      createMealDelivery,
+      startMealDelivery,
+      cancelMealDelivery,
       sendEventNotifications,
       assignTransport,
       centerById: (id) => byId(snapshot.centers, id),
@@ -382,6 +422,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       saveEvent,
       deleteEvent,
       rescheduleEvent,
+      createMealDelivery,
+      startMealDelivery,
+      cancelMealDelivery,
       sendEventNotifications,
       assignTransport,
       byId,

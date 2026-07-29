@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock, MapPin, Plus, Sparkles, Users } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, Users } from 'lucide-react'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -205,6 +205,11 @@ export default function EventsPage() {
                     </p>
                     <p className="flex items-center gap-2">
                       <Clock className="size-3.5 shrink-0" /> {e.startTime} – {e.endTime}
+                      {e.roundTrip ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          <Repeat className="size-3" /> Round trip
+                        </span>
+                      ) : null}
                     </p>
                     <p className="flex items-center gap-2">
                       <Users className="size-3.5 shrink-0" /> {total} participants
@@ -268,7 +273,12 @@ export default function EventsPage() {
                         <TableCell className="text-sm">{center?.name}</TableCell>
                         <TableCell className="text-sm tabular-nums">{formatMonthDayYear(e.date)}</TableCell>
                         <TableCell className="text-sm tabular-nums text-muted-foreground">
-                          {e.startTime}–{e.endTime}
+                          <span className="flex items-center gap-1.5">
+                            {e.startTime}–{e.endTime}
+                            {e.roundTrip ? (
+                              <Repeat className="size-3.5 text-primary" aria-label="Round trip" />
+                            ) : null}
+                          </span>
                         </TableCell>
                         <TableCell className="w-40">
                           <div className="flex items-center gap-2">

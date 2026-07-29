@@ -106,6 +106,7 @@ export async function commitPlan(
       stops: rec.stops,
       destinationCenterId: evt.centerId,
       status: rec.driverId ? 'driver-assigned' : 'vehicle-assigned',
+      tripKind: 'outbound',
       distanceKm: rec.distanceKm,
       durationMinutes: rec.durationMinutes,
       etaCenter: `${rec.durationMinutes} min`,
@@ -115,6 +116,46 @@ export async function commitPlan(
       startedAt: null,
       lastTickAt: null,
     })
+
+    // Round-trip events get a matching return leg (center -> homes). It reuses
+    // the same vehicle/driver/riders but reverses the route so it animates as
+    // the drop-off journey after the event ends.
+    if (evt.roundTrip) {
+      const returnId = `trip-${Date.now().toString(36)}-${counter++}`
+      const returnNumber = `TR-${counter}R`
+      const reversedPath = [...rec.routePath].reverse()
+      // Re-order stops so the last person picked up is the first dropped off.
+      const reversedStops = [...rec.stops]
+        .reverse()
+        .map((s, i) => ({ ...s, order: i, status: 'pending' as const }))
+      await db.insert(trips).values({
+        id: returnId,
+        tripNumber: returnNumber,
+        eventId,
+        vehicleId: rec.vehicleId,
+        driverId: rec.driverId || null,
+        stops: reversedStops,
+        destinationCenterId: evt.centerId,
+        status: rec.driverId ? 'driver-assigned' : 'vehicle-assigned',
+        tripKind: 'return',
+        distanceKm: rec.distanceKm,
+        durationMinutes: rec.durationMinutes,
+        etaCenter: `${rec.durationMinutes} min`,
+        progress: 0,
+        currentLocation: reversedPath[0] ?? startLocation,
+        routePath: reversedPath,
+        startedAt: null,
+        lastTickAt: null,
+      })
+      await emit({
+        eventType: 'trip.created',
+        aggregateType: 'trip',
+        aggregateId: returnId,
+        actorRole,
+        summary: `Return trip ${returnNumber} created for round-trip event (${rec.participantIds.length} riders)`,
+        payload: { vehicleId: rec.vehicleId, driverId: rec.driverId, tripNumber: returnNumber, tripKind: 'return' },
+      })
+    }
 
     // Side effects: mark vehicle assigned, driver on-trip, participants scheduled.
     await db.update(vehicles).set({ status: 'assigned' }).where(eq(vehicles.id, rec.vehicleId))

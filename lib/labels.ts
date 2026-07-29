@@ -1,5 +1,6 @@
 import type {
   DriverStatus,
+  MealDeliveryStatus,
   ParticipantStatus,
   Role,
   TripStatus,
@@ -30,6 +31,16 @@ export const vehicleStatusMeta: Record<VehicleStatus, { label: string; cls: stri
   'at-destination': { label: 'At Destination', cls: 'bg-success/20 text-success', map: '#059669' },
   returning: { label: 'Returning', cls: 'bg-muted text-muted-foreground', map: '#64748b' },
   offline: { label: 'Offline', cls: 'bg-muted text-muted-foreground', map: '#94a3b8' },
+}
+
+export const mealStatusMeta: Record<MealDeliveryStatus, { label: string; cls: string; map: string }> = {
+  scheduled: { label: 'Scheduled', cls: 'bg-muted text-muted-foreground', map: '#64748b' },
+  preparing: { label: 'Preparing', cls: 'bg-accent text-accent-foreground', map: '#3b82f6' },
+  loaded: { label: 'Loaded', cls: 'bg-accent text-accent-foreground', map: '#3b82f6' },
+  'en-route': { label: 'En Route', cls: 'bg-primary/15 text-primary', map: '#2563eb' },
+  delivering: { label: 'Delivering', cls: 'bg-warning/20 text-warning-foreground', map: '#d97706' },
+  completed: { label: 'Completed', cls: 'bg-success/20 text-success', map: '#059669' },
+  cancelled: { label: 'Cancelled', cls: 'bg-destructive/15 text-destructive', map: '#dc2626' },
 }
 
 export const participantStatusMeta: Record<ParticipantStatus, { label: string; cls: string }> = {

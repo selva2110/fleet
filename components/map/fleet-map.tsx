@@ -12,31 +12,76 @@ import {
   useMap,
 } from 'react-leaflet'
 import { MAP_CENTER, MAP_ZOOM } from '@/lib/geo'
-import { tripStatusMeta, vehicleStatusMeta } from '@/lib/labels'
-import type { Center, LatLng, Participant, Trip, TripStop, Vehicle } from '@/lib/types'
+import { mealStatusMeta, tripStatusMeta, vehicleStatusMeta } from '@/lib/labels'
+import type {
+  Center,
+  LatLng,
+  MealDelivery,
+  MealStop,
+  Participant,
+  Trip,
+  TripStop,
+  Vehicle,
+} from '@/lib/types'
 
+// Filled vehicle silhouettes (viewBox 0 0 24 24) — recognizable side-profile
+// shapes rather than abstract strokes, so each vehicle class reads at a glance.
 const vehicleGlyph: Record<string, string> = {
-  Sedan: 'M3 13l1-4h12l1 4M5 13v3M15 13v3M3 13h14',
-  SUV: 'M3 13l1-4h12l1 4M5 13v3M15 13v3M3 13h14',
-  Van: 'M3 6h11v7H3zM14 8h3l2 3v2h-5z',
-  'Wheelchair Accessible Van': 'M3 6h11v7H3zM14 8h3l2 3v2h-5z',
-  'Medical Transport Vehicle': 'M3 6h11v7H3zM14 8h3l2 3v2h-5z',
-  'Mini Bus': 'M4 5h13v9H4zM4 9h13',
-  'Shuttle Bus': 'M4 5h13v9H4zM4 9h13',
-  Ambulance: 'M3 6h9v7H3zM12 8h4l3 3v2h-7z',
+  // car body with cabin + two wheels
+  Sedan: 'M2 13l2-4.5A2 2 0 0 1 5.8 7h9.4a2 2 0 0 1 1.7 1l2 3 2 .6a1 1 0 0 1 .8 1v1.4h-3a2.2 2.2 0 0 0-4.4 0H8.4a2.2 2.2 0 0 0-4.4 0H2z',
+  SUV: 'M2 13l1.6-5A2 2 0 0 1 5.5 6.5h10A2 2 0 0 1 17.4 8l2 3.2 1.8.6a1 1 0 0 1 .8 1v2h-3a2.2 2.2 0 0 0-4.4 0H8.4a2.2 2.2 0 0 0-4.4 0H2z',
+  // tall boxy vans
+  Van: 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
+  'Wheelchair Accessible Van': 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
+  'Medical Transport Vehicle': 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
+  // long bus body
+  'Mini Bus': 'M3 5.5A1.5 1.5 0 0 1 4.5 4h14A1.5 1.5 0 0 1 20 5.5V15h-2.2a2.2 2.2 0 0 0-4.4 0H9.6a2.2 2.2 0 0 0-4.4 0H3zM3 8h17',
+  'Shuttle Bus': 'M3 5.5A1.5 1.5 0 0 1 4.5 4h14A1.5 1.5 0 0 1 20 5.5V15h-2.2a2.2 2.2 0 0 0-4.4 0H9.6a2.2 2.2 0 0 0-4.4 0H3zM3 8h17',
+  Ambulance: 'M2 6.5A1.5 1.5 0 0 1 3.5 5h9.2a2 2 0 0 1 1.6.8l3.2 4.2 2 .6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
 }
 
 function vehicleIcon(v: Vehicle, highlighted: boolean) {
   const color = vehicleStatusMeta[v.status].map
   const pulse = ['heading-to-pickup', 'onboard'].includes(v.status)
-  const size = highlighted ? 34 : 28
+  const size = highlighted ? 36 : 30
   const html = `
     <div class="map-marker ${pulse ? 'map-marker-pulse' : ''}" style="--pulse-color:${color}66;width:${size}px;height:${size}px;background:${color};${highlighted ? 'outline:3px solid rgba(37,99,235,.35);' : ''}">
-      <svg width="16" height="16" viewBox="0 0 22 20" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round">
         <path d="${vehicleGlyph[v.type] ?? vehicleGlyph.Van}" />
+        <circle cx="7" cy="16" r="1.9" fill="${color}" stroke="white" stroke-width="1.1" />
+        <circle cx="16" cy="16" r="1.9" fill="${color}" stroke="white" stroke-width="1.1" />
       </svg>
     </div>`
   return L.divIcon({ html, className: 'map-pin', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
+}
+
+// Moving meal-delivery van — box-truck silhouette with a food/box glyph.
+function mealVehicleIcon(m: MealDelivery, highlighted: boolean) {
+  const color = mealStatusMeta[m.status].map
+  const pulse = m.status === 'en-route' || m.status === 'delivering'
+  const size = highlighted ? 36 : 30
+  const html = `
+    <div class="map-marker ${pulse ? 'map-marker-pulse' : ''}" style="--pulse-color:${color}66;width:${size}px;height:${size}px;background:${color};${highlighted ? 'outline:3px solid rgba(217,119,6,.4);' : ''}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7h9v8H3zM12 10h4l3 3v2h-7z" fill="white" fill-opacity="0.18" />
+        <circle cx="7" cy="16.5" r="1.6" fill="white" stroke="none" />
+        <circle cx="16" cy="16.5" r="1.6" fill="white" stroke="none" />
+        <path d="M6 4.5c1.6 0 1.6 1.4 3 1.4s1.4-1.4 3-1.4" />
+      </svg>
+    </div>`
+  return L.divIcon({ html, className: 'map-pin', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
+}
+
+// Meal drop-off point at a participant's home.
+function mealStopIcon(delivered: boolean) {
+  const color = delivered ? '#059669' : '#d97706'
+  const html = `
+    <div class="map-marker" style="width:16px;height:16px;background:${color};border-width:2px;border-radius:4px;">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        ${delivered ? '<path d="M5 13l4 4L19 7" />' : '<path d="M4 8h16v11H4zM4 8l2-3h12l2 3" />'}
+      </svg>
+    </div>`
+  return L.divIcon({ html, className: 'map-pin', iconSize: [16, 16], iconAnchor: [8, 8] })
 }
 
 function centerIcon(c: Center) {
@@ -133,10 +178,13 @@ export interface FleetMapProps {
   centers: Center[];
   vehicles: Vehicle[];
   trips: Trip[];
+  mealDeliveries?: MealDelivery[];
   participants?: Participant[];
   highlightTripId?: string | null;
   highlightVehicleId?: string | null;
+  highlightMealId?: string | null;
   onSelectTrip?: (tripId: string) => void;
+  onSelectMeal?: (mealId: string) => void;
   fitTo?: LatLng[];
   recommendedRoute?: {
     routePath: LatLng[];
@@ -155,15 +203,19 @@ export default function FleetMap({
   centers,
   vehicles,
   trips,
+  mealDeliveries = [],
   participants = [],
   highlightTripId,
   highlightVehicleId,
+  highlightMealId,
   onSelectTrip,
+  onSelectMeal,
   fitTo,
   recommendedRoute,
   setRecommendedRoute,
   recommendedRouteId
 }: FleetMapProps) {
+  const activeMeals = mealDeliveries.filter((m) => m.status !== 'cancelled')
   const activeTrips = trips.filter((t) => !['cancelled'].includes(t.status))
   const [traffic, setTraffic] = useState<TrafficResult | null>(null)
  const selectedRoute = recommendedRoute?.find(
@@ -319,6 +371,55 @@ export default function FleetMap({
           </Popup>
         </Marker>
       ))}
+
+      {/* Meal-delivery routes + drop-off markers */}
+      {activeMeals.map((m) => {
+        const highlighted = m.id === highlightMealId
+        const color = mealStatusMeta[m.status].map
+        return (
+          <Fragment key={`meal-${m.id}`}>
+            <Polyline
+              positions={m.routePath.map(ll)}
+              pathOptions={{
+                color,
+                weight: highlighted ? 5 : 3,
+                opacity: highlightMealId && !highlighted ? 0.2 : 0.75,
+                dashArray: '2 7',
+              }}
+              eventHandlers={{ click: () => onSelectMeal?.(m.id) }}
+            />
+            {m.stops.map((s: MealStop) => (
+              <Marker
+                key={`meal-stop-${m.id}-${s.participantId}`}
+                position={ll(s.location)}
+                icon={mealStopIcon(s.status === 'delivered')}
+              >
+                <Tooltip>
+                  Drop {s.order + 1} · {s.mealCount} meal{s.mealCount === 1 ? '' : 's'} ·{' '}
+                  {s.status === 'delivered' ? 'delivered' : `ETA ${s.etaMinutes}m`}
+                </Tooltip>
+              </Marker>
+            ))}
+            <Marker
+              position={ll(m.currentLocation)}
+              icon={mealVehicleIcon(m, highlighted)}
+              eventHandlers={{ click: () => onSelectMeal?.(m.id) }}
+            >
+              <Popup>
+                <div className="text-xs">
+                  <p className="font-semibold">
+                    {m.runNumber} · {m.mealType}
+                  </p>
+                  <p>{mealStatusMeta[m.status].label}</p>
+                  <p className="text-muted-foreground">
+                    {m.totalMeals} meals · {m.stops.length} stops
+                  </p>
+                </div>
+              </Popup>
+            </Marker>
+          </Fragment>
+        )
+      })}
 
       {/* Center markers */}
       {centers.map((c) => (

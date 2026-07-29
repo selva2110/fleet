@@ -40,6 +40,11 @@ export type DomainEventType =
   // Live tracking
   | 'trip.location_updated'
   | 'vehicle.location_updated'
+  // Meal delivery
+  | 'meal.created'
+  | 'meal.started'
+  | 'meal.cancelled'
+  | 'meal.delivered'
   // System
   | 'simulation.started'
   | 'simulation.stopped'
@@ -53,6 +58,7 @@ export type AggregateType =
   | 'driver'
   | 'trip'
   | 'plan'
+  | 'meal'
   | 'system'
 
 export interface DomainEvent {

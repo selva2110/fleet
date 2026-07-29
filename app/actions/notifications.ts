@@ -83,10 +83,10 @@ export async function sendEventNotifications(
   const body = (centerName: string) =>
     buildNotificationMessage({
       eventName: event.name,
-      // centerName,
-      // date: event.date,
-      // startTime: event.startTime,
-      // cutoff,
+      centerName,
+      date: event.date,
+      startTime: event.startTime,
+      cutoff,
     })
 
   const centerName = await resolveCenterName(event.centerId)

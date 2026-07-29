@@ -247,6 +247,8 @@ export async function saveEvent(
     participantIds: input.participantIds,
     reminders,
     registrationDeadline: input.registrationDeadline ?? null,
+    roundTrip: input.roundTrip ?? false,
+    returnTime: input.roundTrip ? (input.returnTime ?? input.endTime) : null,
     status: input.status,
   }
   if (isNew) {
