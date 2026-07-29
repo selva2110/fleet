@@ -35,12 +35,24 @@ export function useAuroraData() {
   const fleet = useFleet()
 
   return useMemo(() => {
-    const { trips, vehicles, drivers, events, participants, smsNotifications, eventLog } = fleet
+    const { trips, vehicles, drivers, events, participants, mealDeliveries, smsNotifications, eventLog } = fleet
 
     // ---- Trips ----
     const liveTrips = trips.filter((t) => LIVE_TRIP_STATUSES.includes(t.status))
     const completedTrips = trips.filter((t) => t.status === 'completed')
     const onboard = trips.filter((t) => t.status === 'onboard').length
+
+    // ---- Meal delivery ----
+    const activeMeals = mealDeliveries.filter((m) => m.status !== 'cancelled' && m.status !== 'completed')
+    const mealsOut = mealDeliveries
+      .filter((m) => m.status !== 'cancelled')
+      .reduce((s, m) => s + m.totalMeals, 0)
+    const mealStopsTotal = mealDeliveries
+      .filter((m) => m.status !== 'cancelled')
+      .reduce((s, m) => s + m.stops.length, 0)
+    const mealStopsDelivered = mealDeliveries
+      .filter((m) => m.status !== 'cancelled')
+      .reduce((s, m) => s + m.stops.filter((x) => x.status === 'delivered').length, 0)
 
     const tripStatusCounts = {
       live: liveTrips.length,
@@ -152,7 +164,113 @@ export function useAuroraData() {
         trend: `${unassigned} to assign`,
         series: seededSeries(attendingTransport * 23 + 2, 18, 48, 28),
       },
+      {
+        id: 'meals',
+        label: 'Meals Out for Delivery',
+        value: mealsOut,
+        accent: 'emerald' as const,
+        icon: 'meal' as const,
+        trendUp: true,
+        trend: `${activeMeals.length} active run${activeMeals.length === 1 ? '' : 's'}`,
+        series: seededSeries(mealsOut * 5 + 9, 18, 44, 22),
+      },
     ]
+
+    // ---- Real analytics series (for axis charts) --------------------------
+    // Trips + riders per care center — real counts from current trips.
+    const activeTrips = trips.filter((t) => t.status !== 'cancelled')
+    const centerLoad = events
+      .reduce<Record<string, { name: string; trips: number; riders: number; meals: number }>>((acc, ev) => {
+        acc[ev.centerId] ??= {
+          name: (fleet.centerById(ev.centerId)?.name ?? 'Center').replace(/ (Center|Hospital|Hall|Kitchen)$/, ''),
+          trips: 0,
+          riders: 0,
+          meals: 0,
+        }
+        return acc
+      }, {})
+    for (const c of fleet.centers) {
+      centerLoad[c.id] ??= {
+        name: c.name.replace(/ (Center|Hospital|Hall|Kitchen)$/, ''),
+        trips: 0,
+        riders: 0,
+        meals: 0,
+      }
+    }
+    for (const t of activeTrips) {
+      const bucket = centerLoad[t.destinationCenterId]
+      if (bucket) {
+        bucket.trips += 1
+        bucket.riders += t.stops.length
+      }
+    }
+    for (const m of mealDeliveries.filter((x) => x.status !== 'cancelled')) {
+      const bucket = centerLoad[m.centerId]
+      if (bucket) bucket.meals += m.totalMeals
+    }
+    const centerSeries = Object.values(centerLoad).filter((c) => c.trips + c.riders + c.meals > 0)
+
+    // Vehicle status distribution — real.
+    const vehicleStatusSeries = [
+      { key: 'in-use', name: 'In Service', value: vehiclesInUse },
+      { key: 'available', name: 'Available', value: vehiclesAvailable },
+      {
+        key: 'offline',
+        name: 'Offline / Service',
+        value: vehicles.filter((v) => v.status === 'offline').length,
+      },
+    ].filter((d) => d.value > 0)
+
+    // Participant mobility mix — real.
+    const mobilitySeries = (['independent', 'assisted', 'wheelchair', 'stretcher'] as const)
+      .map((m) => ({
+        name: m.charAt(0).toUpperCase() + m.slice(1),
+        value: participants.filter((p) => p.mobilityLevel === m).length,
+      }))
+      .filter((d) => d.value > 0)
+
+    // Weekly demand — bucket real events + meal runs by weekday from their date.
+    const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const weekBuckets = weekdayLabels.map((label) => ({ day: label, events: 0, riders: 0, meals: 0 }))
+    const dow = (dateStr: string) => {
+      const [y, mo, d] = dateStr.split('-').map(Number)
+      if (!y) return 1
+      return new Date(y, (mo || 1) - 1, d || 1).getDay()
+    }
+    for (const ev of events) {
+      const i = dow(ev.date)
+      weekBuckets[i].events += 1
+      weekBuckets[i].riders += ev.participantIds.length
+    }
+    for (const m of mealDeliveries.filter((x) => x.status !== 'cancelled')) {
+      weekBuckets[dow(m.date)].meals += m.totalMeals
+    }
+    // Reorder Mon-first for a conventional work-week reading.
+    const weeklySeries = [1, 2, 3, 4, 5, 6, 0].map((i) => weekBuckets[i])
+
+    // ---- Calendar data: events / drivers / vehicles by day ----------------
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    // Events scheduled per weekday (real).
+    const eventCalendar = dayNames.map((_, i) => ({
+      dow: i,
+      count: events.filter((e) => dow(e.date) === i).length,
+    }))
+    // Driver coverage per weekday: how many drivers work that day (shiftDays).
+    const driverCalendar = dayNames.map((_, i) => ({
+      dow: i,
+      count: drivers.filter((d) => d.shiftDays.includes(i)).length,
+    }))
+    // Vehicle availability per weekday: fleet minus vehicles needing service
+    // (service days approximated from maintenance status spread across week).
+    const serviceDue = vehicles.filter((v) => v.maintenanceStatus !== 'good')
+    const vehicleCalendar = dayNames.map((_, i) => {
+      const inService = serviceDue.filter((_, idx) => idx % 7 === i).length
+      return {
+        dow: i,
+        available: Math.max(0, vehicles.length - inService),
+        service: inService,
+      }
+    })
 
     // ---- Alerts ----
     const alerts: AuroraAlert[] = []
@@ -272,12 +390,28 @@ export function useAuroraData() {
       alerts,
       insights,
       recentEvents: eventLog.slice(0, 12),
+      // meal delivery
+      activeMeals,
+      mealsOut,
+      mealStopsTotal,
+      mealStopsDelivered,
+      allMeals: mealDeliveries.filter((m) => m.status !== 'cancelled'),
+      // real analytics series (axis charts)
+      centerSeries,
+      vehicleStatusSeries,
+      mobilitySeries,
+      weeklySeries,
+      // calendars
+      eventCalendar,
+      driverCalendar,
+      vehicleCalendar,
       totals: {
         trips: trips.length,
         vehicles: vehicles.length,
         drivers: drivers.length,
         events: events.length,
         participants: participants.length,
+        meals: mealDeliveries.filter((m) => m.status !== 'cancelled').length,
       },
     }
   }, [fleet])

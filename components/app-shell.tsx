@@ -4,12 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Activity,
-  BarChart3,
   Bell,
   Bus,
   CalendarDays,
   Check,
-  Database,
   LayoutDashboard,
   Menu,
   MessageSquare,
@@ -19,6 +17,7 @@ import {
   Truck,
   UserRound,
   Users,
+  UtensilsCrossed,
   Waypoints,
   X,
 } from 'lucide-react'
@@ -57,18 +56,12 @@ const NAV: NavSection[] = [
     title: 'Vehicles & People',
     items: [
       { href: '/events', label: 'Events', icon: CalendarDays },
+      { href: '/meal-delivery', label: 'Meal Delivery', icon: UtensilsCrossed },
       { href: '/responses', label: 'SMS Responses', icon: MessageSquare },
       { href: '/participants', label: 'Participants', icon: Users },
       { href: '/vehicles', label: 'Vehicles', icon: Truck },
       { href: '/drivers', label: 'Drivers', icon: UserRound },
       { href: '/trips', label: 'Trips', icon: Route },
-    ],
-  },
-  {
-    title: 'Insight',
-    items: [
-      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { href: '/event-log', label: 'Event Log', icon: Database },
     ],
   },
 ]

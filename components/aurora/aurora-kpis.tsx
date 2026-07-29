@@ -2,13 +2,13 @@
 
 import { motion } from 'framer-motion'
 import {
-  BarChart3,
   Bus,
   CalendarDays,
   MessageSquare,
   Route,
   TrendingUp,
   UserRound,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -28,6 +28,7 @@ const ICONS: Record<string, LucideIcon> = {
   user: UserRound,
   trend: TrendingUp,
   sms: MessageSquare,
+  meal: UtensilsCrossed,
 }
 
 export interface KpiItem {
@@ -43,7 +44,7 @@ export interface KpiItem {
 
 export function AuroraKpis({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
       {items.map((item, i) => (
         <KpiCard key={item.id} item={item} index={i} />
       ))}

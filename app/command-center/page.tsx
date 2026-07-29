@@ -1,8 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   Bus,
+  CalendarPlus,
   CircleDot,
   Clock,
   Gauge,
@@ -11,9 +13,11 @@ import {
   Pause,
   Play,
   Radio,
+  Send,
   TrendingUp,
   UserRound,
   Users,
+  Waypoints,
   X,
 } from 'lucide-react'
 import { FleetMap } from '@/components/map/fleet-map-dynamic'
@@ -92,6 +96,18 @@ export default function DispatchPage() {
         description="Live vehicle tracking, pickups, and route monitoring."
         actions={
           <>
+            <div className="hidden items-center gap-1.5 sm:flex">
+              <Button variant="outline" size="sm" render={<Link href="/events/new" />}>
+                <CalendarPlus className="size-4" /> New event
+              </Button>
+              <Button variant="outline" size="sm" render={<Link href="/planner" />}>
+                <Waypoints className="size-4" /> Plan routes
+              </Button>
+              <Button variant="outline" size="sm" render={<Link href="/responses" />}>
+                <Send className="size-4" /> SMS
+              </Button>
+              <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+            </div>
             <div className="hidden items-center gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium sm:flex">
               <span className="relative flex size-2">
                 {fleet.simRunning ? (

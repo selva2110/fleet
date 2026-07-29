@@ -20,22 +20,83 @@ import {
   PieChart as PieIcon,
   UserRound,
   Users,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { AURORA_ACCENTS, GlassCard, PanelTitle } from './aurora-ui'
 import { useAuroraData } from './use-aurora-data'
 import { useFleet } from '@/lib/store'
+import { mealStatusMeta } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 export function AuroraWidgets() {
   return (
     <div className="flex flex-col gap-4">
       <TodaysOverview />
+      <MealDeliveryWidget />
       <AlertsCenter />
       <DriverStatus />
       <FleetUtilization />
       <AttendanceAnalytics />
       <PaceInsights />
     </div>
+  )
+}
+
+function MealDeliveryWidget() {
+  const data = useAuroraData()
+  const runs = data.allMeals
+  const deliveredPct =
+    data.mealStopsTotal > 0 ? Math.round((data.mealStopsDelivered / data.mealStopsTotal) * 100) : 0
+
+  return (
+    <GlassCard className="p-0 pb-4">
+      <PanelTitle
+        icon={UtensilsCrossed}
+        accent="emerald"
+        action={
+          <Link href="/meal-delivery" className="text-[11px] font-medium text-emerald-300 hover:text-emerald-200">
+            View all
+          </Link>
+        }
+      >
+        Meal Delivery
+      </PanelTitle>
+      <div className="mt-2 px-5">
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold tabular-nums text-white">{data.mealsOut}</span>
+          <span className="text-xs text-slate-400">
+            meals out · {data.mealStopsDelivered}/{data.mealStopsTotal} stops delivered
+          </span>
+        </div>
+        <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-white/10">
+          <span
+            className="block h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+            style={{ width: `${deliveredPct}%` }}
+          />
+        </span>
+        <div className="mt-3 space-y-1.5">
+          {runs.length === 0 ? (
+            <p className="py-2 text-xs text-slate-400">No meal runs scheduled yet.</p>
+          ) : (
+            runs.slice(0, 4).map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-2.5 py-1.5">
+                <span className="flex items-center gap-2 text-xs text-slate-300">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ background: mealStatusMeta[m.status].map }}
+                  />
+                  <span className="font-mono text-[11px]">{m.runNumber}</span>
+                  <span className="text-slate-500">{m.mealType}</span>
+                </span>
+                <span className="text-[11px] tabular-nums text-slate-400">
+                  {m.totalMeals} meals · {mealStatusMeta[m.status].label}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </GlassCard>
   )
 }
 

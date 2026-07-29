@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { CalendarPlus, Send, Sparkles, Waypoints } from 'lucide-react'
 import { AuroraKpis } from '@/components/aurora/aurora-kpis'
 import { AuroraMain } from '@/components/aurora/aurora-main'
 import { AuroraWidgets } from '@/components/aurora/aurora-widgets'
+import { AuroraAnalytics } from '@/components/aurora/aurora-analytics'
+import { AuroraCalendars } from '@/components/aurora/aurora-calendars'
 import { FadeIn } from '@/components/aurora/aurora-ui'
 import { useAuroraData } from '@/components/aurora/use-aurora-data'
 
@@ -66,11 +66,6 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-400">{greeting.date}</p>
               </div>
             ) : null}
-            <div className="flex items-center gap-2">
-              <QuickAction href="/events" icon={CalendarPlus} label="New event" />
-              <QuickAction href="/planner" icon={Waypoints} label="Plan routes" />
-              <QuickAction href="/responses" icon={Send} label="SMS" primary />
-            </div>
           </div>
         </FadeIn>
 
@@ -78,6 +73,11 @@ export default function DashboardPage() {
         <div className="mt-6">
           <AuroraKpis items={data.kpis} />
         </div>
+
+        {/* Schedule calendars: events, drivers, vehicles */}
+        <FadeIn delay={0.08} className="mt-4">
+          <AuroraCalendars />
+        </FadeIn>
 
         {/* 70 / 30 main layout */}
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
@@ -88,33 +88,16 @@ export default function DashboardPage() {
             <AuroraWidgets />
           </FadeIn>
         </div>
+
+        {/* Analytics — real-data charts with axes (merged from Analytics page) */}
+        <FadeIn delay={0.12} className="mt-4">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-lg font-semibold tracking-tight text-white">Analytics</h2>
+            <span className="text-xs text-slate-400">Operational trends from live data</span>
+          </div>
+          <AuroraAnalytics />
+        </FadeIn>
       </div>
     </div>
-  )
-}
-
-function QuickAction({
-  href,
-  icon: Icon,
-  label,
-  primary,
-}: {
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  primary?: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      className={
-        primary
-          ? 'flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 px-3 py-2 text-[13px] font-semibold text-slate-950 shadow-[0_0_24px_-6px_rgba(34,211,238,0.8)] transition-transform hover:-translate-y-0.5'
-          : 'flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] font-medium text-slate-200 transition-colors hover:bg-white/10'
-      }
-    >
-      <Icon className="size-4" />
-      <span className="hidden md:inline">{label}</span>
-    </Link>
   )
 }

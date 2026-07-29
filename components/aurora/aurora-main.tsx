@@ -28,7 +28,10 @@ export function AuroraMain() {
   const [fullscreen, setFullscreen] = useState(false)
 
   const activeVehicleIds = new Set(data.liveTrips.map((t) => t.vehicleId))
-  const mapVehicles = fleet.vehicles.filter((v) => activeVehicleIds.has(v.id))
+  const mealVehicleIds = new Set(data.activeMeals.map((m) => m.vehicleId).filter(Boolean) as string[])
+  const mapVehicles = fleet.vehicles.filter(
+    (v) => activeVehicleIds.has(v.id) && !mealVehicleIds.has(v.id),
+  )
 
   useEffect(() => {
     if (!fullscreen) return
@@ -43,6 +46,7 @@ export function AuroraMain() {
         centers={fleet.centers}
         vehicles={mapVehicles}
         trips={data.liveTrips}
+        mealDeliveries={data.activeMeals}
         highlightTripId={selectedTripId}
         highlightVehicleId={null}
         onSelectTrip={(id) => setSelectedTripId(id)}
@@ -56,7 +60,7 @@ export function AuroraMain() {
             ) : null}
             <span className={cn('relative inline-flex size-2 rounded-full', fleet.simRunning ? 'bg-emerald-400' : 'bg-slate-400')} />
           </span>
-          {data.liveTrips.length} vehicles tracking
+          {data.liveTrips.length + data.activeMeals.length} vehicles tracking
         </div>
         <div className="pointer-events-auto flex items-center gap-1.5">
           <MapControl onClick={fleet.toggleSim} label={fleet.simRunning ? 'Pause' : 'Resume'}>
@@ -79,6 +83,7 @@ export function AuroraMain() {
           <Legend color="#22d3ee" label="En route / onboard" />
           <Legend color="#fbbf24" label="Pickup in progress" />
           <Legend color="#34d399" label="Arrived" />
+          <Legend color="#d97706" label="Meal delivery" />
         </div>
       </div>
     </>
