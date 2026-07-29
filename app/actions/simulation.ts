@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { drivers, participants, trips, vehicles } from '@/lib/db/schema'
+import { drivers, mealDeliveries, participants, trips, vehicles } from '@/lib/db/schema'
 import { emit } from '@/lib/db/emit'
 import { pointAlongPath } from '@/lib/geo'
-import type { Trip, TripStop } from '@/lib/types'
+import type { MealDelivery, MealStop, Trip, TripStop } from '@/lib/types'
 import { eq, inArray, ne } from 'drizzle-orm'
 
 // Playback speed: each planned minute of real travel time (from the route the

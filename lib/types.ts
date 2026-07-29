@@ -167,11 +167,16 @@ export interface FleetEvent {
   expectedAttendance: number
   participantIds: string[]
   status: EventStatus
+  // When true the event needs both an outbound (home -> center) and a return
+  // (center -> home) journey. Transport is assigned for both legs together.
+  roundTrip?: boolean
+  // Time the return leg departs the center (only meaningful when roundTrip).
+  returnTime?: string | null
   // ISO datetime after which SMS responses are no longer accepted. When unset,
   // the app falls back to one hour before the event start time.
   registrationDeadline?: string | null
   reminders?: EventReminder[]
-}
+  }
 
 // SMS program-notification response captured from a participant reply.
 //   1 -> attending with own transport
@@ -234,6 +239,9 @@ export interface Trip {
   stops: TripStop[]
   destinationCenterId: string
   status: TripStatus
+  // 'outbound' = home(s) -> center (default). 'return' = center -> home(s),
+  // generated automatically for round-trip events.
+  tripKind?: 'outbound' | 'return'
   distanceKm: number
   durationMinutes: number
   etaCenter: string
@@ -241,7 +249,7 @@ export interface Trip {
   currentLocation: LatLng
   routePath: LatLng[]
   startedAt: string | null
-}
+  }
 
 // Output of the planning engine before trips are committed.
 export interface PlanRecommendation {
@@ -273,4 +281,49 @@ export interface UnassignedParticipant {
 export interface PlanResult {
   recommendations: PlanRecommendation[]
   unassigned: UnassignedParticipant[]
+}
+
+// --- Meal delivery -------------------------------------------------------
+// A meal-delivery run: the fleet collects prepared meals from a center/kitchen
+// and drops them off at participants' homes. Modeled separately from Trips
+// because there is no "return to center with riders" leg — it is a one-way
+// outbound distribution route.
+export type MealType = 'Breakfast' | 'Lunch' | 'Dinner'
+
+export type MealDeliveryStatus =
+  | 'scheduled'
+  | 'preparing'
+  | 'loaded'
+  | 'en-route'
+  | 'delivering'
+  | 'completed'
+  | 'cancelled'
+
+export interface MealStop {
+  participantId: string
+  location: LatLng
+  order: number
+  etaMinutes: number
+  mealCount: number
+  status: 'pending' | 'approaching' | 'delivered' | 'skipped'
+}
+
+export interface MealDelivery {
+  id: string
+  runNumber: string
+  centerId: string // kitchen the meals are picked up from
+  vehicleId: string | null
+  driverId: string | null
+  date: string
+  departTime: string
+  mealType: MealType
+  totalMeals: number
+  stops: MealStop[]
+  status: MealDeliveryStatus
+  distanceKm: number
+  durationMinutes: number
+  progress: number // 0..1 along the route
+  currentLocation: LatLng
+  routePath: LatLng[]
+  startedAt: string | null
 }

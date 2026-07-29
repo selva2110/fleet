@@ -95,11 +95,16 @@ CREATE TABLE IF NOT EXISTS events (
   participant_ids jsonb NOT NULL DEFAULT '[]',
   reminders jsonb NOT NULL DEFAULT '[]',
   registration_deadline text,
+  round_trip boolean NOT NULL DEFAULT false,
+  return_time text,
   status text NOT NULL
 );
 
 -- Idempotent for databases created before program notifications existed.
 ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_deadline text;
+-- Idempotent for databases created before round-trip scheduling existed.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS round_trip boolean NOT NULL DEFAULT false;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS return_time text;
 
 -- Per-participant SMS program notifications: Twilio delivery status + the
 -- participant's latest attendance/transport response.
@@ -129,6 +134,7 @@ CREATE TABLE IF NOT EXISTS trips (
   stops jsonb NOT NULL DEFAULT '[]',
   destination_center_id text NOT NULL,
   status text NOT NULL,
+  trip_kind text NOT NULL DEFAULT 'outbound',
   distance_km real NOT NULL DEFAULT 0,
   duration_minutes real NOT NULL DEFAULT 0,
   eta_center text NOT NULL DEFAULT '',
@@ -138,6 +144,34 @@ CREATE TABLE IF NOT EXISTS trips (
   started_at timestamptz,
   last_tick_at timestamptz
 );
+
+-- Idempotent for databases created before round-trip return legs existed.
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS trip_kind text NOT NULL DEFAULT 'outbound';
+
+-- Meal-delivery runs: fleet picks up prepared meals from a center/kitchen and
+-- delivers them to participants' homes (one-way outbound distribution route).
+CREATE TABLE IF NOT EXISTS meal_deliveries (
+  id text PRIMARY KEY,
+  run_number text NOT NULL,
+  center_id text NOT NULL,
+  vehicle_id text,
+  driver_id text,
+  date text NOT NULL,
+  depart_time text NOT NULL DEFAULT '',
+  meal_type text NOT NULL DEFAULT 'Lunch',
+  total_meals integer NOT NULL DEFAULT 0,
+  stops jsonb NOT NULL DEFAULT '[]',
+  status text NOT NULL DEFAULT 'scheduled',
+  distance_km real NOT NULL DEFAULT 0,
+  duration_minutes real NOT NULL DEFAULT 0,
+  progress real NOT NULL DEFAULT 0,
+  current_location jsonb NOT NULL,
+  route_path jsonb NOT NULL DEFAULT '[]',
+  started_at timestamptz,
+  last_tick_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS meal_deliveries_date_idx ON meal_deliveries (date);
 
 CREATE TABLE IF NOT EXISTS event_log (
   id serial PRIMARY KEY,

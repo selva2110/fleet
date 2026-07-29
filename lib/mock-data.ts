@@ -518,6 +518,8 @@ export const seedEvents: FleetEvent[] = [
       'p-9',
       'p-10',
     ],
+    roundTrip: true,
+    returnTime: '12:30',
     status: 'active',
   },
   {
@@ -530,6 +532,8 @@ export const seedEvents: FleetEvent[] = [
     endTime: '16:00',
     expectedAttendance: 6,
     participantIds: ['p-11', 'p-12', 'p-13', 'p-14', 'p-15', 'p-16'],
+    roundTrip: true,
+    returnTime: '16:00',
     status: 'planning',
   },
   {
@@ -567,5 +571,60 @@ export const seedEvents: FleetEvent[] = [
     expectedAttendance: 24,
     participantIds: [],
     status: 'scheduled',
+  },
+]
+
+// Meal-delivery runs: the fleet collects prepared meals from a kitchen/center
+// and drops them at participants' homes. seed.ts turns these lightweight configs
+// into full rows (with OSRM route paths and per-stop meal counts).
+export interface SeedMealRun {
+  id: string
+  runNumber: string
+  centerId: string
+  vehicleId: string
+  driverId: string
+  departTime: string
+  mealType: 'Breakfast' | 'Lunch' | 'Dinner'
+  participantIds: string[]
+  status: 'scheduled' | 'preparing' | 'loaded' | 'en-route' | 'delivering' | 'completed'
+  progress: number
+}
+
+export const seedMealRuns: SeedMealRun[] = [
+  {
+    id: 'meal-1',
+    runNumber: 'MD-2001',
+    centerId: 'ctr-4',
+    vehicleId: 'veh-4',
+    driverId: 'drv-4',
+    departTime: '11:15',
+    mealType: 'Lunch',
+    participantIds: ['p-1', 'p-3', 'p-5', 'p-7', 'p-9'],
+    status: 'en-route',
+    progress: 0.35,
+  },
+  {
+    id: 'meal-2',
+    runNumber: 'MD-2002',
+    centerId: 'ctr-1',
+    vehicleId: 'veh-5',
+    driverId: 'drv-5',
+    departTime: '11:30',
+    mealType: 'Lunch',
+    participantIds: ['p-2', 'p-4', 'p-6', 'p-8'],
+    status: 'delivering',
+    progress: 0.6,
+  },
+  {
+    id: 'meal-3',
+    runNumber: 'MD-2003',
+    centerId: 'ctr-4',
+    vehicleId: 'veh-6',
+    driverId: 'drv-6',
+    departTime: '17:00',
+    mealType: 'Dinner',
+    participantIds: ['p-11', 'p-13', 'p-15', 'p-17', 'p-19'],
+    status: 'scheduled',
+    progress: 0,
   },
 ]

@@ -4,6 +4,7 @@ import {
   drivers,
   eventLog,
   events,
+  mealDeliveries,
   participants,
   trips,
   vehicles,
@@ -12,19 +13,20 @@ import {
   seedCenters,
   seedDrivers,
   seedEvents,
+  seedMealRuns,
   seedParticipants,
   seedVehicles,
 } from "@/lib/mock-data";
 import { buildRoutePath } from "@/lib/geo";
 import { sql } from "drizzle-orm";
-import type { LatLng, TripStop } from "@/lib/types";
+import type { LatLng, MealStop, TripStop } from "@/lib/types";
 
 // Seeds the database from the deterministic mock dataset and creates a set of
 // in-flight trips so the live map has movement on first load. Idempotent-ish:
 // it truncates existing rows first so re-running produces a clean state.
 export async function seedDatabase() {
   await db.execute(
-    sql`TRUNCATE centers, participants, vehicles, drivers, events, trips, event_log RESTART IDENTITY`,
+    sql`TRUNCATE centers, participants, vehicles, drivers, events, trips, meal_deliveries, event_log RESTART IDENTITY`,
   );
 
   await db.insert(centers).values(
@@ -107,6 +109,8 @@ export async function seedDatabase() {
       endTime: e.endTime,
       expectedAttendance: e.expectedAttendance,
       participantIds: e.participantIds,
+      roundTrip: e.roundTrip ?? false,
+      returnTime: e.returnTime ?? null,
       status: e.status,
     })),
   );
@@ -172,6 +176,75 @@ export async function seedDatabase() {
     if (tripRows.length > 0) {
       await db.insert(trips).values(tripRows);
     }
+  }
+
+  // Meal-delivery runs: fleet collects meals from a center/kitchen and drops
+  // them at participants' homes. Build a real OSRM route center -> homes.
+  const mealRows = await Promise.all(
+    seedMealRuns.map(async (run) => {
+      const center = seedCenters.find((c) => c.id === run.centerId)!;
+      const vehicle = seedVehicles.find((v) => v.id === run.vehicleId)!;
+      const runParticipants = run.participantIds
+        .map((id) => seedParticipants.find((p) => p.id === id))
+        .filter((p): p is (typeof seedParticipants)[number] => Boolean(p));
+
+      const stops: MealStop[] = runParticipants.map((p, order) => ({
+        participantId: p.id,
+        location: p.location,
+        order,
+        etaMinutes: (order + 1) * 7,
+        mealCount: 1 + (order % 2),
+        status:
+          run.progress > (order + 1) / (runParticipants.length + 1)
+            ? "delivered"
+            : "pending",
+      }));
+      const totalMeals = stops.reduce((s, x) => s + x.mealCount, 0);
+
+      const waypoints: LatLng[] = [
+        center.location,
+        ...runParticipants.map((p) => p.location),
+      ];
+      const routePath = await buildRoutePath(waypoints);
+      const distanceKm =
+        routePath.length > 1
+          ? Math.round(
+              routePath.reduce((acc, pt, i) => {
+                if (i === 0) return 0;
+                const a = routePath[i - 1];
+                const dx = (pt.lat - a.lat) * 111;
+                const dy = (pt.lng - a.lng) * 85;
+                return acc + Math.sqrt(dx * dx + dy * dy);
+              }, 0) * 10,
+            ) / 10
+          : 0;
+      const pathIndex = Math.floor(run.progress * (routePath.length - 1));
+      const active = run.status === "en-route" || run.status === "delivering";
+
+      return {
+        id: run.id,
+        runNumber: run.runNumber,
+        centerId: run.centerId,
+        vehicleId: run.vehicleId,
+        driverId: run.driverId,
+        date: activeEvent?.date ?? new Date().toISOString().slice(0, 10),
+        departTime: run.departTime,
+        mealType: run.mealType,
+        totalMeals,
+        stops,
+        status: run.status,
+        distanceKm,
+        durationMinutes: Math.round(distanceKm * 2.4 + stops.length * 3),
+        progress: run.progress,
+        currentLocation: routePath[pathIndex] ?? center.location,
+        routePath,
+        startedAt: active ? now : null,
+        lastTickAt: active ? now : null,
+      };
+    }),
+  );
+  if (mealRows.length > 0) {
+    await db.insert(mealDeliveries).values(mealRows);
   }
 
   await db.insert(eventLog).values({

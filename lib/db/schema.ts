@@ -20,6 +20,9 @@ import type {
   EventStatus,
   EventType,
   LatLng,
+  MealDeliveryStatus,
+  MealStop,
+  MealType,
   MedicalPriority,
   MobilityLevel,
   ParticipantStatus,
@@ -109,6 +112,8 @@ export const events = pgTable('events', {
   participantIds: jsonb('participant_ids').$type<string[]>().notNull().default([]),
   reminders: jsonb('reminders').$type<EventReminder[]>().notNull().default([]),
   registrationDeadline: text('registration_deadline'),
+  roundTrip: boolean('round_trip').notNull().default(false),
+  returnTime: text('return_time'),
   status: text('status').$type<EventStatus>().notNull(),
 })
 
@@ -137,9 +142,33 @@ export const trips = pgTable('trips', {
   stops: jsonb('stops').$type<TripStop[]>().notNull().default([]),
   destinationCenterId: text('destination_center_id').notNull(),
   status: text('status').$type<TripStatus>().notNull(),
+  tripKind: text('trip_kind').$type<'outbound' | 'return'>().notNull().default('outbound'),
   distanceKm: real('distance_km').notNull().default(0),
   durationMinutes: real('duration_minutes').notNull().default(0),
   etaCenter: text('eta_center').notNull().default(''),
+  progress: real('progress').notNull().default(0),
+  currentLocation: jsonb('current_location').$type<LatLng>().notNull(),
+  routePath: jsonb('route_path').$type<LatLng[]>().notNull().default([]),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  lastTickAt: timestamp('last_tick_at', { withTimezone: true }),
+})
+
+// Meal-delivery runs: the fleet collects prepared meals from a center/kitchen
+// and drops them at participants' homes. One-way outbound distribution routes.
+export const mealDeliveries = pgTable('meal_deliveries', {
+  id: text('id').primaryKey(),
+  runNumber: text('run_number').notNull(),
+  centerId: text('center_id').notNull(),
+  vehicleId: text('vehicle_id'),
+  driverId: text('driver_id'),
+  date: text('date').notNull(),
+  departTime: text('depart_time').notNull().default(''),
+  mealType: text('meal_type').$type<MealType>().notNull().default('Lunch'),
+  totalMeals: integer('total_meals').notNull().default(0),
+  stops: jsonb('stops').$type<MealStop[]>().notNull().default([]),
+  status: text('status').$type<MealDeliveryStatus>().notNull().default('scheduled'),
+  distanceKm: real('distance_km').notNull().default(0),
+  durationMinutes: real('duration_minutes').notNull().default(0),
   progress: real('progress').notNull().default(0),
   currentLocation: jsonb('current_location').$type<LatLng>().notNull(),
   routePath: jsonb('route_path').$type<LatLng[]>().notNull().default([]),

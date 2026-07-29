@@ -6,6 +6,7 @@ import {
   drivers,
   eventLog,
   events,
+  mealDeliveries,
   participants,
   smsNotifications,
   trips,
@@ -15,6 +16,7 @@ import {
   toCenter,
   toDriver,
   toEvent,
+  toMealDelivery,
   toParticipant,
   toSmsNotification,
   toTrip,
@@ -32,13 +34,14 @@ export interface FleetSnapshot {
   drivers: ReturnType<typeof toDriver>[]
   events: ReturnType<typeof toEvent>[]
   trips: ReturnType<typeof toTrip>[]
+  mealDeliveries: ReturnType<typeof toMealDelivery>[]
   smsNotifications: ReturnType<typeof toSmsNotification>[]
   eventLog: DomainEvent[]
   seeded: boolean
 }
 
 export async function getSnapshot(): Promise<FleetSnapshot> {
-  const [centerRows, partRows, vehRows, drvRows, evtRows, tripRows, smsRows, logRows] =
+  const [centerRows, partRows, vehRows, drvRows, evtRows, tripRows, mealRows, smsRows, logRows] =
     await Promise.all([
       db.select().from(centers),
       db.select().from(participants),
@@ -46,6 +49,7 @@ export async function getSnapshot(): Promise<FleetSnapshot> {
       db.select().from(drivers),
       db.select().from(events),
       db.select().from(trips),
+      db.select().from(mealDeliveries),
       db.select().from(smsNotifications),
       db.select().from(eventLog).orderBy(desc(eventLog.createdAt)).limit(200),
     ])
@@ -63,6 +67,7 @@ export async function getSnapshot(): Promise<FleetSnapshot> {
     drivers: drvRows.map(toDriver),
     events: evtRows.map(toEvent),
     trips: tripRows.map(toTrip),
+    mealDeliveries: mealRows.map(toMealDelivery),
     smsNotifications: smsRows.map(toSmsNotification),
     eventLog: logRows.map((r) => ({
       id: r.id,

@@ -2,6 +2,7 @@ import type {
   Center,
   Driver,
   FleetEvent,
+  MealDelivery,
   Participant,
   SmsNotification,
   Trip,
@@ -11,6 +12,7 @@ import type {
   centers,
   drivers,
   events,
+  mealDeliveries,
   participants,
   smsNotifications,
   trips,
@@ -24,6 +26,7 @@ type DriverRow = typeof drivers.$inferSelect
 type EventRow = typeof events.$inferSelect
 type TripRow = typeof trips.$inferSelect
 type SmsNotificationRow = typeof smsNotifications.$inferSelect
+type MealDeliveryRow = typeof mealDeliveries.$inferSelect
 
 export function toCenter(r: CenterRow): Center {
   return {
@@ -107,6 +110,8 @@ export function toEvent(r: EventRow): FleetEvent {
     participantIds: r.participantIds,
     reminders: r.reminders,
     registrationDeadline: r.registrationDeadline,
+    roundTrip: r.roundTrip ?? false,
+    returnTime: r.returnTime,
     status: r.status as FleetEvent['status'],
   }
 }
@@ -137,9 +142,32 @@ export function toTrip(r: TripRow): Trip {
     stops: r.stops,
     destinationCenterId: r.destinationCenterId,
     status: r.status as Trip['status'],
+    tripKind: (r.tripKind as Trip['tripKind']) ?? 'outbound',
     distanceKm: r.distanceKm,
     durationMinutes: r.durationMinutes,
     etaCenter: r.etaCenter,
+    progress: r.progress,
+    currentLocation: r.currentLocation,
+    routePath: r.routePath,
+    startedAt: r.startedAt ? r.startedAt.toISOString() : null,
+  }
+}
+
+export function toMealDelivery(r: MealDeliveryRow): MealDelivery {
+  return {
+    id: r.id,
+    runNumber: r.runNumber,
+    centerId: r.centerId,
+    vehicleId: r.vehicleId,
+    driverId: r.driverId,
+    date: r.date,
+    departTime: r.departTime,
+    mealType: r.mealType,
+    totalMeals: r.totalMeals,
+    stops: r.stops,
+    status: r.status as MealDelivery['status'],
+    distanceKm: r.distanceKm,
+    durationMinutes: r.durationMinutes,
     progress: r.progress,
     currentLocation: r.currentLocation,
     routePath: r.routePath,
