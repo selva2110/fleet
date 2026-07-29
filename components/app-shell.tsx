@@ -401,7 +401,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Brand className="shrink-0" />
 
           {/* Desktop horizontal nav */}
-          <div className="ml-4 hidden min-w-0 flex-1 overflow-x-auto xl:block">
+          <div className="ml-4 hidden min-w-0 flex-1 overflow-x-auto xl:block scrollbar-none">
             <TopNavLinks />
           </div>
 

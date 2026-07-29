@@ -52,12 +52,8 @@ export default function DashboardPage() {
         {/* Greeting header */}
         <FadeIn className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-cyan-300/80">
-              <Sparkles className="size-4" />
-              <span className="text-xs font-medium uppercase tracking-widest">Command Center</span>
-            </div>
             <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-white text-balance sm:text-3xl">
-              {greeting ? `${greeting.greeting}, Casey` : 'Welcome back'}
+              {greeting ? `${greeting.greeting}` : 'Welcome back'}
             </h1>
             <p className="mt-1 text-sm text-slate-400">
               Here&apos;s what&apos;s happening across your operations.
@@ -73,7 +69,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <QuickAction href="/events" icon={CalendarPlus} label="New event" />
               <QuickAction href="/planner" icon={Waypoints} label="Plan routes" />
-              <QuickAction href="/responses" icon={Send} label="Send SMS" primary />
+              <QuickAction href="/responses" icon={Send} label="SMS" primary />
             </div>
           </div>
         </FadeIn>

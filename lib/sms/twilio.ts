@@ -13,16 +13,16 @@ export function twilioConfigured(): boolean {
   )
 }
 
-let cached: ReturnType<typeof twilio> | null = null
+function getTwilioCredentials() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const fromNumber = process.env.TWILIO_FROM_NUMBER
 
-export function getTwilioClient() {
-  if (!twilioConfigured()) {
+  if (!accountSid || !authToken || !fromNumber) {
     throw new Error('Twilio is not configured. Set TWILIO_* environment variables.')
   }
-  if (!cached) {
-    cached = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
-  }
-  return cached
+
+  return { accountSid, authToken, fromNumber }
 }
 
 export interface SendSmsResult {
@@ -37,13 +37,29 @@ export async function sendSms(params: {
   statusCallback?: string
 }): Promise<SendSmsResult> {
   try {
-    const client = getTwilioClient()
-    const message = await client.messages.create({
+    const { accountSid, authToken, fromNumber } = getTwilioCredentials()
+    const client = twilio(accountSid, authToken)
+
+    console.log('[v0] Twilio send request', {
       to: params.to,
-      from: process.env.TWILIO_FROM_NUMBER!,
+      from: fromNumber,
       body: params.body,
+      statusCallback: params.statusCallback ?? null,
+      accountSid: accountSid.replace(/.(?=.{4})/g, '*'),
+    })
+
+    const message = await client.messages.create({
+      body: params.body,
+      from: fromNumber,
+      to: params.to,
       ...(params.statusCallback ? { statusCallback: params.statusCallback } : {}),
     })
+
+    console.log('[v0] Twilio send response', {
+      sid: message.sid,
+      status: message.status,
+    })
+
     return { ok: true, sid: message.sid, error: null }
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Unknown Twilio error'

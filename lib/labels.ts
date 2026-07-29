@@ -7,14 +7,7 @@ import type {
 } from './types'
 
 export const ROLES: { id: Role; label: string; short: string }[] = [
-  { id: 'admin', label: 'System Administrator', short: 'Admin' },
-  { id: 'dispatcher', label: 'Dispatcher', short: 'Dispatcher' },
-  { id: 'operations', label: 'Operations Manager', short: 'Ops Manager' },
-  { id: 'driver', label: 'Driver', short: 'Driver' },
-  { id: 'center', label: 'Center Manager', short: 'Center Mgr' },
-  { id: 'participant', label: 'Participant', short: 'Participant' },
-  { id: 'caregiver', label: 'Caregiver', short: 'Caregiver' },
-]
+  { id: 'dispatcher', label: 'Dispatcher', short: 'Dispatcher' }]
 
 // Tailwind class tokens for status badges.
 export const tripStatusMeta: Record<TripStatus, { label: string; cls: string; map: string }> = {
