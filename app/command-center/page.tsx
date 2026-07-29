@@ -17,12 +17,14 @@ import {
   TrendingUp,
   UserRound,
   Users,
+  UtensilsCrossed,
   Waypoints,
   X,
 } from 'lucide-react'
 import { FleetMap } from '@/components/map/fleet-map-dynamic'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { EventFeed } from '@/components/event-feed'
+import { MealDeliveryBoard } from '@/components/meals/meal-delivery-board'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -57,6 +59,7 @@ export default function DispatchPage() {
 
   const activeVehicleIds = new Set(liveTrips.map((t) => t.vehicleId))
   const mapVehicles = fleet.vehicles.filter((v) => activeVehicleIds.has(v.id))
+  const mealRunCount = fleet.mealDeliveries.filter((m) => m.status !== 'cancelled').length
 
   // KPI calculations
   const onboardCount = liveTrips.filter((t) => t.status === 'onboard').length
@@ -130,18 +133,35 @@ export default function DispatchPage() {
         }
       />
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-px border-b border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
-        <Kpi icon={Bus} label="Active trips" value={String(liveTrips.length)} />
-        <Kpi icon={Users} label="Onboard" value={String(onboardCount)} tone="primary" />
-        <Kpi icon={MapPin} label="Pickups left" value={String(pickupsRemaining)} tone="default" />
-        <Kpi icon={TrendingUp} label="Avg progress" value={`${avgProgress}%`} />
-        <Kpi icon={Gauge} label="Vehicles in use" value={`${utilization}%`} />
-        <Kpi icon={Clock} label="Next arrival" value={nextArrival ?? '—'} />
-      </div>
+      <Tabs defaultValue="dispatch" className="flex min-h-0 flex-1 flex-col gap-0">
+        <TabsList className="mx-4 mt-3 w-fit">
+          <TabsTrigger value="dispatch">
+            <Bus className="size-3.5" /> Live Dispatch
+            <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px]">
+              {liveTrips.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="meals">
+            <UtensilsCrossed className="size-3.5" /> Meal Delivery
+            <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px]">
+              {mealRunCount}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
-        {/* Side panel with tabs */}
+        <TabsContent value="dispatch" className="mt-3 flex min-h-0 flex-1 flex-col">
+          {/* KPI strip */}
+          <div className="grid grid-cols-2 gap-px border-y border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
+            <Kpi icon={Bus} label="Active trips" value={String(liveTrips.length)} />
+            <Kpi icon={Users} label="Onboard" value={String(onboardCount)} tone="primary" />
+            <Kpi icon={MapPin} label="Pickups left" value={String(pickupsRemaining)} tone="default" />
+            <Kpi icon={TrendingUp} label="Avg progress" value={`${avgProgress}%`} />
+            <Kpi icon={Gauge} label="Vehicles in use" value={`${utilization}%`} />
+            <Kpi icon={Clock} label="Next arrival" value={nextArrival ?? '—'} />
+          </div>
+
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
+            {/* Side panel with tabs */}
         <div className="flex min-h-0 flex-col border-b border-border bg-card lg:border-b-0 lg:border-r">
           <Tabs defaultValue="trips" className="flex min-h-0 flex-1 flex-col gap-0">
             <TabsList className="m-3 grid grid-cols-2">
@@ -244,8 +264,14 @@ export default function DispatchPage() {
               onClose={() => setSelectedTripId(null)}
             />
           ) : null}
-        </div>
-      </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="meals" className="mt-3 flex min-h-0 flex-1 flex-col">
+          <MealDeliveryBoard />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
