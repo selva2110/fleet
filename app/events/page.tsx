@@ -4,12 +4,12 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, UtensilsCrossed, Users } from 'lucide-react'
+import { MealDeliveryTab } from '@/components/events/meal-tabs'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MealDeliveryTab, MealPlanningTab } from '@/components/events/meal-tabs'
 import {
   Table,
   TableBody,
@@ -71,6 +71,8 @@ export default function EventsPage() {
   const router = useRouter()
   const dv = useDataView('date')
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [tab, setTab] = useState('events')
+  const [mealDialogOpen, setMealDialogOpen] = useState(false)
 
   const [types, setTypes] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([])
@@ -132,23 +134,26 @@ export default function EventsPage() {
         title="Events"
         description="Scheduled programs and appointments requiring transportation."
         actions={
-          <Button onClick={openAdd} size="sm">
-            <Plus className="size-4" /> Add event
-          </Button>
+          tab === 'meal-delivery' ? (
+            <Button onClick={() => setMealDialogOpen(true)} size="sm">
+              <Plus className="size-4" /> Plan new run
+            </Button>
+          ) : (
+            <Button onClick={openAdd} size="sm">
+              <Plus className="size-4" /> Add event
+            </Button>
+          )
         }
       />
 
       <div className="p-6">
-        <Tabs defaultValue="events" className="flex flex-col gap-4">
+        <Tabs value={tab} onValueChange={setTab} className="flex flex-col gap-4">
           <TabsList className="w-fit">
             <TabsTrigger value="events">
               <CalendarDays className="size-4" /> Events
             </TabsTrigger>
             <TabsTrigger value="meal-delivery">
               <UtensilsCrossed className="size-4" /> Meal Delivery
-            </TabsTrigger>
-            <TabsTrigger value="meal-planning">
-              <Sparkles className="size-4" /> Meal Planning
             </TabsTrigger>
           </TabsList>
 
@@ -331,11 +336,7 @@ export default function EventsPage() {
           </TabsContent>
 
           <TabsContent value="meal-delivery">
-            <MealDeliveryTab />
-          </TabsContent>
-
-          <TabsContent value="meal-planning">
-            <MealPlanningTab />
+            <MealDeliveryTab dialogOpen={mealDialogOpen} onDialogOpenChange={setMealDialogOpen} />
           </TabsContent>
         </Tabs>
       </div>

@@ -3,12 +3,15 @@
 import { useMemo, useState } from 'react'
 import {
   Accessibility,
+  CircleCheck,
   Clock,
   HeartPulse,
   IdCard,
+  Navigation,
   Phone,
   Plus,
   Star,
+  Users,
 } from 'lucide-react'
 import { PageHeader, StatCard, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
@@ -142,9 +145,9 @@ export default function DriversPage() {
 
       <div className="flex flex-col gap-6 p-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Total Drivers" value={fleet.drivers.length} icon={IdCard} />
-          <StatCard label="Available" value={available} icon={IdCard} tone="success" />
-          <StatCard label="On Trip" value={onTrip} icon={IdCard} tone="primary" />
+          <StatCard label="Total Drivers" value={fleet.drivers.length} icon={Users} />
+          <StatCard label="Available" value={available} icon={CircleCheck} tone="success" />
+          <StatCard label="On Trip" value={onTrip} icon={Navigation} tone="primary" />
           <StatCard label="Medically Certified" value={certified} icon={HeartPulse} tone="primary" />
         </div>
 
