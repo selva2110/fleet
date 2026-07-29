@@ -172,7 +172,7 @@ export default function PlannerPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={runPlanner} disabled={phase === 'planning' || pending.length === 0}>
+            <Button size="sm" onClick={() => runPlanner()} disabled={phase === 'planning' || pending.length === 0}>
               <Sparkles className="size-4" />
               {phase === 'results' ? 'Re-plan' : 'Generate Plan'}
             </Button>
@@ -585,7 +585,6 @@ function MiniMetric({
         <span className="text-[10px]">{label}</span>
       </div>
       <p className="mt-0.5 text-sm font-semibold tabular-nums">{value}</p>
-      </div>
     </div>
   )
 }
