@@ -54,12 +54,6 @@ export function MealDeliveryBoard() {
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
         {/* Run list */}
         <div className="flex min-h-0 flex-col border-b border-border bg-card lg:border-b-0 lg:border-r">
-          <div className="flex items-center justify-between px-4 py-3">
-            <h2 className="text-sm font-semibold">Delivery runs</h2>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="size-4" /> New run
-            </Button>
-          </div>
           <ScrollArea className="h-[320px] lg:h-full">
             <div className="divide-y divide-border border-t border-border">
               {runs.map((m) => {

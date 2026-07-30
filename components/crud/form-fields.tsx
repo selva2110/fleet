@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { MapboxSimpleMap } from '@/components/map/mapbox-simple'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -34,18 +35,12 @@ export function Field({
   )
 }
 
-const DEFAULT_MAP_CENTER: [number, number] = [20.5937, 78.9629]
+const DEFAULT_MAP_CENTER = { lat: 20.5937, lng: 78.9629 }
 
 type GeocodeSuggestion = {
   displayName: string
   lat: number
   lng: number
-}
-
-function draggableIcon(L: any) {
-  const html = `
-    <div style="width:18px;height:18px;border-radius:9999px;background:#2563eb;border:2px solid white;box-shadow:0 0 0 4px rgba(37,99,235,0.18);"></div>`
-  return L.divIcon({ html, className: 'map-pin', iconSize: [18, 18], iconAnchor: [9, 9] })
 }
 
 export function AddressField({
@@ -67,11 +62,7 @@ export function AddressField({
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [leafletReady, setLeafletReady] = useState(false)
-  const [Leaflet, setLeaflet] = useState<any>(null)
-  const [RL, setRL] = useState<any>(null)
   const lastQuery = useMemo(() => ({ value: '' }), []) as { value: string }
-  const markerIcon = useMemo(() => (Leaflet ? draggableIcon(Leaflet) : null), [Leaflet])
 
   useEffect(() => {
     if (location) {
@@ -85,24 +76,6 @@ export function AddressField({
   }, [location, value])
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !leafletReady) {
-      let mounted = true
-      void Promise.all([import('leaflet'), import('react-leaflet')])
-        .then(([leaflet, rl]) => {
-          if (!mounted) return
-          const Llib = (leaflet as any).default ?? leaflet
-          setLeaflet(Llib)
-          setRL(rl)
-          setLeafletReady(true)
-        })
-        .catch(() => {
-          // ignore — map will not render
-        })
-      return () => {
-        mounted = false
-      }
-    }
-
     const address = value.trim()
     if (!address) {
       setSuggestions([])
@@ -279,38 +252,14 @@ export function AddressField({
         <div className="overflow-hidden rounded-md border border-border bg-muted">
           {value.trim() ? (
             <div className="h-56 w-full">
-              {leafletReady && RL && Leaflet ? (
-                <RL.MapContainer
-                  key={markerPosition ? `${markerPosition[0]}-${markerPosition[1]}` : 'search'}
-                  center={markerPosition ?? DEFAULT_MAP_CENTER}
-                  zoom={13}
-                  className="h-56 w-full"
-                  scrollWheelZoom
-                >
-                  <RL.TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {markerPosition ? (
-                    <RL.Marker
-                      position={markerPosition}
-                      draggable
-                      icon={markerIcon}
-                      eventHandlers={{
-                        dragend: (event: any) => {
-                          const marker = event.target
-                          const { lat, lng } = marker.getLatLng()
-                          updateAddressFromLocation(lat, lng)
-                        },
-                      }}
-                    >
-                      <RL.Popup>Drag the pin to adjust the location.</RL.Popup>
-                    </RL.Marker>
-                  ) : null}
-                </RL.MapContainer>
-              ) : (
-                <div className="flex h-56 items-center justify-center px-4 text-sm text-muted-foreground">Loading map…</div>
-              )}
+              <MapboxSimpleMap
+                location={markerPosition ? { lat: markerPosition[0], lng: markerPosition[1] } : DEFAULT_MAP_CENTER}
+                label="Drag the pin to adjust the location"
+                draggable
+                onLocationChange={(nextLocation) => updateAddressFromLocation(nextLocation.lat, nextLocation.lng)}
+                className="h-56 w-full"
+                emptyMessage="Enter an address to preview it on the map. You can drag the pin to adjust the location."
+              />
             </div>
           ) : (
             <div className="flex h-56 items-center justify-center px-4 text-sm text-muted-foreground">
