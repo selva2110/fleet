@@ -9,11 +9,17 @@ export type PlanStatus = {
   deadlinePassed: boolean
   /** True when at least one non-cancelled trip exists for the event. */
   hasPlan: boolean
+  /** Number of non-cancelled trips (routes) for the event. */
+  tripCount: number
+  /** True when any of the event's trips have been dispatched/started. */
+  dispatched: boolean
   /** True when the dispatcher is allowed to generate a plan right now. */
   canGenerate: boolean
   /** Short reason the plan cannot be generated yet (when applicable). */
   blockedReason?: string
 }
+
+const DISPATCHED_STATUSES = ['en-route', 'pickup-in-progress', 'onboard', 'arrived', 'completed']
 
 // Notifications are considered enabled when the event has reminders scheduled.
 export function notificationsEnabled(event: FleetEvent): boolean {
@@ -48,7 +54,12 @@ export function getPlanStatus(event: FleetEvent, trips: Trip[], now: Date = new 
   const enabled = notificationsEnabled(event)
   const deadline = getResponseDeadline(event)
   const deadlinePassed = now.getTime() >= deadline.getTime()
-  const hasPlan = eventHasPlan(event.id, trips)
+  const eventTrips = trips.filter((t) => t.eventId === event.id && t.status !== 'cancelled')
+  const hasPlan = eventTrips.length > 0
+  const tripCount = eventTrips.length
+  const dispatched = eventTrips.some(
+    (t) => Boolean(t.startedAt) || DISPATCHED_STATUSES.includes(t.status),
+  )
 
   let canGenerate = true
   let blockedReason: string | undefined
@@ -62,5 +73,14 @@ export function getPlanStatus(event: FleetEvent, trips: Trip[], now: Date = new 
     })}`
   }
 
-  return { notificationsEnabled: enabled, deadline, deadlinePassed, hasPlan, canGenerate, blockedReason }
+  return {
+    notificationsEnabled: enabled,
+    deadline,
+    deadlinePassed,
+    hasPlan,
+    tripCount,
+    dispatched,
+    canGenerate,
+    blockedReason,
+  }
 }

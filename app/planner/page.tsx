@@ -6,6 +6,8 @@ import {
   Bus,
   Check,
   CircleAlert,
+  CircleCheck,
+  Clock,
   Gauge,
   Map as MapIcon,
   Route as RouteIcon,
@@ -32,7 +34,7 @@ import { cn } from '@/lib/utils'
 import { formatMonthDayYear } from '@/lib/date'
 import { formatMiles, tripStatusMeta } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
-import { getPlanStatus } from '@/lib/planning-status'
+import { getPlanStatus, type PlanStatus } from '@/lib/planning-status'
 import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
 
 type Phase = 'idle' | 'planning' | 'results'
@@ -217,6 +219,9 @@ export default function PlannerPage() {
       />
 
       <div className="flex flex-col gap-6 p-6">
+        {/* Plan status + deadline gating */}
+        {event && planStatus ? <PlanStatusBanner status={planStatus} /> : null}
+
         {/* Event summary */}
         {event ? (
           <div
@@ -602,6 +607,39 @@ function RecommendationCard({
         )}
       </div>
     </Card>
+  )
+}
+
+/**
+ * Shows whether a route plan already exists for the selected event, and — when
+ * participant notifications are enabled — whether generation is gated behind
+ * the response deadline.
+ */
+function PlanStatusBanner({ status }: { status: PlanStatus }) {
+  if (status.hasPlan) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+        <CircleCheck className="size-4 shrink-0" />
+        <span>
+          Route plan generated · {status.tripCount} {status.tripCount === 1 ? 'route' : 'routes'}
+          {status.dispatched ? ' · dispatched' : ' · awaiting dispatch'}
+        </span>
+      </div>
+    )
+  }
+  if (!status.canGenerate) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
+        <Clock className="size-4 shrink-0" />
+        <span>{status.blockedReason ?? 'Waiting for participant responses.'}</span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+      <Sparkles className="size-4 shrink-0 text-primary" />
+      <span>No plan yet — ready to generate.</span>
+    </div>
   )
 }
 

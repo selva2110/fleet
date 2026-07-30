@@ -54,7 +54,9 @@ import {
 import {
   sendEventNotifications as sendEventNotificationsAction,
   assignTransportForResponders as assignTransportAction,
+  processDueReminders as processDueRemindersAction,
   type SendNotificationsResult,
+  type ReminderResult,
 } from '@/app/actions/notifications'
 import {
   createMealDelivery as createMealDeliveryAction,
@@ -131,6 +133,7 @@ interface FleetContextValue {
   // notifications
   sendEventNotifications: (eventId: string) => Promise<SendNotificationsResult>
   assignTransport: (eventId: string) => Promise<{ assigned: number }>
+  processDueReminders: () => Promise<ReminderResult>
   // lookups
   centerById: (id: string | null | undefined) => Center | undefined
   vehicleById: (id: string | null | undefined) => Vehicle | undefined
@@ -348,6 +351,11 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     },
     [mutate],
   )
+  const processDueReminders = useCallback(async () => {
+    const result = await processDueRemindersAction(new Date(), roleRef.current)
+    await mutate()
+    return result
+  }, [mutate])
 
   const byId = useCallback(
     <T extends { id: string }>(arr: T[], id: string | null | undefined) =>
@@ -393,6 +401,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       cancelMealDelivery,
       sendEventNotifications,
       assignTransport,
+      processDueReminders,
       centerById: (id) => byId(snapshot.centers, id),
       vehicleById: (id) => byId(snapshot.vehicles, id),
       driverById: (id) => byId(snapshot.drivers, id),
@@ -427,6 +436,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       cancelMealDelivery,
       sendEventNotifications,
       assignTransport,
+      processDueReminders,
       byId,
     ],
   )

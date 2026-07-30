@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import {
+  BellRing,
   Bus,
   CalendarDays,
   CheckCircle2,
@@ -170,6 +171,7 @@ export default function ResponsesPage() {
   const [query, setQuery] = useState('')
   const [sending, setSending] = useState(false)
   const [assigning, setAssigning] = useState(false)
+  const [processingReminders, setProcessingReminders] = useState(false)
   const [banner, setBanner] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
 
   // Events that actually have a roster, most recent first, for the event filter.
@@ -348,6 +350,19 @@ export default function ResponsesPage() {
     }
   }
 
+  async function handleProcessReminders() {
+    setProcessingReminders(true)
+    setBanner(null)
+    try {
+      const result = await fleet.processDueReminders()
+      setBanner({ tone: result.reminders > 0 ? 'success' : 'error', text: result.message })
+    } catch (err) {
+      setBanner({ tone: 'error', text: (err as Error).message })
+    } finally {
+      setProcessingReminders(false)
+    }
+  }
+
   function exportResponses() {
     const header = ['Participant', 'Event', 'Date', 'Phone', 'Delivery', 'Response', 'Responded at']
     const data = rows.map(({ participant, event, notif }) => [
@@ -381,10 +396,14 @@ export default function ResponsesPage() {
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
-        title="SMS Responses"
+        title="Participants Response"
         description="Live participant replies to program notifications, with transport planning tools."
         actions={
           <>
+            <Button variant="outline" size="sm" onClick={handleProcessReminders} disabled={processingReminders}>
+              {processingReminders ? <Loader2 className="size-4 animate-spin" /> : <BellRing className="size-4" />}
+              Process reminders
+            </Button>
             <Button variant="outline" size="sm" onClick={exportResponses} disabled={rows.length === 0}>
               <Download className="size-4" /> Export
             </Button>

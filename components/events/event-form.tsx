@@ -28,14 +28,12 @@ import { useFleet } from '@/lib/store'
 import { formatMonthDayYear } from '@/lib/date'
 import type { EventStatus, EventType, FleetEvent, MobilityLevel, Participant } from '@/lib/types'
 
-const TYPES: { value: EventType; label: string }[] = [
-  { value: 'Dialysis Session', label: 'Dialysis Session' },
-  { value: 'Clinical Appointment', label: 'Clinical Appointment' },
-  { value: 'Vaccination Camp', label: 'Vaccination Camp' },
-  { value: 'Community Program', label: 'Community Program' },
-  { value: 'Therapy Session', label: 'Therapy Session' },
-  { value: 'Rehabilitation Session', label: 'Rehabilitation Session' },
-  { value: 'Health Screening', label: 'Health Screening' },
+const MOBILITY_FILTERS: { value: 'all' | MobilityLevel; label: string }[] = [
+  { value: 'all', label: 'All mobility' },
+  { value: 'independent', label: 'Independent' },
+  { value: 'assisted', label: 'Assisted' },
+  { value: 'wheelchair', label: 'Wheelchair' },
+  { value: 'stretcher', label: 'Stretcher' },
 ]
 
 const STATUS: { value: EventStatus; label: string }[] = [
@@ -166,6 +164,8 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   const [saving, setSaving] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [addQuery, setAddQuery] = useState('')
+  const [mobilityFilter, setMobilityFilter] = useState<'all' | MobilityLevel>('all')
+  const [eligibleOnly, setEligibleOnly] = useState(true)
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }))
@@ -187,9 +187,11 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
     const q = addQuery.trim().toLowerCase()
     return fleet.participants
       .filter((p) => !form.participantIds.includes(p.id))
+      .filter((p) => !eligibleOnly || p.eligible)
+      .filter((p) => mobilityFilter === 'all' || p.mobilityLevel === mobilityFilter)
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.address.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [fleet.participants, form.participantIds, addQuery])
+  }, [fleet.participants, form.participantIds, addQuery, mobilityFilter, eligibleOnly])
 
   function addParticipant(id: string) {
     setForm((f) => ({ ...f, participantIds: [...f.participantIds, id] }))
@@ -273,10 +275,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 placeholder="e.g. Tuesday Dialysis Session"
                 onChange={(v) => set('name', v)}
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField label="Event type" value={form.type} options={TYPES} onChange={(v) => set('type', v)} />
-                <SelectField label="Status" value={form.status} options={STATUS} onChange={(v) => set('status', v)} />
-              </div>
+              <SelectField label="Status" value={form.status} options={STATUS} onChange={(v) => set('status', v)} />
               <div className="grid gap-4 sm:grid-cols-3">
                 <TextField label="Start date" type="date" value={form.date} min={todayStr} onChange={(v) => set('date', v)} />
                 <TextField
@@ -398,6 +397,39 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                       placeholder="Search participants by name or address"
                       className="pl-8"
                     />
+                  </div>
+
+                  {/* Participant filters */}
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                    {MOBILITY_FILTERS.map((m) => {
+                      const active = mobilityFilter === m.value
+                      return (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => setMobilityFilter(m.value)}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setEligibleOnly((v) => !v)}
+                      className={`ml-auto rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        eligibleOnly
+                          ? 'bg-success/15 text-success'
+                          : 'bg-card text-muted-foreground hover:text-foreground'
+                      }`}
+                      aria-pressed={eligibleOnly}
+                    >
+                      {eligibleOnly ? 'Eligible only' : 'All statuses'}
+                    </button>
                   </div>
                   <ScrollArea className="h-44 rounded-md border border-border bg-card">
                     {addable.length === 0 ? (

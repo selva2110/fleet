@@ -81,8 +81,9 @@ export function buildNotificationMessage(params: {
   date: string
   startTime: string
   cutoff: Date | null
+  reminder?: boolean
 }): string {
-  const { eventName, centerName, date, startTime, cutoff } = params
+  const { eventName, centerName, date, startTime, cutoff, reminder } = params
   const when = cutoff
     ? cutoff.toLocaleString('en-US', {
         month: 'short',
@@ -92,7 +93,7 @@ export function buildNotificationMessage(params: {
       })
     : null
   const lines = [
-    `PACE Program: ${eventName}`,
+    `${reminder ? 'REMINDER — ' : ''}PACE Program: ${eventName}`,
     `${date} at ${startTime}${centerName ? ` · ${centerName}` : ''}`,
     'Reply:',
     '1 = Attending (own transport)',

@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { DISPATCHER_NAME } from '@/lib/labels'
+import { DeadlinePrompt } from '@/components/planner/deadline-prompt'
 import { useFleet } from '@/lib/store'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { markEventReminderSent } from '@/app/actions/crud'
@@ -389,6 +390,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      <DeadlinePrompt />
       <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   )

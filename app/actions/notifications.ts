@@ -149,6 +149,147 @@ export async function sendEventNotifications(
   }
 }
 
+export interface ReminderResult {
+  configured: boolean
+  processedEvents: number
+  reminders: number
+  sent: number
+  message: string
+}
+
+/**
+ * Processes every scheduled reminder whose time has arrived. Each event's
+ * reminder schedule (its "frequency") is stored as offset waves before the
+ * event start; this sends one SMS wave per due, still-unsent reminder to
+ * participants who have not yet responded, then marks that reminder sent so it
+ * never fires twice.
+ */
+export async function processDueReminders(
+  now: Date = new Date(),
+  actorRole = 'system',
+): Promise<ReminderResult> {
+  const configured = twilioConfigured()
+  const eventRows = await db.select().from(events)
+
+  let processedEvents = 0
+  let remindersFired = 0
+  let sentTotal = 0
+
+  for (const eventRow of eventRows) {
+    const event = toEvent(eventRow)
+    const reminders = event.reminders ?? []
+    if (reminders.length === 0) continue
+    if (['completed'].includes(event.status)) continue
+
+    const due = reminders.filter(
+      (r) => !r.sent && new Date(r.scheduledAt).getTime() <= now.getTime(),
+    )
+    if (due.length === 0) continue
+
+    processedEvents += 1
+
+    // Recipients: rostered participants with a phone who have NOT yet responded.
+    const roster = event.participantIds
+    const allParticipants = await db.select().from(participants)
+    const notifRows = await db
+      .select()
+      .from(smsNotifications)
+      .where(eq(smsNotifications.eventId, event.id))
+    const respondedPids = new Set(
+      notifRows.filter((n) => n.response).map((n) => n.participantId),
+    )
+    const recipients = allParticipants.filter(
+      (p) =>
+        roster.includes(p.id) &&
+        p.eligible &&
+        p.phone &&
+        p.phone.trim().length > 0 &&
+        !respondedPids.has(p.id),
+    )
+
+    const statusCallback = getStatusCallbackUrl()
+    const cutoff = responseCutoff(event)
+    const centerName = await resolveCenterName(event.centerId)
+    const body = buildNotificationMessage({
+      eventName: event.name,
+      centerName,
+      date: event.date,
+      startTime: event.startTime,
+      cutoff,
+      reminder: true,
+    })
+
+    // Fire one wave per due reminder (frequency = number of scheduled waves).
+    for (const reminder of due) {
+      remindersFired += 1
+      if (configured) {
+        for (const p of recipients) {
+          const result = await sendSms({ to: p.phone, body, statusCallback })
+          const ts = new Date()
+          const [existing] = await db
+            .select()
+            .from(smsNotifications)
+            .where(
+              and(
+                eq(smsNotifications.eventId, event.id),
+                eq(smsNotifications.participantId, p.id),
+              ),
+            )
+          if (existing) {
+            await db
+              .update(smsNotifications)
+              .set({
+                messageSid: result.sid,
+                deliveryStatus: result.ok ? 'sent' : 'failed',
+                sentAt: ts,
+                updatedAt: ts,
+              })
+              .where(eq(smsNotifications.id, existing.id))
+          } else {
+            await db.insert(smsNotifications).values({
+              id: newId('sms'),
+              eventId: event.id,
+              participantId: p.id,
+              messageSid: result.sid,
+              phone: p.phone,
+              deliveryStatus: result.ok ? 'sent' : 'failed',
+              sentAt: ts,
+              updatedAt: ts,
+            })
+          }
+          if (result.ok) sentTotal += 1
+        }
+      }
+    }
+
+    // Mark the fired reminders as sent so they don't repeat.
+    const dueIds = new Set(due.map((d) => d.id))
+    const updatedReminders = reminders.map((r) =>
+      dueIds.has(r.id) ? { ...r, sent: true } : r,
+    )
+    await db.update(events).set({ reminders: updatedReminders }).where(eq(events.id, event.id))
+
+    await emit({
+      eventType: 'event.reminder.sent',
+      aggregateType: 'event',
+      aggregateId: event.id,
+      actorRole,
+      summary: `Sent ${due.length} reminder wave${due.length === 1 ? '' : 's'} for ${event.name}`,
+      payload: { waves: due.length, recipients: recipients.length },
+    })
+  }
+
+  return {
+    configured,
+    processedEvents,
+    reminders: remindersFired,
+    sent: sentTotal,
+    message: configured
+      ? `Processed ${remindersFired} reminder wave${remindersFired === 1 ? '' : 's'} across ${processedEvents} event${processedEvents === 1 ? '' : 's'}.`
+      : `${remindersFired} reminder wave${remindersFired === 1 ? '' : 's'} were due across ${processedEvents} event${processedEvents === 1 ? '' : 's'}, but Twilio is not configured.`,
+  }
+}
+
 async function resolveCenterName(centerId: string): Promise<string> {
   const { centers } = await import('@/lib/db/schema')
   const [row] = await db.select().from(centers).where(eq(centers.id, centerId))
