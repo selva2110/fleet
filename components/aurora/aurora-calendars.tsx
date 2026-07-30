@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   MapPin,
   Star,
@@ -58,17 +60,20 @@ export function AuroraCalendars() {
   const fleet = useFleet()
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [tab, setTab] = useState<DetailTab>('events')
+  // Window offset in days: paged 5 at a time, backward (past) or forward (upcoming).
+  const [offset, setOffset] = useState(0)
 
-  // Rolling five-day window starting from the current day.
+  // Five-day window, pageable to past and upcoming dates from today.
   const days = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() + offset)
     return Array.from({ length: 5 }, (_, i) => {
-      const d = new Date(today)
-      d.setDate(today.getDate() + i)
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
       return d
     })
-  }, [])
+  }, [offset])
 
   const todayKey = ymd(new Date())
   const totalVehicles = fleet.vehicles.length
@@ -114,14 +119,41 @@ export function AuroraCalendars() {
         icon={CalendarDays}
         accent="cyan"
         action={
-          <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200">
-            {rangeLabel}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setOffset((o) => o - 5)}
+              className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
+              aria-label="Previous 5 days"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="min-w-[8rem] rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-center text-xs font-medium text-slate-200">
+              {rangeLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOffset((o) => o + 5)}
+              className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
+              aria-label="Next 5 days"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+            {offset !== 0 ? (
+              <button
+                type="button"
+                onClick={() => setOffset(0)}
+                className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/20"
+              >
+                Today
+              </button>
+            ) : null}
+          </div>
         }
       >
-        Upcoming Schedule
+        Schedule
         <span className="ml-2 text-xs font-normal text-slate-400">
-          Next 5 days · {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
+          5-day view · {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
         </span>
       </PanelTitle>
 

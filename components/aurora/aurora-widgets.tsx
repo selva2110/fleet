@@ -9,15 +9,31 @@ import {
 } from 'recharts'
 import {
   AlertTriangle,
+  Clock,
   HeartPulse,
   Info,
+  MapPin,
   PieChart as PieIcon,
+  Route as RouteIcon,
+  UtensilsCrossed,
   Users,
 } from 'lucide-react'
 import { AURORA_ACCENTS, GlassCard, PanelTitle } from './aurora-ui'
 import { useAuroraData } from './use-aurora-data'
 import { useFleet } from '@/lib/store'
+import { mealStatusMeta, tripStatusMeta } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function to12h(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 === 0 ? 12 : h % 12
+  return `${hour}:${String(m).padStart(2, '0')} ${period}`
+}
 
 export function AuroraWidgets() {
   return (
@@ -31,6 +47,7 @@ export function AuroraWidgets() {
 
 export function TodaysOverview() {
   const data = useAuroraData()
+  const fleet = useFleet()
   const slices = [
     { name: 'Live', value: data.tripStatusCounts.live, color: AURORA_ACCENTS.cyan },
     { name: 'Completed', value: data.tripStatusCounts.completed, color: AURORA_ACCENTS.emerald },
@@ -38,6 +55,17 @@ export function TodaysOverview() {
     { name: 'Cancelled', value: data.tripStatusCounts.cancelled, color: AURORA_ACCENTS.rose },
   ].filter((s) => s.value > 0)
   const total = slices.reduce((s, d) => s + d.value, 0)
+
+  // Today's trip and meal-run details, resolved from live fleet data.
+  const todayKey = ymd(new Date())
+  const todayEvents = fleet.events.filter((e) => e.date === todayKey)
+  const todayEventIds = new Set(todayEvents.map((e) => e.id))
+  const todayTrips = fleet.trips
+    .filter((t) => todayEventIds.has(t.eventId))
+    .sort((a, b) => a.etaCenter.localeCompare(b.etaCenter))
+  const todayMeals = fleet.mealDeliveries
+    .filter((m) => m.date === todayKey && m.status !== 'cancelled')
+    .sort((a, b) => a.departTime.localeCompare(b.departTime))
 
   return (
     <GlassCard className="p-0 pb-4">
@@ -85,7 +113,117 @@ export function TodaysOverview() {
           )}
         </div>
       </div>
+
+      {/* Today's trip + meal run details */}
+      <div className="mt-4 grid grid-cols-1 gap-4 px-5 sm:grid-cols-2">
+        <TodayDetailColumn
+          icon={RouteIcon}
+          title="Trips today"
+          count={todayTrips.length}
+          empty="No trips scheduled today."
+        >
+          {todayTrips.map((t) => {
+            const meta = tripStatusMeta[t.status]
+            const event = todayEvents.find((e) => e.id === t.eventId)
+            const driver = t.driverId ? fleet.driverById(t.driverId) : undefined
+            return (
+              <li key={t.id} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs font-medium text-white">{t.tripNumber}</p>
+                  <span
+                    className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ background: `${meta.map}22`, color: meta.map }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3" /> {to12h(t.etaCenter)}
+                  </span>
+                  {event ? <span className="truncate">{event.name}</span> : null}
+                  {driver ? <span className="truncate">{driver.name}</span> : null}
+                </div>
+              </li>
+            )
+          })}
+        </TodayDetailColumn>
+
+        <TodayDetailColumn
+          icon={UtensilsCrossed}
+          title="Meal runs today"
+          count={todayMeals.length}
+          empty="No meal runs scheduled today."
+        >
+          {todayMeals.map((m) => {
+            const meta = mealStatusMeta[m.status]
+            const center = fleet.centerById(m.centerId)
+            const delivered = m.stops.filter((s) => s.status === 'delivered').length
+            return (
+              <li key={m.id} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs font-medium text-white">
+                    {m.runNumber} · {m.mealType}
+                  </p>
+                  <span
+                    className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ background: `${meta.map}22`, color: meta.map }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3" /> {to12h(m.departTime)}
+                  </span>
+                  {center ? (
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin className="size-3" /> {center.name}
+                    </span>
+                  ) : null}
+                  <span>
+                    {delivered}/{m.stops.length} delivered
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </TodayDetailColumn>
+      </div>
     </GlassCard>
+  )
+}
+
+function TodayDetailColumn({
+  icon: Icon,
+  title,
+  count,
+  empty,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  count: number
+  empty: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <Icon className="size-3.5" />
+        {title}
+        <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-200">
+          {count}
+        </span>
+      </div>
+      {count === 0 ? (
+        <p className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-[11px] text-slate-500">
+          {empty}
+        </p>
+      ) : (
+        <ul className="max-h-56 space-y-1.5 overflow-y-auto pr-1">{children}</ul>
+      )}
+    </div>
   )
 }
 

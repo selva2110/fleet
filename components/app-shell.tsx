@@ -7,6 +7,7 @@ import {
   Bell,
   Bus,
   CalendarDays,
+  ChevronDown,
   LayoutDashboard,
   Menu,
   MessageSquare,
@@ -30,7 +31,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { markEventReminderSent } from '@/app/actions/crud'
 import { useNotifications } from '@/components/notifications/notification-center'
 
-type NavItem = { href: string; label: string; icon: React.ElementType }
+type NavItem = { href: string; label: string; icon: React.ElementType; children?: NavItem[] }
 type NavSection = { title: string; items: NavItem[] }
 
 const NAV: NavSection[] = [
@@ -45,8 +46,12 @@ const NAV: NavSection[] = [
   {
     title: 'Scheduling',
     items: [
-      { href: '/events', label: 'Events', icon: CalendarDays },
-      { href: '/trips', label: 'Trips', icon: Route },
+      {
+        href: '/events',
+        label: 'Events',
+        icon: CalendarDays,
+        children: [{ href: '/trips', label: 'Trips', icon: Route }],
+      },
       { href: '/responses', label: 'Participants Response', icon: MessageSquare },
       { href: '/participants', label: 'Participants', icon: Users },
     ],
@@ -60,33 +65,77 @@ const NAV: NavSection[] = [
   },
 ]
 
-const FLAT_NAV: NavItem[] = NAV.flatMap((s) => s.items)
+const TOP_NAV: NavItem[] = NAV.flatMap((s) => s.items)
 
 /** Horizontal, scrollable navigation used in the top bar on desktop. */
 function TopNavLinks() {
   const pathname = usePathname()
   return (
     <nav className="flex items-center gap-1">
-      {FLAT_NAV.map((item) => {
-        const active = pathname === item.href
-        const Icon = item.icon
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-              active
-                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <Icon className="size-4 shrink-0" />
-            <span>{item.label}</span>
-          </Link>
-        )
-      })}
+      {TOP_NAV.map((item) => (
+        <TopNavItem key={item.href} item={item} pathname={pathname} />
+      ))}
     </nav>
+  )
+}
+
+/**
+ * A single top-bar entry. Items with children (e.g. Events → Trips) render a
+ * clickable parent link plus a hover/focus dropdown listing the parent and its
+ * sub-pages.
+ */
+function TopNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
+  const Icon = item.icon
+  const childActive = item.children?.some((c) => pathname === c.href) ?? false
+  const active = pathname === item.href || childActive
+
+  const linkCls = cn(
+    'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+    active
+      ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  )
+
+  if (!item.children?.length) {
+    return (
+      <Link href={item.href} className={linkCls}>
+        <Icon className="size-4 shrink-0" />
+        <span>{item.label}</span>
+      </Link>
+    )
+  }
+
+  return (
+    <div className="group relative">
+      <Link href={item.href} className={linkCls}>
+        <Icon className="size-4 shrink-0" />
+        <span>{item.label}</span>
+        <ChevronDown className="size-3.5 shrink-0 opacity-60 transition-transform group-hover:rotate-180" />
+      </Link>
+      <div className="invisible absolute left-0 top-full z-50 min-w-48 pt-1 opacity-0 transition-opacity focus-within:visible focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div className="flex flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-lg">
+          {[item, ...item.children].map((sub) => {
+            const SubIcon = sub.icon
+            const subActive = pathname === sub.href
+            return (
+              <Link
+                key={sub.href}
+                href={sub.href}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors',
+                  subActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <SubIcon className="size-4 shrink-0" />
+                <span>{sub === item ? `All ${item.label.toLowerCase()}` : sub.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -104,20 +153,45 @@ function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
             const active = pathname === item.href
             const Icon = item.icon
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
+              <div key={item.href} className="flex flex-col gap-1">
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+                {item.children?.length ? (
+                  <div className="ml-4 flex flex-col gap-1 border-l border-border pl-3">
+                    {item.children.map((child) => {
+                      const childActive = pathname === child.href
+                      const ChildIcon = child.icon
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                            childActive
+                              ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          )}
+                        >
+                          <ChildIcon className="size-4 shrink-0" />
+                          <span className="truncate">{child.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             )
           })}
         </div>
