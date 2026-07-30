@@ -26,6 +26,16 @@ export function estimateMinutes(distanceKm: number, stops = 0): number {
   return Math.round((distanceKm / 26) * 60 + stops * 3)
 }
 
+// Compass bearing in degrees (0 = north, clockwise) from point a to point b.
+export function bearingDegrees(a: LatLng, b: LatLng): number {
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const y = Math.sin(dLng) * Math.cos(lat2)
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
+  return (Math.atan2(y, x) * 180) / Math.PI
+}
+
 // Total length of a polyline in km.
 export function pathLengthKm(path: LatLng[]): number {
   let total = 0
@@ -94,31 +104,31 @@ export function formatClockTime(baseMs: number, minutesFromBase: number): string
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+// Fetch a road-following path from OSRM, but never throw or hang: on any
+// failure (network error, rate limit, timeout) fall back to the synthetic
+// grid path so callers always get usable geometry. Used for final/display
+// routes — NOT for the planning engine's inner loop (see buildRoutePath1).
 export async function buildRoutePath(points: LatLng[]): Promise<LatLng[]> {
-  if (points.length < 2) return points;
+  if (points.length < 2) return points
 
-  const coordinates = points.map((p) => `${p.lng},${p.lat}`).join(";");
-
+  const coordinates = points.map((p) => `${p.lng},${p.lat}`).join(';')
   const url =
     `https://router.project-osrm.org/route/v1/driving/${coordinates}` +
-    `?overview=full&geometries=geojson`;
+    `?overview=full&geometries=geojson`
 
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`OSRM request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.routes?.length) {
-    throw new Error("No route found");
-  }
-
-  return data.routes[0].geometry.coordinates.map(
-    ([lng, lat]: [number, number]) => ({
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3500)
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeout)
+    if (!response.ok) return buildRoutePath1(points)
+    const data = await response.json()
+    if (!data.routes?.length) return buildRoutePath1(points)
+    return data.routes[0].geometry.coordinates.map(([lng, lat]: [number, number]) => ({
       lat,
       lng,
-    }),
-  );
+    }))
+  } catch {
+    return buildRoutePath1(points)
+  }
 }

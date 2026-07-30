@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Bus,
@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { formatMonthDayYear } from '@/lib/date'
 import { formatMiles, tripStatusMeta } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
+import { getPlanStatus } from '@/lib/planning-status'
 import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
 
 type Phase = 'idle' | 'planning' | 'results'
@@ -90,6 +91,12 @@ export default function PlannerPage() {
     )
   }, [event, eventId, fleet])
 
+  const planStatus = useMemo(
+    () => (event ? getPlanStatus(event, fleet.trips) : null),
+    [event, fleet.trips],
+  )
+  const generationLocked = planStatus ? !planStatus.canGenerate : false
+
   function runPlanner(targetId: string = eventId) {
       fleet.simRunning && fleet.toggleSim()
     if (targetId !== eventId) setEventId(targetId)
@@ -101,12 +108,22 @@ export default function PlannerPage() {
       setStep((s) => {
         if (s >= PLANNING_STEPS.length - 1) {
           clearInterval(interval)
-          void fleet.generatePlan(targetId).then((result) => {
-            setRecs(result.recommendations)
-            setUnassigned(result.unassigned)
-            setSelectedRouteId(result.recommendations[0]?.id ?? null)
-            setPhase('results')
-          })
+          fleet
+            .generatePlan(targetId)
+            .then((result) => {
+              setRecs(result.recommendations)
+              setUnassigned(result.unassigned)
+              setSelectedRouteId(result.recommendations[0]?.id ?? null)
+              setPhase('results')
+            })
+            .catch((error) => {
+              console.error('[v0] generatePlan failed', error)
+              // Never leave the UI stuck on the planning animation.
+              setRecs([])
+              setUnassigned([])
+              setSelectedRouteId(null)
+              setPhase('results')
+            })
           return s
         }
         return s + 1
@@ -132,6 +149,20 @@ export default function PlannerPage() {
     await fleet.commitPlan(eventId, recs)
     setCommitted(true)
   }
+
+  // When arriving from the deadline prompt (?autoplan=1) and generation is
+  // unlocked, kick off the planner automatically for the selected event.
+  const autoPlanRef = useRef(false)
+  useEffect(() => {
+    if (autoPlanRef.current || typeof window === 'undefined') return
+    const sp = new URLSearchParams(window.location.search)
+    if (sp.get('autoplan') !== '1') return
+    if (!event || !planStatus || phase !== 'idle') return
+    if (!planStatus.canGenerate || planStatus.hasPlan) return
+    autoPlanRef.current = true
+    runPlanner(event.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event, planStatus, phase])
 
   const totalDistance = recs.reduce((s, r) => s + r.distanceKm, 0)
   const totalCost = recs.reduce((s, r) => s + r.estimatedCost, 0)
@@ -172,7 +203,12 @@ export default function PlannerPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => runPlanner()} disabled={phase === 'planning' || pending.length === 0}>
+            <Button
+              size="sm"
+              onClick={() => runPlanner()}
+              disabled={phase === 'planning' || pending.length === 0 || generationLocked}
+              title={generationLocked ? planStatus?.blockedReason : undefined}
+            >
               <Sparkles className="size-4" />
               {phase === 'results' ? 'Re-plan' : 'Generate Plan'}
             </Button>

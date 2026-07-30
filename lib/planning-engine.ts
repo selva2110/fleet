@@ -6,7 +6,7 @@
 // constraint violations. This is a deterministic heuristic optimizer (nearest
 // neighbour + constraint-aware greedy bin packing) that mimics an planner.
 
-import { buildRoutePath, estimateMinutes, formatMinutesToClock, haversineKm, parseClockTime, pathLengthKm } from './geo'
+import { buildRoutePath1, estimateMinutes, formatMinutesToClock, haversineKm, parseClockTime, pathLengthKm } from './geo'
 import type {
   Center,
   Driver,
@@ -194,7 +194,10 @@ interface RouteTiming {
 async function buildRouteTiming(vehicleLocation: LatLng, participants: Participant[], centerLocation: LatLng): Promise<RouteTiming> {
   const ordered = sequenceStops(vehicleLocation, participants)
   const waypoints: LatLng[] = [vehicleLocation, ...ordered.map((p) => p.location), centerLocation]
-  const routePath = await buildRoutePath(waypoints)
+  // Synchronous, offline grid path: fast and reliable for the planner's inner
+  // candidate-evaluation loop. Real road geometry is fetched later for the
+  // selected/active routes when they are drawn on the map.
+  const routePath = buildRoutePath1(waypoints)
   const distanceKm = pathLengthKm(routePath)
   const durationMinutes = estimateMinutes(distanceKm, ordered.length)
 

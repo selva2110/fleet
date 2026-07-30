@@ -3,9 +3,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Layer, Marker, Source, type MapRef } from 'react-map-gl/mapbox'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { MAP_CENTER, MAP_ZOOM } from '@/lib/geo'
+import { MAP_CENTER, MAP_ZOOM, bearingDegrees, pointAlongPath } from '@/lib/geo'
 import { mealStatusMeta, tripStatusMeta, vehicleStatusMeta } from '@/lib/labels'
 import { MapboxErrorBoundary } from '@/components/map/mapbox-error-boundary'
+import { Vehicles3DLayer, type Vehicle3D } from '@/components/map/vehicles-3d-layer'
 import type {
   Center,
   LatLng,
@@ -16,31 +17,6 @@ import type {
   TripStop,
   Vehicle,
 } from '@/lib/types'
-
-const vehicleGlyph: Record<string, string> = {
-  Sedan: 'M2 13l2-4.5A2 2 0 0 1 5.8 7h9.4a2 2 0 0 1 1.7 1l2 3 2 .6a1 1 0 0 1 .8 1v1.4h-3a2.2 2.2 0 0 0-4.4 0H8.4a2.2 2.2 0 0 0-4.4 0H2z',
-  SUV: 'M2 13l1.6-5A2 2 0 0 1 5.5 6.5h10A2 2 0 0 1 17.4 8l2 3.2 1.8.6a1 1 0 0 1 .8 1v2h-3a2.2 2.2 0 0 0-4.4 0H8.4a2.2 2.2 0 0 0-4.4 0H2z',
-  Van: 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
-  'Wheelchair Accessible Van': 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
-  'Medical Transport Vehicle': 'M2 6.5A1.5 1.5 0 0 1 3.5 5h10.2a2 2 0 0 1 1.6.8l3 4 1.9.6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
-  'Mini Bus': 'M3 5.5A1.5 1.5 0 0 1 4.5 4h14A1.5 1.5 0 0 1 20 5.5V15h-2.2a2.2 2.2 0 0 0-4.4 0H9.6a2.2 2.2 0 0 0-4.4 0H3zM3 8h17',
-  'Shuttle Bus': 'M3 5.5A1.5 1.5 0 0 1 4.5 4h14A1.5 1.5 0 0 1 20 5.5V15h-2.2a2.2 2.2 0 0 0-4.4 0H9.6a2.2 2.2 0 0 0-4.4 0H3zM3 8h17',
-  Ambulance: 'M2 6.5A1.5 1.5 0 0 1 3.5 5h9.2a2 2 0 0 1 1.6.8l3.2 4.2 2 .6a1 1 0 0 1 .8 1V15h-2.6a2.2 2.2 0 0 0-4.4 0H8.6a2.2 2.2 0 0 0-4.4 0H2z',
-}
-
-function vehicleIconMarkup(v: Vehicle, highlighted: boolean) {
-  const color = vehicleStatusMeta[v.status].map
-  const pulse = ['heading-to-pickup', 'onboard'].includes(v.status)
-  const size = highlighted ? 36 : 30
-  return `
-    <div class="map-marker ${pulse ? 'map-marker-pulse' : ''}" style="--pulse-color:${color}66;width:${size}px;height:${size}px;background:${color};${highlighted ? 'outline:3px solid rgba(37,99,235,.35);' : ''}">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round">
-        <path d="${vehicleGlyph[v.type] ?? vehicleGlyph.Van}" />
-        <circle cx="7" cy="16" r="1.9" fill="${color}" stroke="white" stroke-width="1.1" />
-        <circle cx="16" cy="16" r="1.9" fill="${color}" stroke="white" stroke-width="1.1" />
-      </svg>
-    </div>`
-}
 
 function mealVehicleIconMarkup(m: MealDelivery, highlighted: boolean) {
   const color = mealStatusMeta[m.status].map
@@ -221,6 +197,35 @@ export default function FleetMap({
 
   const displayedRoutePath = traffic?.routePath?.length ? traffic.routePath : selectedRoute?.routePath
 
+  // Build the 3D vehicle set, deriving each vehicle's heading from the
+  // direction of travel along its active trip's route path.
+  const vehicles3D = useMemo<Vehicle3D[]>(() => {
+    return vehicles
+      .filter((v) => isValidLatLng(v.location))
+      .map((v) => {
+        const trip = activeTrips.find(
+          (t) =>
+            t.vehicleId === v.id &&
+            ['assigned', 'heading-to-pickup', 'onboard', 'at-destination'].includes(t.status),
+        )
+        let heading = 0
+        if (trip?.routePath && trip.routePath.length >= 2) {
+          const p = trip.progress ?? 0
+          const cur = pointAlongPath(trip.routePath, Math.min(0.98, p))
+          const ahead = pointAlongPath(trip.routePath, Math.min(1, p + 0.04))
+          heading = bearingDegrees(cur, ahead)
+        }
+        return {
+          id: v.id,
+          lng: v.location.lng,
+          lat: v.location.lat,
+          heading,
+          color: vehicleStatusMeta[v.status].map,
+          highlighted: v.id === highlightVehicleId,
+        }
+      })
+  }, [vehicles, activeTrips, highlightVehicleId])
+
   useEffect(() => {
     if (!fitTo || fitTo.length < 2 || !mapRef.current) return
     const validFitPoints = fitTo.filter(isValidLatLng)
@@ -266,6 +271,7 @@ export default function FleetMap({
           style={{ width: '100%', height: '100%' }}
         >
         {fitTo && fitTo.length > 1 ? null : null}
+        <Vehicles3DLayer vehicles={vehicles3D} />
         {liveRoute.length > 0 ? (
           <LiveTraffic
             routes={liveRoute}
@@ -483,9 +489,13 @@ export default function FleetMap({
           )
         })}
 
+        {/* Small ground anchor beneath each 3D vehicle: provides a click/hit
+            target for trip selection without competing with the 3D model. */}
         {vehicles.filter((v) => isValidLatLng(v.location)).map((v) => {
           const point = toLngLat(v.location)
           if (!point) return null
+          const color = vehicleStatusMeta[v.status].map
+          const highlighted = v.id === highlightVehicleId
           return (
             <Marker
               key={`v-${v.id}`}
@@ -497,7 +507,13 @@ export default function FleetMap({
                 if (t) onSelectTrip?.(t.id)
               }}
             >
-              <div className="pointer-events-auto" dangerouslySetInnerHTML={{ __html: vehicleIconMarkup(v, v.id === highlightVehicleId) }} />
+              <div
+                className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center rounded-full"
+                style={{ background: `${color}22`, outline: highlighted ? `2px solid ${color}` : 'none' }}
+                aria-label={`Vehicle ${v.name}`}
+              >
+                <span className="block size-2 rounded-full" style={{ background: color }} />
+              </div>
             </Marker>
           )
         })}
