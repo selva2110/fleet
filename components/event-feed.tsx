@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { EVENT_META, type DomainEvent } from '@/lib/events'
+import { actorDisplayName } from '@/lib/labels'
 
 const TONE_DOT: Record<string, string> = {
   info: 'bg-primary',
@@ -48,6 +49,9 @@ function EventRow({ event, dense }: { event: DomainEvent; dense?: boolean }) {
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{rel}</span>
         </div>
         <p className="truncate text-xs text-muted-foreground">{event.summary}</p>
+        <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">
+          by {actorDisplayName(event.actorRole)}
+        </p>
       </div>
     </div>
   )

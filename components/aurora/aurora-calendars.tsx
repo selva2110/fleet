@@ -3,8 +3,6 @@
 import { useMemo, useState } from 'react'
 import {
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   MapPin,
   Star,
@@ -33,14 +31,6 @@ function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function startOfWeek(d: Date) {
-  const x = new Date(d)
-  const day = (x.getDay() + 6) % 7 // Monday = 0
-  x.setDate(x.getDate() - day)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
 function to12h(hhmm: string) {
   const [h, m] = hhmm.split(':').map(Number)
   const period = h >= 12 ? 'PM' : 'AM'
@@ -66,19 +56,19 @@ type DetailTab = 'events' | 'drivers' | 'vehicles' | 'meals'
  */
 export function AuroraCalendars() {
   const fleet = useFleet()
-  const [anchor, setAnchor] = useState(() => startOfWeek(new Date()))
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [tab, setTab] = useState<DetailTab>('events')
 
-  const days = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(anchor)
-        d.setDate(anchor.getDate() + i)
-        return d
-      }),
-    [anchor],
-  )
+  // Rolling five-day window starting from the current day.
+  const days = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(today)
+      d.setDate(today.getDate() + i)
+      return d
+    })
+  }, [])
 
   const todayKey = ymd(new Date())
   const totalVehicles = fleet.vehicles.length
@@ -107,14 +97,8 @@ export function AuroraCalendars() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, fleet.events, fleet.drivers, fleet.vehicles, fleet.mealDeliveries])
 
-  const rangeLabel = `${days[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${days[6].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+  const rangeLabel = `${days[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${days[4].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
   const weekEventCount = days.reduce((n, d) => n + (perDay[ymd(d)]?.events.length ?? 0), 0)
-
-  const shiftWeek = (delta: number) => {
-    const next = new Date(anchor)
-    next.setDate(anchor.getDate() + delta * 7)
-    setAnchor(startOfWeek(next))
-  }
 
   const openDay = openKey ? perDay[openKey] : null
   const openDate = openKey ? days.find((d) => ymd(d) === openKey) ?? null : null
@@ -130,41 +114,18 @@ export function AuroraCalendars() {
         icon={CalendarDays}
         accent="cyan"
         action={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => shiftWeek(-1)}
-              aria-label="Previous week"
-              className="flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setAnchor(startOfWeek(new Date()))}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-white/10"
-            >
-              Today
-            </button>
-            <span className="min-w-32 text-center text-xs font-medium text-slate-200">{rangeLabel}</span>
-            <button
-              type="button"
-              onClick={() => shiftWeek(1)}
-              aria-label="Next week"
-              className="flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
+          <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200">
+            {rangeLabel}
+          </span>
         }
       >
-        Weekly Schedule
+        Upcoming Schedule
         <span className="ml-2 text-xs font-normal text-slate-400">
-          {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
+          Next 5 days · {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
         </span>
       </PanelTitle>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:grid-cols-3 lg:grid-cols-5">
         {days.map((d) => {
           const key = ymd(d)
           const info = perDay[key]

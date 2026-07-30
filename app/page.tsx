@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AuroraKpis } from '@/components/aurora/aurora-kpis'
 import { AuroraMain } from '@/components/aurora/aurora-main'
-import { AuroraWidgets } from '@/components/aurora/aurora-widgets'
+import { AuroraWidgets, TodaysOverview } from '@/components/aurora/aurora-widgets'
 import { AuroraAnalytics } from '@/components/aurora/aurora-analytics'
 import { AuroraCalendars } from '@/components/aurora/aurora-calendars'
 import { FadeIn } from '@/components/aurora/aurora-ui'
@@ -59,20 +59,17 @@ export default function DashboardPage() {
               Here&apos;s what&apos;s happening across your operations.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {greeting ? (
-              <div className="hidden text-right sm:block">
-                <p className="font-mono text-2xl font-semibold tabular-nums text-white">{greeting.time}</p>
-                <p className="text-xs text-slate-400">{greeting.date}</p>
-              </div>
-            ) : null}
-          </div>
         </FadeIn>
 
         {/* KPI cards */}
         <div className="mt-6">
           <AuroraKpis items={data.kpis} />
         </div>
+
+        {/* Today's Overview — moved to the top for greater visibility */}
+        <FadeIn delay={0.06} className="mt-4">
+          <TodaysOverview />
+        </FadeIn>
 
         {/* Schedule calendars: events, drivers, vehicles */}
         <FadeIn delay={0.08} className="mt-4">

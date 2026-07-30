@@ -10,6 +10,32 @@ import type {
 export const ROLES: { id: Role; label: string; short: string }[] = [
   { id: 'dispatcher', label: 'Dispatcher', short: 'Dispatcher' }]
 
+// The signed-in dispatcher operating the console.
+export const DISPATCHER_NAME = 'Siva Dharmaraj'
+
+/**
+ * Human-friendly display name for an activity/event actor role. The dispatcher
+ * role resolves to the named operator so activity feeds read as real people.
+ */
+export function actorDisplayName(role?: string): string {
+  switch (role) {
+    case 'dispatcher':
+      return DISPATCHER_NAME
+    case 'driver':
+      return 'Driver'
+    case 'participant':
+      return 'Participant'
+    case 'operations':
+      return 'Operations'
+    case 'admin':
+      return 'Administrator'
+    case 'system':
+      return 'System'
+    default:
+      return role ? role.charAt(0).toUpperCase() + role.slice(1) : 'System'
+  }
+}
+
 // Tailwind class tokens for status badges.
 export const tripStatusMeta: Record<TripStatus, { label: string; cls: string; map: string }> = {
   planned: { label: 'Planned', cls: 'bg-muted text-muted-foreground', map: '#64748b' },

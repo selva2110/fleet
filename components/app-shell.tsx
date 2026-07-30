@@ -7,7 +7,6 @@ import {
   Bell,
   Bus,
   CalendarDays,
-  Check,
   LayoutDashboard,
   Menu,
   MessageSquare,
@@ -22,18 +21,9 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { ROLES } from '@/lib/labels'
+import { DISPATCHER_NAME } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { markEventReminderSent } from '@/app/actions/crud'
@@ -52,14 +42,19 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    title: 'Vehicles & People',
+    title: 'Scheduling',
     items: [
       { href: '/events', label: 'Events', icon: CalendarDays },
-      { href: '/responses', label: 'SMS Responses', icon: MessageSquare },
+      { href: '/trips', label: 'Trips', icon: Route },
+      { href: '/responses', label: 'Participants Response', icon: MessageSquare },
       { href: '/participants', label: 'Participants', icon: Users },
+    ],
+  },
+  {
+    title: 'Fleet',
+    items: [
       { href: '/vehicles', label: 'Vehicles', icon: Truck },
       { href: '/drivers', label: 'Drivers', icon: UserRound },
-      { href: '/trips', label: 'Trips', icon: Route },
     ],
   },
 ]
@@ -159,33 +154,21 @@ function LiveClock() {
   )
 }
 
-function RoleSwitcher() {
-  const { role, setRole } = useFleet()
-  const current = ROLES.find((r) => r.id === role)!
+function ProfileChip() {
+  const initials = DISPATCHER_NAME.split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="outline" size="sm" className="gap-2">
-            <UserRound className="size-4" />
-            <span className="hidden sm:inline">{current.label}</span>
-            <span className="sm:hidden">{current.short}</span>
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>View as role</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {ROLES.map((r) => (
-            <DropdownMenuItem key={r.id} onClick={() => setRole(r.id)} className="gap-2">
-              <Check className={cn('size-4', r.id === role ? 'opacity-100' : 'opacity-0')} />
-              {r.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1 sm:flex">
+      <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold uppercase text-primary">
+        {initials}
+      </span>
+      <div className="leading-tight">
+        <p className="text-[13px] font-medium text-foreground">{DISPATCHER_NAME}</p>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Dispatcher</p>
+      </div>
+    </div>
   )
 }
 
@@ -401,7 +384,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NotificationCenter />
             <SimToggle />
             <ThemeToggle />
-            <RoleSwitcher />
+            <ProfileChip />
           </div>
         </div>
       </header>
