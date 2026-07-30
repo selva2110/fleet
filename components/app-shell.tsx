@@ -3,6 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
+import {
   Activity,
   Bell,
   Bus,
@@ -81,8 +87,9 @@ function TopNavLinks() {
 
 /**
  * A single top-bar entry. Items with children (e.g. Events → Trips) render a
- * clickable parent link plus a hover/focus dropdown listing the parent and its
- * sub-pages.
+ * dropdown trigger whose menu lists the parent page plus its sub-pages. The
+ * menu is portalled, so it is never clipped by the nav's horizontal scroll
+ * container.
  */
 function TopNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon
@@ -105,37 +112,38 @@ function TopNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
     )
   }
 
+  const subItems = [{ ...item, label: `All ${item.label.toLowerCase()}` }, ...item.children]
+
   return (
-    <div className="group relative">
-      <Link href={item.href} className={linkCls}>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(linkCls, 'cursor-pointer')}
+        aria-label={`${item.label} menu`}
+      >
         <Icon className="size-4 shrink-0" />
         <span>{item.label}</span>
-        <ChevronDown className="size-3.5 shrink-0 opacity-60 transition-transform group-hover:rotate-180" />
-      </Link>
-      <div className="invisible absolute left-0 top-full z-50 min-w-48 pt-1 opacity-0 transition-opacity focus-within:visible focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-        <div className="flex flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-lg">
-          {[item, ...item.children].map((sub) => {
-            const SubIcon = sub.icon
-            const subActive = pathname === sub.href
-            return (
-              <Link
-                key={sub.href}
-                href={sub.href}
-                className={cn(
-                  'flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors',
-                  subActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <SubIcon className="size-4 shrink-0" />
-                <span>{sub === item ? `All ${item.label.toLowerCase()}` : sub.label}</span>
-              </Link>
-            )
-          })}
-        </div>
-      </div>
-    </div>
+        <ChevronDown className="size-3.5 shrink-0 opacity-60 transition-transform data-[popup-open]:rotate-180" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" sideOffset={6} className="w-52 min-w-52">
+        {subItems.map((sub) => {
+          const SubIcon = sub.icon
+          const subActive = pathname === sub.href
+          return (
+            <DropdownMenuItem
+              key={sub.href}
+              render={<Link href={sub.href} />}
+              className={cn(
+                'gap-2 px-2.5 py-2 text-[13px]',
+                subActive && 'bg-primary/10 text-primary',
+              )}
+            >
+              <SubIcon className="size-4 shrink-0" />
+              <span>{sub.label}</span>
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
