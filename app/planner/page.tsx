@@ -23,13 +23,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { formatMonthDayYear } from '@/lib/date'
 import { formatMiles, tripStatusMeta } from '@/lib/labels'
@@ -102,7 +95,6 @@ export default function PlannerPage() {
     () => (event ? getPlanStatus(event, fleet.trips) : null),
     [event, fleet.trips],
   )
-  const generationLocked = planStatus ? !planStatus.canGenerate : false
 
   function runPlanner(targetId: string = eventId) {
       fleet.simRunning && fleet.toggleSim()
@@ -181,54 +173,15 @@ export default function PlannerPage() {
     <div className="flex min-h-full flex-col">
       <PageHeader
         title="Route Planner"
-        description="Automatically generate optimized, constraint-aware transportation plans."
-        actions={
-          <div className="flex items-center gap-2">
-            <Select
-              value={eventId}
-              onValueChange={(v) => {
-                setEventId(v ?? '')
-                setPhase('idle')
-                setRecs([])
-                setUnassigned([])
-                setSelectedRouteId(null)
-              }}
-            >
-              <SelectTrigger className="w-55">
-                <SelectValue placeholder="Select event">
-                  {(value) =>
-                    plannableEvents.find((e) => e.id === value)?.name ??
-                    "Select event"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {plannableEvents.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              onClick={() => runPlanner()}
-              disabled={phase === 'planning' || pending.length === 0 || generationLocked}
-              title={generationLocked ? planStatus?.blockedReason : undefined}
-            >
-              <Sparkles className="size-4" />
-              {planStatus?.hasPlan || phase === 'results' ? 'Re-plan' : 'Generate Plan'}
-            </Button>
-          </div>
-        }
+        description="Routes are planned automatically once the response deadline ends — or immediately when participant notifications are off. Use Re-plan below to regenerate a plan."
       />
 
       <div className="flex flex-col gap-6 p-6">
-        {/* Plan status + deadline gating */}
-        {event && planStatus ? <PlanStatusBanner status={planStatus} /> : null}
+        {/* Plan status + deadline gating — only while actively planning/re-planning */}
+        {event && planStatus && phase !== 'idle' ? <PlanStatusBanner status={planStatus} /> : null}
 
-        {/* Event summary */}
-        {event ? (
+        {/* Event summary — only while actively planning/re-planning */}
+        {event && phase !== 'idle' ? (
           <div
             className={`grid w-full gap-4 ${phase === "results" ? "lg:grid-cols-[2fr_1fr]" : "lg:grid-cols-[1fr_auto]"}`}
           >
@@ -309,27 +262,6 @@ export default function PlannerPage() {
               </div>
             ) : null}
           </div>
-        ) : null}
-
-        {/* Idle */}
-        {phase === "idle" ? (
-          <Card className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Sparkles className="size-7" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">
-                {pending.length === 0
-                  ? "All participants for this event are already assigned."
-                  : "Ready to plan transportation"}
-              </p>
-              <p className="mt-1 max-w-md text-xs text-muted-foreground text-pretty">
-                {pending.length === 0
-                  ? "Select another event or review committed trips in Dispatch."
-                  : `The planner will optimize routes for ${pending.length} participants across your available fleet, respecting every medical and accessibility constraint.`}
-              </p>
-            </div>
-          </Card>
         ) : null}
 
         {/* Recent planned routes — re-plan any that are not yet dispatched */}
