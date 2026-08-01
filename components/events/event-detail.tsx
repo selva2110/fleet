@@ -14,6 +14,7 @@ import {
   Phone,
   Send,
   Users,
+  X,
   XCircle,
 } from 'lucide-react'
 import {
@@ -111,10 +112,13 @@ export function EventDetail({
   open,
   onOpenChange,
   event,
+  inline = false,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   event: FleetEvent | null
+  /** When true, render as an in-flow expandable panel instead of a modal dialog. */
+  inline?: boolean
 }) {
   const fleet = useFleet()
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -223,44 +227,39 @@ export function EventDetail({
     downloadCsv(`${event.name.replace(/\s+/g, '-')}-transport-requests.csv`, [header, ...rows])
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[92vh] max-h-[92vh] flex-col p-0 sm:max-w-3xl">
-        <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
-          <div className="flex items-start justify-between gap-3 pr-6">
-            <div className="min-w-0">
-              <DialogTitle className="text-pretty">{event.name}</DialogTitle>
-              <DialogDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-3.5" /> {center?.name ?? 'No center'}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="size-3.5" /> {formatMonthDayYear(event.date)} · {event.startTime}–{event.endTime}
-                </span>
-                <span>{event.type}</span>
-              </DialogDescription>
-            </div>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                windowOpen ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground',
-              )}
-            >
-              <span className={cn('size-1.5 rounded-full', windowOpen ? 'bg-success' : 'bg-muted-foreground')} />
-              {windowOpen ? 'Responses open' : 'Responses closed'}
-            </span>
-            {cutoff ? (
-              <span className="text-xs text-muted-foreground">
-                Cutoff: {formatMonthDayYearTime(cutoff.toISOString())}
-              </span>
-            ) : null}
-          </div>
-        </DialogHeader>
+  const metaRow = (
+    <>
+      <span className="inline-flex items-center gap-1">
+        <MapPin className="size-3.5" /> {center?.name ?? 'No center'}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Clock className="size-3.5" /> {formatMonthDayYear(event.date)} · {event.startTime}–{event.endTime}
+      </span>
+      <span>{event.type}</span>
+    </>
+  )
 
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="space-y-5 px-5 py-4">
+  const statusRow = (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+          windowOpen ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground',
+        )}
+      >
+        <span className={cn('size-1.5 rounded-full', windowOpen ? 'bg-success' : 'bg-muted-foreground')} />
+        {windowOpen ? 'Responses open' : 'Responses closed'}
+      </span>
+      {cutoff ? (
+        <span className="text-xs text-muted-foreground">
+          Cutoff: {formatMonthDayYearTime(cutoff.toISOString())}
+        </span>
+      ) : null}
+    </div>
+  )
+
+  const body = (
+    <div className="space-y-5 px-5 py-4">
             {/* Action bar */}
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={handleSend} disabled={sending} size="sm">
@@ -445,8 +444,53 @@ export function EventDetail({
                 </ul>
               )}
             </div>
+    </div>
+  )
+
+  // Inline mode: an in-flow expandable panel rendered directly below the
+  // clicked event in the list. Clicking the same event again unmounts it.
+  if (inline) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-primary/30 bg-card shadow-sm">
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/30 px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-pretty">{event.name}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {metaRow}
+            </div>
+            {statusRow}
           </div>
-        </ScrollArea>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close details"
+            className="shrink-0"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+        {body}
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[92vh] max-h-[92vh] flex-col p-0 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
+          <div className="flex items-start justify-between gap-3 pr-6">
+            <div className="min-w-0">
+              <DialogTitle className="text-pretty">{event.name}</DialogTitle>
+              <DialogDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {metaRow}
+              </DialogDescription>
+            </div>
+          </div>
+          {statusRow}
+        </DialogHeader>
+
+        <ScrollArea className="min-h-0 flex-1">{body}</ScrollArea>
       </DialogContent>
     </Dialog>
   )

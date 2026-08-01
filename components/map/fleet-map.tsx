@@ -143,7 +143,7 @@ function RouteSnapper({
   trips: Trip[]
   onResult: (tripId: string, path: LatLng[]) => void
 }) {
-  const signaturesRef = useRef<Map<string, string>>(new Map())
+  const signaturesRef = useRef<Record<string, string>>({})
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -159,8 +159,8 @@ function RouteSnapper({
           const signature = waypoints
             .map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`)
             .join('|')
-          if (signaturesRef.current.get(t.id) === signature) return
-          signaturesRef.current.set(t.id, signature)
+          if (signaturesRef.current[t.id] === signature) return
+          signaturesRef.current[t.id] = signature
           try {
             const response = await fetch('/api/traffic/route', {
               method: 'POST',

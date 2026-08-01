@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, UtensilsCrossed, Users } from 'lucide-react'
@@ -126,8 +126,6 @@ export default function EventsPage() {
     setDetailId((prev) => (prev === e.id ? null : e.id))
   }
 
-  const detailEvent = detailId ? fleet.events.find((e) => e.id === detailId) ?? null : null
-
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
@@ -197,10 +195,11 @@ export default function EventsPage() {
               const meta = eventStatusMeta[e.status]
               const { assignedCount, total } = assignedInfo(e)
               return (
+                <Fragment key={e.id}>
                 <Card
-                  key={e.id}
                   onClick={() => toggleDetail(e)}
-                  className="flex cursor-pointer flex-col overflow-hidden transition-colors hover:border-primary/40"
+                  data-active={detailId === e.id}
+                  className="flex cursor-pointer flex-col overflow-hidden transition-colors hover:border-primary/40 data-[active=true]:border-primary/50"
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
                     <div className="min-w-0">
@@ -257,6 +256,17 @@ export default function EventsPage() {
                     ) : null}
                   </div>
                 </Card>
+                {detailId === e.id ? (
+                  <div className="md:col-span-2 xl:col-span-3">
+                    <EventDetail
+                      inline
+                      open
+                      onOpenChange={(v) => !v && setDetailId(null)}
+                      event={e}
+                    />
+                  </div>
+                ) : null}
+                </Fragment>
               )
             })}
           </div>
@@ -281,8 +291,8 @@ export default function EventsPage() {
                     const meta = eventStatusMeta[e.status]
                     const { assignedCount, total } = assignedInfo(e)
                     return (
+                      <Fragment key={e.id}>
                       <TableRow
-                        key={e.id}
                         onClick={() => toggleDetail(e)}
                         data-active={detailId === e.id}
                         className="cursor-pointer data-[active=true]:bg-muted/60"
@@ -324,6 +334,19 @@ export default function EventsPage() {
                           />
                         </TableCell>
                       </TableRow>
+                      {detailId === e.id ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={7} className="bg-muted/20 p-3">
+                            <EventDetail
+                              inline
+                              open
+                              onOpenChange={(v) => !v && setDetailId(null)}
+                              event={e}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                      </Fragment>
                     )
                   })}
                 </TableBody>
@@ -340,12 +363,6 @@ export default function EventsPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      <EventDetail
-        open={detailId !== null}
-        onOpenChange={(v) => !v && setDetailId(null)}
-        event={detailEvent}
-      />
     </div>
   )
 }

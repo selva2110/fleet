@@ -45,6 +45,20 @@ export function eventHasPlan(eventId: string, trips: Trip[]): boolean {
   return trips.some((t) => t.eventId === eventId && t.status !== 'cancelled')
 }
 
+/** Resolve the event's scheduled start as a Date from its date + startTime. */
+export function getEventStart(event: FleetEvent): Date {
+  return new Date(`${event.date}T${event.startTime || '00:00'}:00`)
+}
+
+/**
+ * Whether an event is still dispatchable — i.e. its scheduled start time has
+ * not yet passed. Trips can only be planned/dispatched/started before the
+ * event begins.
+ */
+export function isEventDispatchable(event: FleetEvent, now: Date = new Date()): boolean {
+  return now.getTime() < getEventStart(event).getTime()
+}
+
 /**
  * Compute the full planning gate for an event: whether a plan exists, whether
  * notifications force us to wait for the response deadline, and whether the

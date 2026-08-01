@@ -26,10 +26,12 @@ export type DomainEventType =
   // Dispatch lifecycle
   | 'plan.generated'
   | 'plan.committed'
+  | 'plan.blocked'
   | 'trip.created'
   | 'trip.dispatched'
   | 'trip.driver_assigned'
   | 'trip.started'
+  | 'trip.start_blocked'
   | 'trip.pickup_reached'
   | 'trip.participant_picked_up'
   | 'trip.onboard'
@@ -105,10 +107,12 @@ export const EVENT_META: Record<
   'driver.deleted': { label: 'Driver removed', tone: 'danger' },
   'plan.generated': { label: 'Plan generated', tone: 'info' },
   'plan.committed': { label: 'Plan committed', tone: 'success' },
+  'plan.blocked': { label: 'Dispatch blocked', tone: 'danger' },
   'trip.created': { label: 'Trip created', tone: 'info' },
   'trip.dispatched': { label: 'Trip dispatched', tone: 'success' },
   'trip.driver_assigned': { label: 'Driver assigned', tone: 'info' },
   'trip.started': { label: 'Trip started', tone: 'success' },
+  'trip.start_blocked': { label: 'Trip start blocked', tone: 'danger' },
   'trip.pickup_reached': { label: 'Pickup reached', tone: 'info' },
   'trip.participant_picked_up': { label: 'Participant picked up', tone: 'success' },
   'trip.onboard': { label: 'All aboard', tone: 'success' },

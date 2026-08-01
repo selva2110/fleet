@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils'
 import { formatMonthDayYear } from '@/lib/date'
 import { formatMiles, tripStatusMeta } from '@/lib/labels'
 import { useFleet } from '@/lib/store'
-import { getPlanStatus, type PlanStatus } from '@/lib/planning-status'
+import { getPlanStatus, isEventDispatchable, type PlanStatus } from '@/lib/planning-status'
 import type { PlanRecommendation, UnassignedParticipant } from '@/lib/types'
 
 type Phase = 'idle' | 'planning' | 'results'
@@ -51,7 +51,12 @@ const PLANNING_STEPS = [
 export default function PlannerPage() {
   const fleet = useFleet()
   const router = useRouter()
-  const plannableEvents = fleet.events.filter((e) => e.status !== 'completed')
+  // Only events that are not completed AND whose start time is still in the
+  // future can be planned/dispatched. Once an event's start time passes, it is
+  // no longer shown as a dispatch target.
+  const plannableEvents = fleet.events.filter(
+    (e) => e.status !== 'completed' && isEventDispatchable(e),
+  )
   const defaultEventId = useMemo(() => {
     const committedPids = new Set(
       fleet.trips
@@ -212,7 +217,7 @@ export default function PlannerPage() {
               title={generationLocked ? planStatus?.blockedReason : undefined}
             >
               <Sparkles className="size-4" />
-              {phase === 'results' ? 'Re-plan' : 'Generate Plan'}
+              {planStatus?.hasPlan || phase === 'results' ? 'Re-plan' : 'Generate Plan'}
             </Button>
           </div>
         }

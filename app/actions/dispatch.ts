@@ -5,6 +5,7 @@ import { centers, drivers, events, participants, trips, vehicles } from '@/lib/d
 import { toCenter, toDriver, toParticipant, toVehicle } from '@/lib/db/mappers'
 import { emit } from '@/lib/db/emit'
 import { planTransportation } from '@/lib/planning-engine'
+import { getEventStart } from '@/lib/planning-status'
 import type { PlanRecommendation, PlanResult, Trip } from '@/lib/types'
 import { eq, inArray } from 'drizzle-orm'
 
@@ -86,6 +87,18 @@ export async function commitPlan(
   const evtRows = await db.select().from(events).where(eq(events.id, eventId))
   const evt = evtRows[0]
   if (!evt) return
+
+  // Guard: an event can no longer be dispatched once its start time has passed.
+  if (Date.now() >= getEventStart(evt).getTime()) {
+    await emit({
+      eventType: 'plan.blocked',
+      aggregateType: 'event',
+      aggregateId: eventId,
+      actorRole,
+      summary: `Dispatch blocked for ${evt.name} — event start time has already passed`,
+    })
+    return
+  }
 
   let counter = Date.now() % 10000
   for (const rec of recs) {
@@ -202,6 +215,23 @@ export async function commitPlan(
 
 export async function startTrip(tripId: string, actorRole = 'dispatcher') {
   const now = new Date()
+
+  // Guard: a trip cannot be started once its event's start time has passed.
+  const existing = (await db.select().from(trips).where(eq(trips.id, tripId)))[0]
+  if (existing?.eventId) {
+    const evt = (await db.select().from(events).where(eq(events.id, existing.eventId)))[0]
+    if (evt && now.getTime() >= getEventStart(evt).getTime()) {
+      await emit({
+        eventType: 'trip.start_blocked',
+        aggregateType: 'trip',
+        aggregateId: tripId,
+        actorRole,
+        summary: `Cannot start ${existing.tripNumber} — event ${evt.name} has already started`,
+      })
+      return
+    }
+  }
+
   await db
     .update(trips)
     .set({ status: 'en-route', startedAt: now, lastTickAt: now, progress: 0 })

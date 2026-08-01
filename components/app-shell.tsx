@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 import { DISPATCHER_NAME } from '@/lib/labels'
 import { DeadlinePrompt } from '@/components/planner/deadline-prompt'
 import { useFleet } from '@/lib/store'
+import { getPlanStatus, isEventDispatchable } from '@/lib/planning-status'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { markEventReminderSent } from '@/app/actions/crud'
 import { useNotifications } from '@/components/notifications/notification-center'
@@ -348,8 +349,78 @@ function ReminderMonitor() {
   return null
 }
 
+/**
+ * Automatic route planning. Once an event's response deadline passes, the plan
+ * is generated and committed automatically with no manual intervention — the
+ * dispatcher only manually triggers a *replan*. Events whose start time has
+ * already passed are skipped (they are no longer dispatchable). Guarded so each
+ * event is auto-planned at most once per session.
+ */
+function AutoPlanner() {
+  const { events, trips, generatePlan, commitPlan } = useFleet()
+  const { addNotification } = useNotifications()
+  const plannedRef = useRef(new Set<string>())
+  const runningRef = useRef(false)
+
+  useEffect(() => {
+    if (!events.length) return
+
+    const autoPlan = async () => {
+      if (runningRef.current) return
+      const now = new Date()
+      const candidates = events.filter((event) => {
+        if (plannedRef.current.has(event.id)) return false
+        if (event.status === 'completed') return false
+        if (!isEventDispatchable(event, now)) return false
+        const status = getPlanStatus(event, trips, now)
+        // Auto-plan only after the response deadline, and only when no plan yet
+        // exists and nothing has been dispatched for the event.
+        return status.canGenerate && !status.hasPlan && !status.dispatched
+      })
+      if (!candidates.length) return
+
+      runningRef.current = true
+      try {
+        for (const event of candidates) {
+          plannedRef.current.add(event.id)
+          try {
+            const result = await generatePlan(event.id)
+            if (result.recommendations.length > 0) {
+              await commitPlan(event.id, result.recommendations)
+              addNotification({
+                title: 'Routes auto-planned',
+                message: `${result.recommendations.length} route${
+                  result.recommendations.length === 1 ? '' : 's'
+                } generated automatically for ${event.name} after its response deadline.`,
+                kind: 'success',
+              })
+            }
+          } catch (error) {
+            // Allow a later retry if this run failed.
+            plannedRef.current.delete(event.id)
+            console.log('[v0] auto-plan failed', (error as Error).message)
+          }
+        }
+      } finally {
+        runningRef.current = false
+      }
+    }
+
+    void autoPlan()
+    const id = window.setInterval(() => void autoPlan(), 10000)
+    return () => window.clearInterval(id)
+  }, [events, trips, generatePlan, commitPlan, addNotification])
+
+  return null
+}
+
 function ReminderMonitorRoot() {
-  return <ReminderMonitor />
+  return (
+    <>
+      <ReminderMonitor />
+      <AutoPlanner />
+    </>
+  )
 }
 
 export function NotificationCenter() {

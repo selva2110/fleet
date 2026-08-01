@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Bus,
+  CalendarDays,
   CalendarPlus,
+  ChevronDown,
   CircleDot,
   Clock,
   MapPin,
@@ -46,6 +48,7 @@ const LIVE_STATUSES = ['en-route', 'pickup-in-progress', 'onboard', 'driver-assi
 export default function DispatchPage() {
   const fleet = useFleet()
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   // Top-level view: 'dispatch' (live trips) or 'meals' (meal delivery). Read
   // an optional ?tab= deep link once on mount so links can open a given tab.
   const [view, setView] = useState<'dispatch' | 'meals'>('dispatch')
@@ -60,8 +63,28 @@ export default function DispatchPage() {
     [fleet.trips],
   )
 
+  // Group live trips by their event so the Active Trips panel lists events
+  // first and expands to the trips belonging to each event on click.
+  const liveEventGroups = useMemo(() => {
+    const groups = new Map<string, { event: ReturnType<typeof fleet.eventById>; trips: typeof liveTrips }>()
+    for (const t of liveTrips) {
+      const existing = groups.get(t.eventId)
+      if (existing) existing.trips.push(t)
+      else groups.set(t.eventId, { event: fleet.eventById(t.eventId), trips: [t] })
+    }
+    return [...groups.values()].sort((a, b) =>
+      (a.event?.name ?? '').localeCompare(b.event?.name ?? ''),
+    )
+  }, [liveTrips, fleet])
+
   const selectedTrip = liveTrips.find((t) => t.id === selectedTripId) ?? null
   const selectedVehicle = selectedTrip ? fleet.vehicleById(selectedTrip.vehicleId) : undefined
+
+  // Keep the event group containing the selected trip open (e.g. when a trip is
+  // picked from the map) so it stays visible in the Active Trips list.
+  useEffect(() => {
+    if (selectedTrip) setExpandedEventId(selectedTrip.eventId)
+  }, [selectedTrip])
 
   const activeVehicleIds = new Set(liveTrips.map((t) => t.vehicleId))
   const mapVehicles = fleet.vehicles.filter((v) => activeVehicleIds.has(v.id))
@@ -246,43 +269,97 @@ export default function DispatchPage() {
             <TabsContent value="trips" className="min-h-0 flex-1">
               <ScrollArea className="h-80 lg:h-full">
                 <div className="divide-y divide-border border-t border-border">
-                  {liveTrips.map((t) => {
-                    const vehicle = fleet.vehicleById(t.vehicleId)
-                    const driver = fleet.driverById(t.driverId)
-                    const meta = tripStatusMeta[t.status]
-                    const picked = t.stops.filter((s) => s.status === 'picked-up').length
-                    const isSelected = t.id === selectedTripId
+                  {liveEventGroups.map(({ event, trips }) => {
+                    const eventId = event?.id ?? trips[0].eventId
+                    const isExpanded = expandedEventId === eventId
+                    const groupProgress = Math.round(
+                      (trips.reduce((s, t) => s + t.progress, 0) / trips.length) * 100,
+                    )
                     return (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTripId(isSelected ? null : t.id)}
-                        className={cn(
-                          'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
-                          isSelected && 'bg-accent/60',
-                        )}
-                      >
-                        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <Bus className="size-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-medium">{vehicle?.name}</span>
-                            <StatusBadge label={meta.label} cls={meta.cls} />
+                      <div key={eventId}>
+                        <button
+                          onClick={() => setExpandedEventId(isExpanded ? null : eventId)}
+                          className={cn(
+                            'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
+                            isExpanded && 'bg-muted/40',
+                          )}
+                          aria-expanded={isExpanded}
+                        >
+                          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <CalendarDays className="size-4" />
                           </div>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {driver?.name ?? 'Unassigned'} · ETA {t.etaCenter}
-                          </p>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <Progress value={t.progress * 100} className="h-1 flex-1" />
-                            <span className="text-[11px] tabular-nums text-muted-foreground">
-                              {picked}/{t.stops.length}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-sm font-medium">
+                                {event?.name ?? 'Unassigned event'}
+                              </span>
+                              <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+                                {trips.length} trip{trips.length === 1 ? '' : 's'}
+                              </Badge>
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {event ? `${event.startTime} · ` : ''}
+                              {trips.length} vehicle{trips.length === 1 ? '' : 's'} en route
+                            </p>
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <Progress value={groupProgress} className="h-1 flex-1" />
+                              <span className="text-[11px] tabular-nums text-muted-foreground">
+                                {groupProgress}%
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                          <ChevronDown
+                            className={cn(
+                              'mt-1 size-4 shrink-0 text-muted-foreground transition-transform',
+                              isExpanded && 'rotate-180',
+                            )}
+                          />
+                        </button>
+
+                        {isExpanded ? (
+                          <div className="divide-y divide-border border-t border-border bg-muted/10">
+                            {trips.map((t) => {
+                              const vehicle = fleet.vehicleById(t.vehicleId)
+                              const driver = fleet.driverById(t.driverId)
+                              const meta = tripStatusMeta[t.status]
+                              const picked = t.stops.filter((s) => s.status === 'picked-up').length
+                              const isSelected = t.id === selectedTripId
+                              return (
+                                <button
+                                  key={t.id}
+                                  onClick={() => setSelectedTripId(isSelected ? null : t.id)}
+                                  className={cn(
+                                    'flex w-full items-start gap-3 py-3 pl-8 pr-4 text-left transition-colors hover:bg-muted/50',
+                                    isSelected && 'bg-accent/60',
+                                  )}
+                                >
+                                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Bus className="size-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="truncate text-sm font-medium">{vehicle?.name}</span>
+                                      <StatusBadge label={meta.label} cls={meta.cls} />
+                                    </div>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {driver?.name ?? 'Unassigned'} · ETA {t.etaCenter}
+                                    </p>
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                      <Progress value={t.progress * 100} className="h-1 flex-1" />
+                                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                                        {picked}/{t.stops.length}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     )
                   })}
-                  {liveTrips.length === 0 ? (
+                  {liveEventGroups.length === 0 ? (
                     <p className="px-4 py-8 text-center text-xs text-muted-foreground">
                       No active trips. Commit a plan from the Route Planner to dispatch vehicles.
                     </p>
