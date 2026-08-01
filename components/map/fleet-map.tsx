@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Layer, Marker, Source, type MapRef } from 'react-map-gl/mapbox'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAP_CENTER, MAP_ZOOM, bearingDegrees, pointAlongPath } from '@/lib/geo'
@@ -130,6 +130,61 @@ function LiveTraffic({
   return null
 }
 
+/**
+ * Fetches real road-following geometry for each active trip and reports it back
+ * so drawn routes follow streets instead of the synthetic straight/L-shaped
+ * grid path stored on the trip. Refetches only when a trip's ordered waypoints
+ * change (not on every simulation tick).
+ */
+function RouteSnapper({
+  trips,
+  onResult,
+}: {
+  trips: Trip[]
+  onResult: (tripId: string, path: LatLng[]) => void
+}) {
+  const signaturesRef = useRef<Map<string, string>>(new Map())
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      await Promise.all(
+        trips.map(async (t) => {
+          const path = t.routePath ?? []
+          const waypoints = [
+            path[0],
+            ...t.stops.map((s) => s.location),
+            path[path.length - 1],
+          ].filter(isValidLatLng)
+          if (waypoints.length < 2) return
+          const signature = waypoints
+            .map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`)
+            .join('|')
+          if (signaturesRef.current.get(t.id) === signature) return
+          signaturesRef.current.set(t.id, signature)
+          try {
+            const response = await fetch('/api/traffic/route', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ points: waypoints }),
+            })
+            const data = (await response.json()) as { routePath?: LatLng[] }
+            if (!cancelled && data.routePath && data.routePath.length >= 2) {
+              onResult(t.id, data.routePath)
+            }
+          } catch {
+            // Keep the synthetic path on failure — no-op.
+          }
+        }),
+      )
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [trips, onResult])
+  return null
+}
+
 export interface FleetMapProps {
   centers: Center[];
   vehicles: Vehicle[];
@@ -180,6 +235,25 @@ export default function FleetMap({
     zoom: Number.isFinite(MAP_ZOOM) ? MAP_ZOOM : 13,
   })
   const mapRef = useRef<MapRef | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [snappedRoutes, setSnappedRoutes] = useState<Record<string, LatLng[]>>({})
+  const handleSnappedRoute = useCallback((tripId: string, path: LatLng[]) => {
+    setSnappedRoutes((prev) => ({ ...prev, [tripId]: path }))
+  }, [])
+
+  // Keep Mapbox sized to its container. Without this, a map that mounts while
+  // hidden (e.g. inside an inactive tab) initializes at 0×0 and only renders a
+  // sliver when the tab is later shown.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.resize()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const mapboxToken = "pk.eyJ1Ijoic2l2YS1kaGFybWFyYWoiLCJhIjoiY21zNXR1dmhlMDBoMjM1cTRmb25veHRtdCJ9.W_F1SaLw8-6t3tiYNZmzEw"
   const mapStyle = `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${encodeURIComponent(mapboxToken)}`
 
@@ -260,7 +334,10 @@ export default function FleetMap({
   )
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30">
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30"
+    >
       <MapboxErrorBoundary fallback={fallbackContent}>
         <Map
           ref={mapRef}
@@ -281,10 +358,12 @@ export default function FleetMap({
           />
         ) : null}
 
+        <RouteSnapper trips={activeTrips} onResult={handleSnappedRoute} />
+
         {activeTrips.map((t) => {
           const highlighted = t.id === highlightTripId
           const color = tripStatusMeta[t.status].map
-          const coordinates = toLineCoordinates(t.routePath)
+          const coordinates = toLineCoordinates(snappedRoutes[t.id] ?? t.routePath)
           if (coordinates.length < 2) return null
           return (
             <Fragment key={`route-${t.id}`}>

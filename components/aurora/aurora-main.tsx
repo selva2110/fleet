@@ -78,13 +78,13 @@ export function AuroraMain() {
   )
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex h-full flex-col gap-4">
       {/* Live Operations Map */}
-      <GlassCard className="p-0">
+      <GlassCard className="flex h-full flex-col p-0">
         <PanelTitle icon={Radio} accent="cyan">
           Live Operations Map
         </PanelTitle>
-        <div className="relative mx-4 mb-4 mt-3 h-87.5 overflow-hidden rounded-xl ring-1 ring-white/10">
+        <div className="relative mx-4 mb-4 mt-3 min-h-87.5 flex-1 overflow-hidden rounded-xl ring-1 ring-white/10">
           {!fullscreen ? mapInner : (
             <div className="flex h-full items-center justify-center bg-slate-900 text-sm text-slate-400">
               <span className="flex items-center gap-2"><Maximize2 className="size-4" /> Map opened in fullscreen</span>

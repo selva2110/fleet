@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Cell,
@@ -336,16 +337,41 @@ function AttendanceAnalytics() {
 function PaceInsights() {
   const fleet = useFleet()
   const data = useAuroraData()
-  const eligible = fleet.participants.filter((p) => p.eligible).length
-  const registered = data.totals.participants
-  const scheduled = data.scheduled
+  // "all" = program-wide aggregate; otherwise scope every metric to one event.
+  const [eventId, setEventId] = useState<string>('all')
+  const selectedEvent = eventId === 'all' ? null : fleet.eventById(eventId)
+
+  let registered: number
+  let eligible: number
+  let scheduled: number
+  let transportRequests: number
+
+  if (selectedEvent) {
+    const roster = selectedEvent.participantIds
+      .map((id) => fleet.participantById(id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    registered = roster.length
+    eligible = roster.filter((p) => p.eligible).length
+    scheduled = roster.filter((p) =>
+      ['scheduled', 'driver-assigned', 'vehicle-assigned'].includes(p.status),
+    ).length
+    transportRequests = fleet.smsNotifications.filter(
+      (n) => n.eventId === selectedEvent.id && n.response === 'attending_transport',
+    ).length
+  } else {
+    registered = data.totals.participants
+    eligible = fleet.participants.filter((p) => p.eligible).length
+    scheduled = data.scheduled
+    transportRequests = data.attendingTransport
+  }
+
   const enrolled = registered > 0 ? Math.round((scheduled / registered) * 100) : 0
 
   const funnel = [
     { label: 'Registered', value: registered, color: AURORA_ACCENTS.violet },
     { label: 'Eligible', value: eligible, color: AURORA_ACCENTS.blue },
     { label: 'Scheduled', value: scheduled, color: AURORA_ACCENTS.cyan },
-    { label: 'Transport requests', value: data.attendingTransport, color: AURORA_ACCENTS.emerald },
+    { label: 'Transport requests', value: transportRequests, color: AURORA_ACCENTS.emerald },
   ]
   const max = Math.max(1, ...funnel.map((f) => f.value))
 
@@ -355,6 +381,29 @@ function PaceInsights() {
         PACE Program Registration
       </PanelTitle>
       <div className="mt-3 px-5">
+        <label className="sr-only" htmlFor="pace-event-select">
+          Choose program
+        </label>
+        <select
+          id="pace-event-select"
+          value={eventId}
+          onChange={(e) => setEventId(e.target.value)}
+          className="mb-3 w-full rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white outline-none transition-colors hover:bg-white/[0.1] focus:ring-2 focus:ring-violet-400/40"
+        >
+          <option value="all" className="bg-slate-900 text-white">
+            All programs
+          </option>
+          {fleet.events.map((ev) => (
+            <option key={ev.id} value={ev.id} className="bg-slate-900 text-white">
+              {ev.name}
+            </option>
+          ))}
+        </select>
+        {selectedEvent ? (
+          <p className="mb-3 text-[11px] text-slate-400">
+            {selectedEvent.type} · {selectedEvent.date}
+          </p>
+        ) : null}
         <div className="mb-3 flex items-baseline gap-2">
           <span className="text-2xl font-semibold tabular-nums text-white">{enrolled}%</span>
           <span className="text-xs text-slate-400">scheduled-to-registered rate</span>

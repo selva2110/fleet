@@ -80,11 +80,11 @@ export default function DashboardPage() {
         </FadeIn>
 
         {/* 70 / 30 main layout */}
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-          <FadeIn delay={0.1}>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-stretch">
+          <FadeIn delay={0.1} className="h-full">
             <AuroraMain />
           </FadeIn>
-          <FadeIn delay={0.18}>
+          <FadeIn delay={0.18} className="h-full">
             <AuroraWidgets />
           </FadeIn>
         </div>

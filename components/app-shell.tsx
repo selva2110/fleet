@@ -52,9 +52,13 @@ const NAV: NavSection[] = [
   {
     title: 'Scheduling',
     items: [
-      { href: '/participants', label: 'Members', icon: Users },
+      {
+        href: '/participants',
+        label: 'Members',
+        icon: Users,
+        children: [{ href: '/responses', label: 'Member Responses', icon: MessageSquare }],
+      },
       { href: '/events', label: 'Events', icon: CalendarDays },
-      { href: '/responses', label: 'Member Responses', icon: MessageSquare },
       { href: '/trips', label: 'Trips', icon: Route },
     ],
   },
@@ -95,8 +99,8 @@ function TopNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
   const linkCls = cn(
     'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
     active
-      ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   )
 
   if (!item.children?.length) {
@@ -204,15 +208,29 @@ function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function Brand({ className }: { className?: string }) {
+function Brand({ className, onDark }: { className?: string; onDark?: boolean }) {
   return (
     <Link href="/" className={cn('flex items-center gap-2.5', className)}>
-      <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+      <div
+        className={cn(
+          'flex size-9 items-center justify-center rounded-lg',
+          onDark ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'bg-primary text-primary-foreground',
+        )}
+      >
         <Bus className="size-5" />
       </div>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-foreground">Tranzio</p>
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">NEMT Operations</p>
+        <p className={cn('text-sm font-semibold', onDark ? 'text-sidebar-foreground' : 'text-foreground')}>
+          Tranzio
+        </p>
+        <p
+          className={cn(
+            'text-[11px] uppercase tracking-wider',
+            onDark ? 'text-sidebar-foreground/60' : 'text-muted-foreground',
+          )}
+        >
+          NEMT Operations
+        </p>
       </div>
     </Link>
   )
@@ -227,7 +245,7 @@ function LiveClock() {
   }, [])
   if (!now) return null
   return (
-    <span className="hidden font-mono text-sm tabular-nums text-muted-foreground sm:inline">
+    <span className="hidden font-mono text-sm tabular-nums text-sidebar-foreground/70 sm:inline">
       {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
     </span>
   )
@@ -239,13 +257,13 @@ function ProfileChip() {
     .slice(0, 2)
     .join('')
   return (
-    <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1 sm:flex">
-      <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold uppercase text-primary">
+    <div className="hidden items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/50 px-2 py-1 sm:flex">
+      <span className="flex size-7 items-center justify-center rounded-full bg-sidebar-primary text-[11px] font-semibold uppercase text-sidebar-primary-foreground">
         {initials}
       </span>
       <div className="leading-tight">
-        <p className="text-[13px] font-medium text-foreground">{DISPATCHER_NAME}</p>
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Dispatcher</p>
+        <p className="text-[13px] font-medium text-sidebar-foreground">{DISPATCHER_NAME}</p>
+        <p className="text-[10px] uppercase tracking-wide text-sidebar-foreground/60">Dispatcher</p>
       </div>
     </div>
   )
@@ -434,7 +452,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ReminderMonitorRoot />
 
       {/* Top navigation */}
-      <header className="shrink-0 border-b border-border bg-card">
+      <header className="shrink-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm">
         <div className="flex h-14 items-center gap-3 px-4">
           {/* Mobile menu */}
           <Sheet open={open} onOpenChange={setOpen}>
@@ -454,7 +472,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
 
-          <Brand className="shrink-0" />
+          <Brand className="shrink-0" onDark />
 
           {/* Desktop horizontal nav */}
           <div className="ml-4 hidden min-w-0 flex-1 overflow-x-auto xl:block scrollbar-none">
