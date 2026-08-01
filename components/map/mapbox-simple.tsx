@@ -31,8 +31,8 @@ export function MapboxSimpleMap({
   emptyMessage = 'Enter an address to preview it on the map.',
   placeholder = 'Loading map…',
 }: MapboxSimpleMapProps) {
-  const mapboxToken = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.MAPBOX_TOKEN ?? '').trim()
-  const mapStyle = 'mapbox://styles/mapbox/streets-v12'
+  const mapboxToken = "pk.eyJ1Ijoic2l2YS1kaGFybWFyYWoiLCJhIjoiY21zNXR1dmhlMDBoMjM1cTRmb25veHRtdCJ9.W_F1SaLw8-6t3tiYNZmzEw"
+  const mapStyle = `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${encodeURIComponent(mapboxToken)}`
   const initialViewState = useMemo(() => ({
     longitude: isValidLocation(location) ? location.lng : MAP_CENTER.lng,
     latitude: isValidLocation(location) ? location.lat : MAP_CENTER.lat,
@@ -49,14 +49,6 @@ export function MapboxSimpleMap({
       })
     }
   }, [location])
-
-  if (!mapboxToken) {
-    return (
-      <div className={`flex items-center justify-center rounded-md border border-border bg-muted px-4 text-sm text-muted-foreground ${className}`}>
-        Mapbox is not configured yet. Set NEXT_PUBLIC_MAPBOX_TOKEN to display the map.
-      </div>
-    )
-  }
 
   if (!isValidLocation(location)) {
     return (
@@ -78,7 +70,7 @@ export function MapboxSimpleMap({
         <Map
           {...viewState}
           onMove={(event) => setViewState(event.viewState)}
-          mapboxAccessToken={mapboxToken}
+          mapboxAccessToken={mapboxToken || undefined}
           mapStyle={mapStyle}
           style={{ width: '100%', height: '100%' }}
           scrollZoom

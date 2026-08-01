@@ -51,10 +51,10 @@ export function MealDeliveryBoard() {
         <Kpi icon={MapPin} label="Stops remaining" value={String(stopsRemaining)} />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr]">
         {/* Run list */}
         <div className="flex min-h-0 flex-col border-b border-border bg-card lg:border-b-0 lg:border-r">
-          <ScrollArea className="h-[320px] lg:h-full">
+          <ScrollArea className="h-80 lg:h-full">
             <div className="divide-y divide-border border-t border-border">
               {runs.map((m) => {
                 const meta = mealStatusMeta[m.status]
@@ -103,7 +103,7 @@ export function MealDeliveryBoard() {
         </div>
 
         {/* Map */}
-        <div className="relative min-h-[400px] flex-1">
+        <div className="relative min-h-100 flex-1">
           <FleetMap
             centers={fleet.centers}
             vehicles={mapVehicles}
@@ -113,7 +113,7 @@ export function MealDeliveryBoard() {
             onSelectMeal={(id) => setSelectedId(id)}
           />
 
-          <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-card/95 px-3 py-2 text-[11px] shadow-sm backdrop-blur">
+          <div className="pointer-events-none absolute bottom-3 left-3 z-500 rounded-lg border border-border bg-card/95 px-3 py-2 text-[11px] shadow-sm backdrop-blur">
             <p className="mb-1 font-semibold text-foreground">Legend</p>
             <div className="flex flex-col gap-1 text-muted-foreground">
               <LegendDot color="#2563eb" label="En route" />
@@ -145,7 +145,7 @@ function MealDetail({ runId, onClose }: { runId: string; onClose: () => void }) 
   const meta = mealStatusMeta[run.status]
 
   return (
-    <div className="absolute right-0 top-0 z-[600] flex h-full w-full max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-xl">
+    <div className="absolute right-0 top-0 z-600 flex h-full w-full max-w-sm flex-col overflow-y-auto border-l border-border bg-card shadow-xl">
       <div className="flex items-start justify-between border-b border-border p-4">
         <div>
           <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ function MealDetail({ runId, onClose }: { runId: string; onClose: () => void }) 
           </p>
           <ol className="relative space-y-4 border-l border-dashed border-border pl-5">
             <li className="relative">
-              <span className="absolute -left-[27px] flex size-4 items-center justify-center rounded-full border-2 border-card bg-foreground">
+              <span className="absolute -left-6.75 flex size-4 items-center justify-center rounded-full border-2 border-card bg-foreground">
                 <UtensilsCrossed className="size-2.5 text-background" />
               </span>
               <p className="text-sm font-medium">{center?.name}</p>
@@ -198,7 +198,7 @@ function MealDetail({ runId, onClose }: { runId: string; onClose: () => void }) 
                 <li key={stop.participantId} className="relative">
                   <span
                     className={cn(
-                      'absolute -left-[27px] flex size-4 items-center justify-center rounded-full border-2 border-card',
+                      'absolute -left-6.75 flex size-4 items-center justify-center rounded-full border-2 border-card',
                       done ? 'bg-success' : approaching ? 'bg-warning' : 'bg-muted-foreground/40',
                     )}
                   />

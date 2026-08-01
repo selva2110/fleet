@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ available: false } satisfies TrafficResult)
   }
 
-  const token = (process.env.MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '').trim()
+  const token = "pk.eyJ1Ijoic2l2YS1kaGFybWFyYWoiLCJhIjoiY21zNXR1dmhlMDBoMjM1cTRmb29veHRtdCJ9.W_F1SaLw8-6t3tiYNZmzEw"
   const coordinates = points.map((p) => `${p.lng},${p.lat}`).join(';')
 
   // Mapbox Directions caps coordinates per request (25 for driving-traffic).

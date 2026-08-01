@@ -11,7 +11,7 @@ export const ROLES: { id: Role; label: string; short: string }[] = [
   { id: 'dispatcher', label: 'Dispatcher', short: 'Dispatcher' }]
 
 // The signed-in dispatcher operating the console.
-export const DISPATCHER_NAME = 'Siva Dharmaraj'
+export const DISPATCHER_NAME = 'Arul Prakash'
 
 /**
  * Human-friendly display name for an activity/event actor role. The dispatcher
@@ -24,7 +24,7 @@ export function actorDisplayName(role?: string): string {
     case 'driver':
       return 'Driver'
     case 'participant':
-      return 'Participant'
+      return 'Member'
     case 'operations':
       return 'Operations'
     case 'admin':

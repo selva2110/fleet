@@ -156,11 +156,11 @@ export default function ParticipantsPage() {
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
-        title="Participants"
+        title="Members"
         description={`${fleet.participants.length} registered · manage eligibility and transport needs.`}
         actions={
           <Button onClick={openAdd} size="sm">
-            <Plus className="size-4" /> Add participant
+            <Plus className="size-4" /> Add member
           </Button>
         }
       />
@@ -203,7 +203,7 @@ export default function ParticipantsPage() {
         />
 
         {filtered.length === 0 ? (
-          <EmptyState message="No participants match your search and filters." />
+          <EmptyState message="No members match your search and filters." />
         ) : dv.view === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((p) => {

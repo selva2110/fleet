@@ -53,7 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const d = document.documentElement
     d.classList.remove(...THEME_IDS)
     d.classList.add(t)
-    d.style.colorScheme = t === 'dark' ? 'dark' : 'light'
+    d.style.colorScheme = 'dark'
     try {
       localStorage.setItem(STORAGE_KEY, t)
     } catch {

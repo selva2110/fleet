@@ -104,7 +104,9 @@ function LiveTraffic({
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ points }),
             })
+            console.log('Traffic API response:', response)
             const result = (await response.json()) as TrafficResult
+            console.log(result)
             if (!cancelled) {
               onResult(index, result)
             }
@@ -178,8 +180,8 @@ export default function FleetMap({
     zoom: Number.isFinite(MAP_ZOOM) ? MAP_ZOOM : 13,
   })
   const mapRef = useRef<MapRef | null>(null)
-  const mapStyle = 'mapbox://styles/mapbox/streets-v12'
-  const mapboxToken = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.MAPBOX_TOKEN ?? '').trim()
+  const mapboxToken = "pk.eyJ1Ijoic2l2YS1kaGFybWFyYWoiLCJhIjoiY21zNXR1dmhlMDBoMjM1cTRmb25veHRtdCJ9.W_F1SaLw8-6t3tiYNZmzEw"
+  const mapStyle = `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${encodeURIComponent(mapboxToken)}`
 
   const selectedRoute = recommendedRoute?.find((route) => route.routeId === recommendedRouteId)
   const liveRoute = useMemo(() => {
@@ -259,14 +261,12 @@ export default function FleetMap({
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30">
-      {!mapboxToken ? fallbackContent : null}
-
       <MapboxErrorBoundary fallback={fallbackContent}>
         <Map
           ref={mapRef}
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
-          mapboxAccessToken={mapboxToken}
+          mapboxAccessToken={mapboxToken || undefined}
           mapStyle={mapStyle}
           style={{ width: '100%', height: '100%' }}
         >

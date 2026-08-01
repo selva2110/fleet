@@ -5,17 +5,34 @@
 
 import type { Driver } from './types'
 
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return (h || 0) * 60 + (m || 0)
+function timeToMinutes(t: string | null | undefined): number {
+  if (typeof t !== 'string') return 0
+
+  const [hStr, mStr] = t.trim().split(':')
+  const h = Number(hStr)
+  const m = Number(mStr)
+
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0
+  return h * 60 + m
 }
 
 // Day-of-week (0=Sun..6=Sat) for a "YYYY-MM-DD" date string, parsed as local
 // calendar date rather than UTC so it lines up with Date#getDay() everywhere
 // else shift days are compared.
-function dayOfWeekFromDate(dateStr: string): number {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, (m || 1) - 1, d || 1).getDay()
+function dayOfWeekFromDate(dateStr: string | null | undefined): number {
+  if (typeof dateStr !== 'string') return 0
+
+  const normalized = dateStr.trim().split(/[T ]/)[0]
+  const [yStr, mStr, dStr] = normalized.split('-')
+  const y = Number(yStr)
+  const m = Number(mStr)
+  const d = Number(dStr)
+
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return 0
+
+  const safeMonth = Math.min(Math.max(m, 1), 12)
+  const safeDay = Math.min(Math.max(d, 1), 31)
+  return new Date(y, safeMonth - 1, safeDay).getDay()
 }
 
 // Is this time-of-day (minutes since midnight) within a driver's shift?

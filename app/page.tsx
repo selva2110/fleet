@@ -8,6 +8,7 @@ import { AuroraAnalytics } from '@/components/aurora/aurora-analytics'
 import { AuroraCalendars } from '@/components/aurora/aurora-calendars'
 import { FadeIn } from '@/components/aurora/aurora-ui'
 import { useAuroraData } from '@/components/aurora/use-aurora-data'
+import { useFleet } from '@/lib/store'
 
 function useGreeting() {
   const [state, setState] = useState<{ greeting: string; time: string; date: string } | null>(null)
@@ -32,6 +33,8 @@ function useGreeting() {
 export default function DashboardPage() {
   const greeting = useGreeting()
   const data = useAuroraData()
+  const fleet = useFleet()
+  const dashboardLocation = fleet.centers[0]?.location ?? { lat: 40.7359, lng: -73.9911 }
 
   return (
     <div className="relative min-h-full bg-slate-950 text-slate-100">
@@ -86,8 +89,10 @@ export default function DashboardPage() {
           </FadeIn>
         </div>
 
+        {/* Operations map removed — dashboard focuses on KPIs and analytics */}
+
         {/* Analytics — real-data charts with axes (merged from Analytics page) */}
-        <FadeIn delay={0.12} className="mt-4">
+        <FadeIn delay={0.14} className="mt-4">
           <div className="mb-3 flex items-center gap-2">
             <h2 className="text-lg font-semibold tracking-tight text-white">Analytics</h2>
             <span className="text-xs text-slate-400">Operational trends from live data</span>

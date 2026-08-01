@@ -140,6 +140,10 @@ export default function TripsPage() {
     }
   }
 
+  function onNavigate(){
+    window.location.href = "/command-center";
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
@@ -205,7 +209,7 @@ export default function TripsPage() {
               const meta = tripStatusMeta[t.status]
               const picked = t.stops.filter((s) => s.status === 'picked-up').length
               return (
-                <Card key={t.id} className="flex flex-col gap-3 p-4">
+                <Card key={t.id} className="flex flex-col gap-3 p-4" onClick={onNavigate}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-mono text-xs text-muted-foreground">{t.tripNumber}</p>
@@ -248,13 +252,9 @@ export default function TripsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Trip</TableHead>
-                    <TableHead>Event</TableHead>
-                    <TableHead>Vehicle / Driver</TableHead>
-                    <TableHead>Riders</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>ETA</TableHead>
-                    <TableHead>Status</TableHead>
+                    {["Trip","Event","Vehicle / Driver","Riders","Progress","ETA","Status"].map((item,idx)=>(
+                      <TableHead key={idx}>{item}</TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -265,7 +265,7 @@ export default function TripsPage() {
                     const meta = tripStatusMeta[t.status]
                     const picked = t.stops.filter((s) => s.status === 'picked-up').length
                     return (
-                      <TableRow key={t.id}>
+                      <TableRow key={t.id} onClick={onNavigate}>
                         <TableCell className="font-mono text-xs">{t.tripNumber}</TableCell>
                         <TableCell className="text-sm">{event?.name}</TableCell>
                         <TableCell>

@@ -52,14 +52,10 @@ const NAV: NavSection[] = [
   {
     title: 'Scheduling',
     items: [
-      {
-        href: '/events',
-        label: 'Events',
-        icon: CalendarDays,
-        children: [{ href: '/trips', label: 'Trips', icon: Route }],
-      },
-      { href: '/responses', label: 'Participants Response', icon: MessageSquare },
-      { href: '/participants', label: 'Participants', icon: Users },
+      { href: '/participants', label: 'Members', icon: Users },
+      { href: '/events', label: 'Events', icon: CalendarDays },
+      { href: '/responses', label: 'Member Responses', icon: MessageSquare },
+      { href: '/trips', label: 'Trips', icon: Route },
     ],
   },
   {
@@ -215,7 +211,7 @@ function Brand({ className }: { className?: string }) {
         <Bus className="size-5" />
       </div>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-foreground">CareMove</p>
+        <p className="text-sm font-semibold text-foreground">Tranzio</p>
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">NEMT Operations</p>
       </div>
     </Link>
@@ -360,7 +356,10 @@ export function NotificationCenter() {
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md">
+        <SheetContent
+          side="right"
+          className="top-14 h-[calc(100dvh-3.5rem)] w-full max-w-full gap-0 border-l border-border p-0 sm:max-w-full"
+        >
           <div className="border-b border-border p-4">
             <SheetTitle>Notifications</SheetTitle>
             <SheetDescription className="mt-1">
@@ -405,7 +404,7 @@ export function NotificationCenter() {
         </SheetContent>
       </Sheet>
 
-      <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4 md:items-end md:px-6">
+      <div className="pointer-events-none fixed inset-x-0 top-4 z-60 flex flex-col items-center gap-2 px-4 md:items-end md:px-6">
         {toasts.map((notification) => (
           <div
             key={notification.id}
@@ -472,7 +471,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <DeadlinePrompt />
+      {/* <DeadlinePrompt /> */}
       <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   )

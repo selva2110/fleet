@@ -25,12 +25,13 @@ const LAYER_ID = 'vehicles-3d'
  * travel rather than flat markers.
  */
 export function Vehicles3DLayer({ vehicles }: { vehicles: Vehicle3D[] }) {
-  const { current: mapContainer } = useMap()
+  const mapCollection = useMap()
+  const mapRef = mapCollection.current
   const dataRef = useRef<Vehicle3D[]>(vehicles)
   dataRef.current = vehicles
 
   useEffect(() => {
-    const map = mapContainer?.getMap()
+    const map = mapRef?.getMap?.()
     if (!map) return
     const mbMap = map
 
@@ -127,12 +128,19 @@ export function Vehicles3DLayer({ vehicles }: { vehicles: Vehicle3D[] }) {
     }
 
     return () => {
-      mbMap.off('style.load', addLayer)
-      if (mbMap.getLayer(LAYER_ID)) {
-        mbMap.removeLayer(LAYER_ID)
+      mbMap.off?.("style.load", addLayer)
+      try {
+        if (!mbMap.isStyleLoaded()) {
+          return
+        }
+        if (mbMap.getLayer(LAYER_ID)) {
+          mbMap.removeLayer(LAYER_ID)
+        }
+      } catch (err) {
+        console.warn("[vehicles-3d] cleanup skipped:", err)
       }
     }
-  }, [mapContainer])
+      }, [mapRef])
 
   return null
 }

@@ -40,7 +40,7 @@ export function AuroraMain() {
         onSelectTrip={(id) => setSelectedTripId(id)}
       />
       {/* top overlay controls */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between p-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-500 flex items-start justify-between p-3">
         <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-xl">
           <span className="relative flex size-2">
             {fleet.simRunning ? (
@@ -65,7 +65,7 @@ export function AuroraMain() {
         </div>
       </div>
       {/* legend */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-[11px] text-white backdrop-blur-xl">
+      <div className="pointer-events-none absolute bottom-3 left-3 z-500 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-[11px] text-white backdrop-blur-xl">
         <p className="mb-1 font-semibold">Live legend</p>
         <div className="flex flex-col gap-1 text-slate-300">
           <Legend color="#22d3ee" label="En route / onboard" />
@@ -84,7 +84,7 @@ export function AuroraMain() {
         <PanelTitle icon={Radio} accent="cyan">
           Live Operations Map
         </PanelTitle>
-        <div className="relative mx-4 mb-4 mt-3 h-[560px] overflow-hidden rounded-xl ring-1 ring-white/10">
+        <div className="relative mx-4 mb-4 mt-3 h-87.5 overflow-hidden rounded-xl ring-1 ring-white/10">
           {!fullscreen ? mapInner : (
             <div className="flex h-full items-center justify-center bg-slate-900 text-sm text-slate-400">
               <span className="flex items-center gap-2"><Maximize2 className="size-4" /> Map opened in fullscreen</span>
@@ -100,7 +100,7 @@ export function AuroraMain() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] bg-slate-950/95 p-3 backdrop-blur-sm sm:p-6"
+            className="fixed inset-0 z-999 bg-slate-950/95 p-3 backdrop-blur-sm sm:p-6"
           >
             <div className="relative h-full w-full overflow-hidden rounded-2xl ring-1 ring-white/15">
               {mapInner}

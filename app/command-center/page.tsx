@@ -7,14 +7,12 @@ import {
   CalendarPlus,
   CircleDot,
   Clock,
-  Gauge,
   MapPin,
   Navigation,
   Pause,
   Play,
   Radio,
   Send,
-  TrendingUp,
   UserRound,
   Users,
   UtensilsCrossed,
@@ -22,7 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { FleetMap } from '@/components/map/fleet-map-dynamic'
-import { PageHeader, StatusBadge } from '@/components/common'
+import { PageHeader, StatusBadge, StatCard } from '@/components/common'
 import { EventFeed } from '@/components/event-feed'
 import { MealDeliveryBoard } from '@/components/meals/meal-delivery-board'
 import { Button } from '@/components/ui/button'
@@ -68,6 +66,7 @@ export default function DispatchPage() {
   const activeVehicleIds = new Set(liveTrips.map((t) => t.vehicleId))
   const mapVehicles = fleet.vehicles.filter((v) => activeVehicleIds.has(v.id))
   const mealRunCount = fleet.mealDeliveries.filter((m) => m.status !== 'cancelled').length
+  const commandCenterLocation = fleet.centers[0]?.location ?? { lat: 40.7359, lng: -73.9911 }
 
   // KPI calculations
   const onboardCount = liveTrips.filter((t) => t.status === 'onboard').length
@@ -162,17 +161,73 @@ export default function DispatchPage() {
         </TabsList>
 
         <TabsContent value="dispatch" className="mt-3 flex min-h-0 flex-1 flex-col">
-          {/* KPI strip */}
-          <div className="grid grid-cols-2 gap-px border-y border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
-            <Kpi icon={Bus} label="Active trips" value={String(liveTrips.length)} />
-            <Kpi icon={Users} label="Onboard" value={String(onboardCount)} tone="primary" />
-            <Kpi icon={MapPin} label="Pickups left" value={String(pickupsRemaining)} tone="default" />
-            <Kpi icon={TrendingUp} label="Avg progress" value={`${avgProgress}%`} />
-            <Kpi icon={Gauge} label="Vehicles in use" value={`${utilization}%`} />
-            <Kpi icon={Clock} label="Next arrival" value={nextArrival ?? '—'} />
-          </div>
+            {/* Prominent KPI strip using StatCard for stronger hierarchy */}
+            <div className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard icon={Bus} label="Active Trips" value={liveTrips.length} tone={liveTrips.length > 0 ? 'primary' : 'default'} />
+              <StatCard icon={Users} label="Onboard" value={onboardCount} tone={onboardCount > 0 ? 'primary' : 'default'} />
+              <StatCard icon={MapPin} label="Remaining Pickups" value={pickupsRemaining} hint={`${pickedStops}/${totalStops} completed`} />
+              <StatCard icon={Clock} label="Next Arrival" value={nextArrival ?? '—'} />
+            </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
+            {/* Operational insights row */}
+            <div className="mt-4 grid grid-cols-1 gap-4 px-4 sm:grid-cols-1 lg:grid-cols-3">
+              <div className="col-span-1 lg:col-span-1">
+                <div className="overflow-hidden rounded-xl border border-border bg-card/90 shadow-sm p-4">
+                  <h3 className="text-sm font-semibold text-foreground">Route Progress</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Overview of active routes</p>
+                  <div className="mt-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="mb-2 text-sm font-medium">Average progress</div>
+                        <div className="w-full rounded-full bg-muted h-2">
+                          <div className="h-2 rounded-full bg-primary" style={{ width: `${avgProgress}%` }} />
+                        </div>
+                      </div>
+                      <div className="w-20 text-right text-2xl font-semibold">{avgProgress}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 lg:col-span-1">
+                <div className="overflow-hidden rounded-xl border border-border bg-card/90 shadow-sm p-4">
+                  <h3 className="text-sm font-semibold text-foreground">Driver Status</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">At-a-glance driver availability</p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">{ fleet.drivers.filter((driver) => fleet.events.some((event) => isDriverOnShift( driver, event.date, event.startTime ))).length }</div>
+                      <div className="text-xs text-muted-foreground">On shift</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">{fleet.drivers.filter((d) => d.status === 'available').length}</div>
+                      <div className="text-xs text-muted-foreground">Available</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">{fleet.drivers.length - fleet.drivers.filter((d) => d.status === 'available').length}</div>
+                      <div className="text-xs text-muted-foreground">Total</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 lg:col-span-1">
+                <div className="overflow-hidden rounded-xl border border-border bg-card/90 shadow-sm p-4">
+                  <h3 className="text-sm font-semibold text-foreground">Vehicle Utilization</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Active vehicles vs fleet size</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="w-full mr-4">
+                      <div className="w-full rounded-full bg-muted h-2">
+                        <div className="h-2 rounded-full bg-primary" style={{ width: `${utilization}%` }} />
+                      </div>
+                      <div className="mt-2 text-sm font-medium">{activeVehicleIds.size} active · {fleet.vehicles.length} total</div>
+                    </div>
+                    <div className="text-2xl font-semibold">{utilization}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr]">
             {/* Side panel with tabs */}
         <div className="flex min-h-0 flex-col border-b border-border bg-card lg:border-b-0 lg:border-r">
           <Tabs defaultValue="trips" className="flex min-h-0 flex-1 flex-col gap-0">
@@ -189,7 +244,7 @@ export default function DispatchPage() {
             </TabsList>
 
             <TabsContent value="trips" className="min-h-0 flex-1">
-              <ScrollArea className="h-[320px] lg:h-full">
+              <ScrollArea className="h-80 lg:h-full">
                 <div className="divide-y divide-border border-t border-border">
                   {liveTrips.map((t) => {
                     const vehicle = fleet.vehicleById(t.vehicleId)
@@ -237,7 +292,7 @@ export default function DispatchPage() {
             </TabsContent>
 
             <TabsContent value="feed" className="min-h-0 flex-1">
-              <ScrollArea className="h-[320px] lg:h-full">
+              <ScrollArea className="h-80 lg:h-full">
                 <div className="border-t border-border">
                   <EventFeed events={trackingFeed} dense emptyLabel="Waiting for live events…" />
                 </div>
@@ -247,7 +302,7 @@ export default function DispatchPage() {
         </div>
 
         {/* Map */}
-        <div className="relative min-h-[400px] flex-1">
+        <div className="relative min-h-100 flex-1">
           <FleetMap
             centers={fleet.centers}
             vehicles={mapVehicles}
@@ -258,7 +313,7 @@ export default function DispatchPage() {
           />
 
           {/* Legend */}
-          <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-border bg-card/95 px-3 py-2 text-[11px] shadow-sm backdrop-blur">
+          <div className="pointer-events-none absolute bottom-3 left-3 z-500 rounded-lg border border-border bg-card/95 px-3 py-2 text-[11px] shadow-sm backdrop-blur">
             <p className="mb-1 font-semibold text-foreground">Legend</p>
             <div className="flex flex-col gap-1 text-muted-foreground">
               <LegendDot color="#2563eb" label="En route / onboard" />
@@ -470,7 +525,7 @@ function TripDetail({ tripId, onClose }: { tripId: string; onClose: () => void }
                 <li key={stop.participantId} className="relative">
                   <span
                     className={cn(
-                      'absolute -left-[27px] flex size-4 items-center justify-center rounded-full border-2 border-card',
+                      'absolute -left-6.75 flex size-4 items-center justify-center rounded-full border-2 border-card',
                       done ? 'bg-success' : approaching ? 'bg-warning' : 'bg-muted-foreground/40',
                     )}
                   >
@@ -498,7 +553,7 @@ function TripDetail({ tripId, onClose }: { tripId: string; onClose: () => void }
               )
             })}
             <li className="relative">
-              <span className="absolute -left-[27px] flex size-4 items-center justify-center rounded-full border-2 border-card bg-foreground">
+              <span className="absolute -left-6.75 flex size-4 items-center justify-center rounded-full border-2 border-card bg-foreground">
                 <MapPin className="size-2.5 text-background" />
               </span>
               <p className="text-sm font-medium">{center?.name}</p>

@@ -102,7 +102,13 @@ export function AuroraCalendars() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, fleet.events, fleet.drivers, fleet.vehicles, fleet.mealDeliveries])
 
-  const rangeLabel = `${days[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${days[4].toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+  const rangeLabel = `${days[0].toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+  })} – ${days[4].toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+  })}`;
   const weekEventCount = days.reduce((n, d) => n + (perDay[ymd(d)]?.events.length ?? 0), 0)
 
   const openDay = openKey ? perDay[openKey] : null
@@ -128,7 +134,7 @@ export function AuroraCalendars() {
             >
               <ChevronLeft className="size-4" />
             </button>
-            <span className="min-w-[8rem] rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-center text-xs font-medium text-slate-200">
+            <span className="min-w-32 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-center text-xs font-medium text-slate-200">
               {rangeLabel}
             </span>
             <button
@@ -173,7 +179,7 @@ export function AuroraCalendars() {
                 'flex min-h-28 flex-col rounded-xl border p-2.5 text-left transition-colors',
                 isToday
                   ? 'border-cyan-400/50 bg-cyan-400/10'
-                  : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06]',
+                  : 'border-white/10 bg-white/2 hover:bg-white/6',
               )}
             >
               <div className="flex items-center justify-between">

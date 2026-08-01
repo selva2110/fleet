@@ -39,7 +39,7 @@ export function AuroraWidgets() {
   return (
     <div className="flex flex-col gap-4">
       <AlertsCenter />
-      <AttendanceAnalytics />
+      {/* <AttendanceAnalytics /> */}
       <PaceInsights />
     </div>
   )
@@ -72,50 +72,66 @@ export function TodaysOverview() {
       <PanelTitle icon={PieIcon} accent="cyan">
         Today&apos;s Overview
       </PanelTitle>
-      <div className="mt-2 flex items-center gap-4 px-5">
-        <div className="relative size-32 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={total > 0 ? slices : [{ name: 'None', value: 1, color: '#334155' }]}
-                dataKey="value"
-                innerRadius={42}
-                outerRadius={60}
-                paddingAngle={total > 0 ? 3 : 0}
-                stroke="none"
-                startAngle={90}
-                endAngle={-270}
-              >
-                {(total > 0 ? slices : [{ color: '#334155' }]).map((s, i) => (
-                  <Cell key={i} fill={s.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-semibold tabular-nums text-white">{total}</span>
-            <span className="text-[10px] uppercase tracking-wide text-slate-400">trips</span>
+      <div className="mt-4 grid grid-cols-1 gap-4 px-5 sm:grid-cols-3">
+        <div className="mt-2 flex items-center gap-4 px-5">
+          <div className="relative size-32 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={
+                    total > 0
+                      ? slices
+                      : [{ name: "None", value: 1, color: "#334155" }]
+                  }
+                  dataKey="value"
+                  innerRadius={42}
+                  outerRadius={60}
+                  paddingAngle={total > 0 ? 3 : 0}
+                  stroke="none"
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  {(total > 0 ? slices : [{ color: "#334155" }]).map((s, i) => (
+                    <Cell key={i} fill={s.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-xl font-semibold tabular-nums text-white">
+                {total}
+              </span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                trips
+              </span>
+            </div>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            {slices.length === 0 ? (
+              <p className="text-xs text-slate-400">
+                No trips recorded yet today.
+              </p>
+            ) : (
+              slices.map((s) => (
+                <div
+                  key={s.name}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <span className="flex items-center gap-2 text-slate-300">
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{ background: s.color }}
+                    />
+                    {s.name}
+                  </span>
+                  <span className="font-medium tabular-nums text-white">
+                    {s.value}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
-        <div className="flex-1 space-y-1.5">
-          {slices.length === 0 ? (
-            <p className="text-xs text-slate-400">No trips recorded yet today.</p>
-          ) : (
-            slices.map((s) => (
-              <div key={s.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-slate-300">
-                  <span className="size-2.5 rounded-full" style={{ background: s.color }} />
-                  {s.name}
-                </span>
-                <span className="font-medium tabular-nums text-white">{s.value}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Today's trip + meal run details */}
-      <div className="mt-4 grid grid-cols-1 gap-4 px-5 sm:grid-cols-2">
         <TodayDetailColumn
           icon={RouteIcon}
           title="Trips today"
@@ -123,13 +139,20 @@ export function TodaysOverview() {
           empty="No trips scheduled today."
         >
           {todayTrips.map((t) => {
-            const meta = tripStatusMeta[t.status]
-            const event = todayEvents.find((e) => e.id === t.eventId)
-            const driver = t.driverId ? fleet.driverById(t.driverId) : undefined
+            const meta = tripStatusMeta[t.status];
+            const event = todayEvents.find((e) => e.id === t.eventId);
+            const driver = t.driverId
+              ? fleet.driverById(t.driverId)
+              : undefined;
             return (
-              <li key={t.id} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+              <li
+                key={t.id}
+                className="rounded-lg border border-white/10 bg-white/3 px-2.5 py-2"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-xs font-medium text-white">{t.tripNumber}</p>
+                  <p className="truncate text-xs font-medium text-white">
+                    {t.tripNumber}
+                  </p>
                   <span
                     className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
                     style={{ background: `${meta.map}22`, color: meta.map }}
@@ -141,11 +164,15 @@ export function TodaysOverview() {
                   <span className="flex items-center gap-1">
                     <Clock className="size-3" /> {to12h(t.etaCenter)}
                   </span>
-                  {event ? <span className="truncate">{event.name}</span> : null}
-                  {driver ? <span className="truncate">{driver.name}</span> : null}
+                  {event ? (
+                    <span className="truncate">{event.name}</span>
+                  ) : null}
+                  {driver ? (
+                    <span className="truncate">{driver.name}</span>
+                  ) : null}
                 </div>
               </li>
-            )
+            );
           })}
         </TodayDetailColumn>
 
@@ -156,11 +183,16 @@ export function TodaysOverview() {
           empty="No meal runs scheduled today."
         >
           {todayMeals.map((m) => {
-            const meta = mealStatusMeta[m.status]
-            const center = fleet.centerById(m.centerId)
-            const delivered = m.stops.filter((s) => s.status === 'delivered').length
+            const meta = mealStatusMeta[m.status];
+            const center = fleet.centerById(m.centerId);
+            const delivered = m.stops.filter(
+              (s) => s.status === "delivered",
+            ).length;
             return (
-              <li key={m.id} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+              <li
+                key={m.id}
+                className="rounded-lg border border-white/10 bg-white/3 px-2.5 py-2"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-xs font-medium text-white">
                     {m.runNumber} · {m.mealType}
@@ -186,12 +218,12 @@ export function TodaysOverview() {
                   </span>
                 </div>
               </li>
-            )
+            );
           })}
         </TodayDetailColumn>
       </div>
     </GlassCard>
-  )
+  );
 }
 
 function TodayDetailColumn({

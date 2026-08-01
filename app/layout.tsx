@@ -12,7 +12,7 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'CareMove | Event Transportation Management',
+  title: 'Tranzio | Event Transportation Management',
   description:
     'Smart Vehicles Event Transportation Management Platform for coordinating participant transport to healthcare and community events.',
   generator: 'v0.app',

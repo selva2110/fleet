@@ -115,7 +115,7 @@ export function ParticipantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit participant' : 'Add participant'}</DialogTitle>
+          <DialogTitle>{editing ? 'Edit member' : 'Add member'}</DialogTitle>
           <DialogDescription>
             Medical and mobility details drive vehicle matching in the planner.
           </DialogDescription>
@@ -198,7 +198,7 @@ export function ParticipantDialog({
 
         <DialogFooter showCloseButton>
           <Button onClick={submit} disabled={saving || !form.name.trim()}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add participant'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add member'}
           </Button>
         </DialogFooter>
       </DialogContent>
