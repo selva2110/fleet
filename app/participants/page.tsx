@@ -6,7 +6,6 @@ import {
   PageHeader,
   ConstraintChips,
   PriorityBadge,
-  StatusBadge,
 } from '@/components/common'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,8 +18,10 @@ import {
   FilterRail,
   FilterSection,
   ListLayout,
+  Pagination,
   compareValues,
   useDataView,
+  usePagination,
   type SortOption,
 } from '@/components/data-view/data-view'
 import {
@@ -32,7 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useFleet } from '@/lib/store'
-import { participantStatusMeta, constraintLabels } from '@/lib/labels'
+import { constraintLabels } from '@/lib/labels'
 import type { MobilityLevel, Participant, TransportConstraints } from '@/lib/types'
 
 const mobilityLabels: Record<MobilityLevel, string> = {
@@ -48,10 +49,6 @@ const PRIORITY_OPTIONS = [
   { value: 'elevated', label: 'Elevated' },
   { value: 'critical', label: 'Critical' },
 ]
-const STATUS_OPTIONS = Object.entries(participantStatusMeta).map(([value, m]) => ({
-  value,
-  label: m.label,
-}))
 const ELIGIBILITY_OPTIONS = [
   { value: 'eligible', label: 'Eligible' },
   { value: 'ineligible', label: 'Not eligible' },
@@ -70,7 +67,6 @@ const SORT_OPTIONS: SortOption[] = [
   { key: 'name', label: 'Name' },
   { key: 'medicalPriority', label: 'Priority' },
   { key: 'mobilityLevel', label: 'Mobility' },
-  { key: 'status', label: 'Status' },
   { key: 'maxTravelMinutes', label: 'Max travel' },
 ]
 
@@ -82,21 +78,18 @@ export default function ParticipantsPage() {
 
   const [mobility, setMobility] = useState<string[]>([])
   const [priority, setPriority] = useState<string[]>([])
-  const [statuses, setStatuses] = useState<string[]>([])
   const [eligibility, setEligibility] = useState<string[]>([])
   const [needs, setNeeds] = useState<string[]>([])
 
   const activeFilterCount =
     (mobility.length ? 1 : 0) +
     (priority.length ? 1 : 0) +
-    (statuses.length ? 1 : 0) +
     (eligibility.length ? 1 : 0) +
     (needs.length ? 1 : 0)
 
   function resetFilters() {
     setMobility([])
     setPriority([])
-    setStatuses([])
     setEligibility([])
     setNeeds([])
   }
@@ -117,7 +110,6 @@ export default function ParticipantsPage() {
         p.phone.toLowerCase().includes(q)
       const matchMobility = mobility.length === 0 || mobility.includes(p.mobilityLevel)
       const matchPriority = priority.length === 0 || priority.includes(p.medicalPriority)
-      const matchStatus = statuses.length === 0 || statuses.includes(p.status)
       const matchEligible =
         eligibility.length === 0 ||
         (eligibility.includes('eligible') && p.eligible) ||
@@ -125,9 +117,7 @@ export default function ParticipantsPage() {
       const matchNeeds =
         needs.length === 0 ||
         needs.every((n) => p.constraints[n as keyof TransportConstraints])
-      return (
-        matchQuery && matchMobility && matchPriority && matchStatus && matchEligible && matchNeeds
-      )
+      return matchQuery && matchMobility && matchPriority && matchEligible && matchNeeds
     })
     return list.sort((a, b) =>
       compareValues(sortValue(a, dv.sortKey), sortValue(b, dv.sortKey), dv.sortDir),
@@ -139,10 +129,11 @@ export default function ParticipantsPage() {
     dv.sortDir,
     mobility,
     priority,
-    statuses,
     eligibility,
     needs,
   ])
+
+  const pg = usePagination(filtered, 20)
 
   function openAdd() {
     setEditing(null)
@@ -175,9 +166,6 @@ export default function ParticipantsPage() {
               <FilterSection title="Medical priority">
                 <CheckboxGroupFilter options={PRIORITY_OPTIONS} selected={priority} onChange={setPriority} />
               </FilterSection>
-              <FilterSection title="Status">
-                <CheckboxGroupFilter options={STATUS_OPTIONS} selected={statuses} onChange={setStatuses} />
-              </FilterSection>
               <FilterSection title="Eligibility">
                 <CheckboxGroupFilter options={ELIGIBILITY_OPTIONS} selected={eligibility} onChange={setEligibility} />
               </FilterSection>
@@ -206,8 +194,7 @@ export default function ParticipantsPage() {
           <EmptyState message="No members match your search and filters." />
         ) : dv.view === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((p) => {
-              const meta = participantStatusMeta[p.status]
+            {pg.pageItems.map((p) => {
               return (
                 <Card key={p.id} className="flex flex-col gap-3 p-4">
                   <div className="flex items-start justify-between gap-2">
@@ -228,7 +215,6 @@ export default function ParticipantsPage() {
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge label={meta.label} cls={meta.cls} />
                     <PriorityBadge priority={p.medicalPriority} />
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {mobilityLabels[p.mobilityLevel]}
@@ -254,13 +240,11 @@ export default function ParticipantsPage() {
                     <TableHead>Mobility</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Special Needs</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p) => {
-                    const meta = participantStatusMeta[p.status]
+                  {pg.pageItems.map((p) => {
                     return (
                       <TableRow key={p.id}>
                         <TableCell>
@@ -278,9 +262,6 @@ export default function ParticipantsPage() {
                           <ConstraintChips constraints={p.constraints} max={4} />
                         </TableCell>
                         <TableCell>
-                          <StatusBadge label={meta.label} cls={meta.cls} />
-                        </TableCell>
-                        <TableCell>
                           <RowActions
                             onEdit={() => openEdit(p)}
                             onDelete={() => fleet.deleteParticipant(p.id, p.name)}
@@ -296,6 +277,20 @@ export default function ParticipantsPage() {
             </div>
           </Card>
         )}
+
+        {filtered.length > 0 ? (
+          <Pagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+            rangeStart={pg.rangeStart}
+            rangeEnd={pg.rangeEnd}
+            total={pg.total}
+            itemLabel="members"
+          />
+        ) : null}
           </div>
         </ListLayout>
       </div>

@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   List as ListIcon,
   RotateCcw,
@@ -66,6 +68,124 @@ export function useDataView(defaultSortKey: string, defaultView: ViewMode = 'gri
     filtersOpen,
     setFiltersOpen,
   }
+}
+
+// -------------------------------------------------------------------------
+// Pagination: page-size selector (20 / 50 / 100) + prev/next controls.
+// -------------------------------------------------------------------------
+export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const
+export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number]
+
+/**
+ * Client-side pagination for an already-filtered/sorted list. Returns the
+ * current page slice plus the state a <Pagination> control needs. The page is
+ * clamped and reset whenever the total item count shrinks below the window.
+ */
+export function usePagination<T>(items: T[], defaultSize: PageSize = 20) {
+  const [pageSize, setPageSize] = useState<PageSize>(defaultSize)
+  const [page, setPage] = useState(1)
+
+  const total = items.length
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const start = (currentPage - 1) * pageSize
+  const pageItems = useMemo(
+    () => items.slice(start, start + pageSize),
+    [items, start, pageSize],
+  )
+
+  const setPageSizeReset = useCallback((size: PageSize) => {
+    setPageSize(size)
+    setPage(1)
+  }, [])
+
+  return {
+    page: currentPage,
+    setPage,
+    pageSize,
+    setPageSize: setPageSizeReset,
+    pageCount,
+    total,
+    pageItems,
+    rangeStart: total === 0 ? 0 : start + 1,
+    rangeEnd: Math.min(start + pageSize, total),
+  }
+}
+
+export function Pagination({
+  page,
+  pageCount,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  rangeStart,
+  rangeEnd,
+  total,
+  itemLabel = 'records',
+}: {
+  page: number
+  pageCount: number
+  pageSize: PageSize
+  onPageChange: (p: number) => void
+  onPageSizeChange: (s: PageSize) => void
+  rangeStart: number
+  rangeEnd: number
+  total: number
+  itemLabel?: string
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="whitespace-nowrap">Rows per page</span>
+        <Select
+          value={String(pageSize)}
+          onValueChange={(v) => v && onPageSizeChange(Number(v) as PageSize)}
+        >
+          <SelectTrigger className="h-8 w-20">
+            <SelectValue>{() => String(pageSize)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <SelectItem key={s} value={String(s)}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {rangeStart}–{rangeEnd} of {total} {itemLabel}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
+            Page {page} / {pageCount}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= pageCount}
+            aria-label="Next page"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /** Generic string comparator that handles numbers, strings, and booleans. */

@@ -49,6 +49,7 @@ export function DriverDialog({
   const fleet = useFleet()
   const [form, setForm] = useState<DriverForm>(blank())
   const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (editing) {
@@ -59,18 +60,31 @@ export function DriverDialog({
     } else {
       setForm(blank())
     }
+    setErrors({})
   }, [editing, open])
 
-  const set = <K extends keyof DriverForm>(k: K, v: DriverForm[K]) =>
+  const set = <K extends keyof DriverForm>(k: K, v: DriverForm[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
+    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
+  }
 
   const vehicleOptions = [
     { value: '__none__', label: 'Unassigned' },
     ...fleet.vehicles.map((v) => ({ value: v.id, label: v.name })),
   ]
 
+  function validate() {
+    const next: Record<string, string> = {}
+    if (!form.name.trim()) next.name = 'Full name is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    if (!form.address.trim()) next.address = 'Address is required.'
+    if (!form.license.trim()) next.license = 'License number is required.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
   async function submit() {
-    if (!form.name.trim()) return
+    if (!validate()) return
     setSaving(true)
     try {
       await fleet.saveDriver({
@@ -98,8 +112,20 @@ export function DriverDialog({
         <ScrollArea className="-mx-1 max-h-[60vh] px-1">
           <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Full name" value={form.name} onChange={(v) => set('name', v)} />
-            <TextField label="Phone" value={form.phone} onChange={(v) => set('phone', v)} />
+            <TextField
+              label="Full name"
+              value={form.name}
+              onChange={(v) => set('name', v)}
+              required
+              error={errors.name}
+            />
+            <TextField
+              label="Phone"
+              value={form.phone}
+              onChange={(v) => set('phone', v)}
+              required
+              error={errors.phone}
+            />
           </div>
           <AddressField
             label="Address"
@@ -107,9 +133,17 @@ export function DriverDialog({
             onChange={(v) => set('address', v)}
             location={form.location}
             onLocationChange={(v) => set('location', v)}
+            required
+            error={errors.address}
           />
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="License #" value={form.license} onChange={(v) => set('license', v)} />
+            <TextField
+              label="License #"
+              value={form.license}
+              onChange={(v) => set('license', v)}
+              required
+              error={errors.license}
+            />
             <NumberField label="Rating" value={form.rating} onChange={(v) => set('rating', v)} min={0} />
           </div>
           <TextField
@@ -161,7 +195,7 @@ export function DriverDialog({
         </ScrollArea>
 
         <DialogFooter showCloseButton>
-          <Button onClick={submit} disabled={saving || !form.name.trim()}>
+          <Button onClick={submit} disabled={saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Add driver'}
           </Button>
         </DialogFooter>

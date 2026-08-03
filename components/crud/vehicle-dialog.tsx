@@ -73,6 +73,7 @@ export function VehicleDialog({
   const fleet = useFleet()
   const [form, setForm] = useState<VehicleForm>(blank())
   const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (editing) {
@@ -83,13 +84,27 @@ export function VehicleDialog({
     } else {
       setForm(blank())
     }
+    setErrors({})
   }, [editing, open])
 
-  const set = <K extends keyof VehicleForm>(k: K, v: VehicleForm[K]) =>
+  const set = <K extends keyof VehicleForm>(k: K, v: VehicleForm[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
+    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
+  }
+
+  function validate() {
+    const next: Record<string, string> = {}
+    if (!form.name.trim()) next.name = 'Name / unit is required.'
+    if (!form.address.trim()) next.address = 'Base address is required.'
+    if (!Number.isFinite(form.capacity) || form.capacity < 1) {
+      next.capacity = 'Seat capacity must be at least 1.'
+    }
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
 
   async function submit() {
-    if (!form.name.trim()) return
+    if (!validate()) return
     setSaving(true)
     try {
       await fleet.saveVehicle({
@@ -113,20 +128,35 @@ export function VehicleDialog({
 
         <ScrollArea className="-mx-1 max-h-[60vh] px-1">
           <div className="flex flex-col gap-3">
-          <TextField label="Name / unit" value={form.name} onChange={(v) => set('name', v)} />
+          <TextField
+            label="Name / unit"
+            value={form.name}
+            onChange={(v) => set('name', v)}
+            required
+            error={errors.name}
+          />
           <AddressField
             label="Address"
             value={form.address}
             onChange={(v) => set('address', v)}
             location={form.location}
             onLocationChange={(v) => set('location', v)}
+            required
+            error={errors.address}
           />
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Type" value={form.type} options={TYPES} onChange={(v) => set('type', v)} />
             <SelectField label="Fuel" value={form.fuelType} options={FUELS} onChange={(v) => set('fuelType', v)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <NumberField label="Seat capacity" value={form.capacity} onChange={(v) => set('capacity', v)} />
+            <NumberField
+              label="Seat capacity"
+              value={form.capacity}
+              onChange={(v) => set('capacity', v)}
+              required
+              min={1}
+              error={errors.capacity}
+            />
             <NumberField
               label="Wheelchair spots"
               value={form.wheelchairCapacity}
@@ -157,7 +187,7 @@ export function VehicleDialog({
         </ScrollArea>
 
         <DialogFooter showCloseButton>
-          <Button onClick={submit} disabled={saving || !form.name.trim()}>
+          <Button onClick={submit} disabled={saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Add vehicle'}
           </Button>
         </DialogFooter>

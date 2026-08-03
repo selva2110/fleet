@@ -42,8 +42,10 @@ import {
   FilterRail,
   FilterSection,
   ListLayout,
+  Pagination,
   compareValues,
   useDataView,
+  usePagination,
   type SortOption,
 } from '@/components/data-view/data-view'
 import { useFleet } from '@/lib/store'
@@ -157,6 +159,8 @@ export default function VehiclesPage() {
     )
   }, [fleet.vehicles, dv.query, dv.sortKey, dv.sortDir, types, statuses, fuels, maints, caps])
 
+  const pg = usePagination(filtered, 20)
+
   function openAdd() {
     setEditing(null)
     setDialogOpen(true)
@@ -233,7 +237,7 @@ export default function VehiclesPage() {
           <EmptyState message="No vehicles match your search and filters." />
         ) : dv.view === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((v) => (
+            {pg.pageItems.map((v) => (
               <VehicleCard
                 key={v.id}
                 vehicle={v}
@@ -258,7 +262,7 @@ export default function VehiclesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((v) => {
+                  {pg.pageItems.map((v) => {
                     const meta = vehicleStatusMeta[v.status]
                     const maint = maintMeta[v.maintenanceStatus]
                     return (
@@ -301,6 +305,20 @@ export default function VehiclesPage() {
             </div>
           </Card>
         )}
+
+        {filtered.length > 0 ? (
+          <Pagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+            rangeStart={pg.rangeStart}
+            rangeEnd={pg.rangeEnd}
+            total={pg.total}
+            itemLabel="vehicles"
+          />
+        ) : null}
           </div>
         </ListLayout>
       </div>

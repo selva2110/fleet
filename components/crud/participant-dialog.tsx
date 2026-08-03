@@ -81,6 +81,7 @@ export function ParticipantDialog({
   const fleet = useFleet()
   const [form, setForm] = useState<ParticipantForm>(blank())
   const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
  
   useEffect(() => {
     if (editing) {
@@ -91,13 +92,25 @@ export function ParticipantDialog({
     } else {
       setForm(blank())
     }
+    setErrors({})
   }, [editing, open])
 
-  const set = <K extends keyof ParticipantForm>(k: K, v: ParticipantForm[K]) =>
+  const set = <K extends keyof ParticipantForm>(k: K, v: ParticipantForm[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
+    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
+  }
+
+  function validate() {
+    const next: Record<string, string> = {}
+    if (!form.name.trim()) next.name = 'Full name is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    if (!form.address.trim()) next.address = 'Address is required.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
  
   async function submit() {
-    if (!form.name.trim()) return
+    if (!validate()) return
     setSaving(true)
     try {
       await fleet.saveParticipant({
@@ -124,8 +137,20 @@ export function ParticipantDialog({
         <ScrollArea className="-mx-1 max-h-[60vh] px-1">
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <TextField label="Full name" value={form.name} onChange={(v) => set('name', v)} />
-              <TextField label="Phone" value={form.phone} onChange={(v) => set('phone', v)} />
+              <TextField
+                label="Full name"
+                value={form.name}
+                onChange={(v) => set('name', v)}
+                required
+                error={errors.name}
+              />
+              <TextField
+                label="Phone"
+                value={form.phone}
+                onChange={(v) => set('phone', v)}
+                required
+                error={errors.phone}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <TextField
@@ -140,6 +165,8 @@ export function ParticipantDialog({
               onChange={(v) => set('address', v)}
               location={form.location}
               onLocationChange={(v) => set('location', v)}
+              required
+              error={errors.address}
             />
  
             <div className="grid grid-cols-3 gap-3">
@@ -197,7 +224,7 @@ export function ParticipantDialog({
         </ScrollArea>
 
         <DialogFooter showCloseButton>
-          <Button onClick={submit} disabled={saving || !form.name.trim()}>
+          <Button onClick={submit} disabled={saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Add member'}
           </Button>
         </DialogFooter>

@@ -26,8 +26,10 @@ import {
   FilterRail,
   FilterSection,
   ListLayout,
+  Pagination,
   compareValues,
   useDataView,
+  usePagination,
   type SortOption,
 } from '@/components/data-view/data-view'
 import { useFleet } from '@/lib/store'
@@ -107,6 +109,8 @@ export default function EventsPage() {
       compareValues(a[dv.sortKey as keyof FleetEvent], b[dv.sortKey as keyof FleetEvent], dv.sortDir),
     )
   }, [fleet.events, fleet, dv.query, dv.sortKey, dv.sortDir, types, statuses, centerIds])
+
+  const pg = usePagination(filtered, 20)
 
   function assignedInfo(e: FleetEvent) {
     const assigned = fleet.trips
@@ -196,7 +200,7 @@ export default function EventsPage() {
           <EmptyState message="No events match your search and filters." />
         ) : dv.view === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((e) => {
+            {pg.pageItems.map((e) => {
               const center = fleet.centerById(e.centerId)
               const meta = eventStatusMeta[e.status]
               const { assignedCount, total } = assignedInfo(e)
@@ -283,7 +287,7 @@ export default function EventsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((e) => {
+                  {pg.pageItems.map((e) => {
                     const center = fleet.centerById(e.centerId)
                     const meta = eventStatusMeta[e.status]
                     const { assignedCount, total } = assignedInfo(e)
@@ -353,6 +357,20 @@ export default function EventsPage() {
             </div>
           </Card>
         )}
+
+        {filtered.length > 0 ? (
+          <Pagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+            rangeStart={pg.rangeStart}
+            rangeEnd={pg.rangeEnd}
+            total={pg.total}
+            itemLabel="events"
+          />
+        ) : null}
           </div>
             </ListLayout>
           </TabsContent>

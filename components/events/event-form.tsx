@@ -158,9 +158,27 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   const [addQuery, setAddQuery] = useState('')
   const [mobilityFilter, setMobilityFilter] = useState<'all' | MobilityLevel>('all')
   const [eligibleOnly, setEligibleOnly] = useState(true)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
+    // Clear a field's error as soon as the user edits it.
+    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
+  }
+
+  function validate() {
+    const next: Record<string, string> = {}
+    if (!form.name.trim()) next.name = 'Event name is required.'
+    if (!form.date) next.date = 'Start date is required.'
+    if (!form.startTime) next.startTime = 'Start time is required.'
+    if (!form.endTime) next.endTime = 'End time is required.'
+    if (form.startTime && form.endTime && form.endTime <= form.startTime) {
+      next.endTime = 'End time must be after the start time.'
+    }
+    if (!form.centerId) next.centerId = 'Select a destination / care center.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
 
   const today = new Date()
   const todayStr = today.toISOString().slice(0, 10)
@@ -193,7 +211,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   }
 
   async function submit(status: EventStatus) {
-    if (!form.name.trim()) return
+    if (!validate()) return
     setSaving(true)
     try {
       const offset = Number.parseInt(reminderFreq, 10)
@@ -239,14 +257,10 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
           <Button variant="ghost" onClick={() => router.push('/events')} disabled={saving}>
             Cancel
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => submit('draft')}
-            disabled={saving || !form.name.trim()}
-          >
+          <Button variant="outline" onClick={() => submit('draft')} disabled={saving}>
             Save as Draft
           </Button>
-          <Button onClick={() => submit('scheduled')} disabled={saving || !form.name.trim()}>
+          <Button onClick={() => submit('scheduled')} disabled={saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Publish Event'}
           </Button>
         </div>
@@ -266,17 +280,36 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 value={form.name}
                 placeholder="e.g. Tuesday Dialysis Session"
                 onChange={(v) => set('name', v)}
+                required
+                error={errors.name}
               />
               <div className="grid gap-4 sm:grid-cols-3">
-                <TextField label="Start date" type="date" value={form.date} min={todayStr} onChange={(v) => set('date', v)} />
+                <TextField
+                  label="Start date"
+                  type="date"
+                  value={form.date}
+                  min={todayStr}
+                  onChange={(v) => set('date', v)}
+                  required
+                  error={errors.date}
+                />
                 <TextField
                   label="Start time"
                   type="time"
                   value={form.startTime}
                   min={form.date === todayStr ? nowTimeStr : undefined}
                   onChange={(v) => set('startTime', v)}
+                  required
+                  error={errors.startTime}
                 />
-                <TextField label="End time" type="time" value={form.endTime} onChange={(v) => set('endTime', v)} />
+                <TextField
+                  label="End time"
+                  type="time"
+                  value={form.endTime}
+                  onChange={(v) => set('endTime', v)}
+                  required
+                  error={errors.endTime}
+                />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
@@ -353,6 +386,8 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 value={form.centerId}
                 options={centerOptions}
                 onChange={(v) => set('centerId', v)}
+                required
+                error={errors.centerId}
               />
               {center ? (
                 <div className="grid gap-3 sm:grid-cols-3">

@@ -35,8 +35,10 @@ import {
   FilterRail,
   FilterSection,
   ListLayout,
+  Pagination,
   compareValues,
   useDataView,
+  usePagination,
   type SortOption,
 } from '@/components/data-view/data-view'
 import { useFleet } from '@/lib/store'
@@ -122,6 +124,8 @@ export default function DriversPage() {
     )
   }, [fleet.drivers, dv.query, dv.sortKey, dv.sortDir, statuses, certs, assignment])
 
+  const pg = usePagination(filtered, 20)
+
   function openAdd() {
     setEditing(null)
     setDialogOpen(true)
@@ -185,7 +189,7 @@ export default function DriversPage() {
           <EmptyState message="No drivers match your search and filters." />
         ) : dv.view === 'grid' ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((d) => {
+            {pg.pageItems.map((d) => {
               const meta = driverStatusMeta[d.status]
               const vehicle = d.assignedVehicleId ? fleet.vehicleById(d.assignedVehicleId) : undefined
               return (
@@ -267,7 +271,7 @@ export default function DriversPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((d) => {
+                  {pg.pageItems.map((d) => {
                     const meta = driverStatusMeta[d.status]
                     const vehicle = d.assignedVehicleId ? fleet.vehicleById(d.assignedVehicleId) : undefined
                     return (
@@ -332,6 +336,20 @@ export default function DriversPage() {
             </div>
           </Card>
         )}
+
+        {filtered.length > 0 ? (
+          <Pagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+            rangeStart={pg.rangeStart}
+            rangeEnd={pg.rangeEnd}
+            total={pg.total}
+            itemLabel="drivers"
+          />
+        ) : null}
           </div>
         </ListLayout>
       </div>
