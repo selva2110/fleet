@@ -29,13 +29,13 @@ import {
 } from '@/components/ui/select'
 import { GlassCard, PanelTitle } from './aurora-ui'
 import { useFleet } from '@/lib/store'
-import { driverStatusMeta, mealStatusMeta, formatMiles } from '@/lib/labels'
-import type { FleetEvent, MealDelivery } from '@/lib/types'
+import { driverStatusMeta, mealStatusMeta, formatMiles, formatShiftDays } from '@/lib/labels'
+import type { Driver, FleetEvent, MealDelivery } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 // Pixel height of one hour row in the timeline.
-const HOUR_H = 56
-const DAY_MINUTES = 24 * 60
+const HOUR_H = 48
+const DAY_COUNT = 5
 
 function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -61,19 +61,83 @@ function hourLabel(h: number) {
   return `${hour} ${period}`
 }
 
-const ALL = 'all'
+// ---- Layers --------------------------------------------------------------
+type LayerKey = 'event' | 'driver' | 'vehicle' | 'meal'
+
+const LAYERS: Record<
+  LayerKey,
+  {
+    label: string
+    icon: React.ComponentType<{ className?: string }>
+    border: string
+    bg: string
+    sub: string
+  }
+> = {
+  event: {
+    label: 'Events',
+    icon: CalendarDays,
+    border: 'rgba(34,211,238,0.9)',
+    bg: 'rgba(34,211,238,0.16)',
+    sub: 'rgba(165,243,252,0.8)',
+  },
+  driver: {
+    label: 'Driver shifts',
+    icon: UserRound,
+    border: 'rgba(96,165,250,0.9)',
+    bg: 'rgba(59,130,246,0.18)',
+    sub: 'rgba(191,219,254,0.8)',
+  },
+  vehicle: {
+    label: 'Vehicle bookings',
+    icon: Truck,
+    border: 'rgba(251,191,36,0.9)',
+    bg: 'rgba(245,158,11,0.18)',
+    sub: 'rgba(253,230,138,0.85)',
+  },
+  meal: {
+    label: 'Meal runs',
+    icon: UtensilsCrossed,
+    border: 'rgba(16,185,129,0.9)',
+    bg: 'rgba(16,185,129,0.18)',
+    sub: 'rgba(167,243,208,0.85)',
+  },
+}
+
+const LAYER_OPTIONS: { value: LayerKey; label: string }[] = [
+  { value: 'event', label: 'Events' },
+  { value: 'driver', label: 'Drivers' },
+  { value: 'vehicle', label: 'Vehicles' },
+  { value: 'meal', label: 'Meals' },
+]
+
+type SelectedItem =
+  | { kind: 'event'; data: FleetEvent }
+  | { kind: 'meal'; data: MealDelivery }
+  | { kind: 'driver'; data: Driver }
+  | null
+
+// A raw timeline entry before overlap packing.
+type Entry = {
+  key: string
+  start: number
+  end: number
+  title: string
+  subtitle?: string
+  sel: SelectedItem
+}
 
 // A positioned timeline block after interval-column packing.
-type Placed<T> = { start: number; end: number; data: T; col: number; cols: number }
+type Placed = Entry & { col: number; cols: number }
 
 /**
- * Greedy interval-column packing: overlapping blocks within a lane are split
- * into side-by-side columns so nothing is hidden behind another block.
+ * Greedy interval-column packing: overlapping blocks within a day column are
+ * split into side-by-side columns so nothing is hidden behind another block.
  */
-function packColumns<T>(items: { start: number; end: number; data: T }[]): Placed<T>[] {
+function packColumns(items: Entry[]): Placed[] {
   const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end)
-  const result: Placed<T>[] = []
-  let cluster: Placed<T>[] = []
+  const result: Placed[] = []
+  let cluster: Placed[] = []
   let clusterEnd = -1
   let colEnds: number[] = []
 
@@ -102,129 +166,163 @@ function packColumns<T>(items: { start: number; end: number; data: T }[]): Place
   return result
 }
 
-type SelectedItem =
-  | { kind: 'event'; data: FleetEvent }
-  | { kind: 'meal'; data: MealDelivery }
-  | null
-
 /**
- * Teams-style hourly day view for the dashboard. A single day is laid out on a
- * vertical 24-hour axis with Events and Meals as time blocks in separate lanes.
- * Three dropdowns filter each layer independently: pick a single event, a single
- * meal run, or a vehicle (which narrows both lanes to items using that vehicle).
+ * Teams-style 5-day hourly schedule for the dashboard. Five days from today are
+ * laid out as columns on a shared vertical 24-hour axis. A single dropdown picks
+ * which layer to display — Events (default), Driver shifts, Vehicle bookings, or
+ * Meal runs — and each item renders as a time-positioned block.
  */
 export function AuroraCalendars() {
   const fleet = useFleet()
-  const [dayOffset, setDayOffset] = useState(0)
-  const [eventFilter, setEventFilter] = useState<string>(ALL)
-  const [mealFilter, setMealFilter] = useState<string>(ALL)
-  const [vehicleFilter, setVehicleFilter] = useState<string>(ALL)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [layer, setLayer] = useState<LayerKey>('event')
   const [selected, setSelected] = useState<SelectedItem>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const day = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + dayOffset)
-    return d
-  }, [dayOffset])
+  const days = useMemo(() => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() + weekOffset * DAY_COUNT)
+    return Array.from({ length: DAY_COUNT }, (_, i) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      return d
+    })
+  }, [weekOffset])
 
-  const dayKey = ymd(day)
   const todayKey = ymd(new Date())
-  const isToday = dayKey === todayKey
 
-  // Which vehicles serve each event (via committed, non-cancelled trips).
-  const vehiclesByEvent = useMemo(() => {
-    const m = new Map<string, Set<string>>()
+  // Which vehicles serve each event (via committed, non-cancelled trips), plus
+  // the driver assigned on each of those trips (for vehicle-booking labels).
+  const tripsByEvent = useMemo(() => {
+    const m = new Map<string, { vehicleId: string; driverId: string | null }[]>()
     for (const t of fleet.trips) {
       if (t.status === 'cancelled' || !t.vehicleId) continue
-      if (!m.has(t.eventId)) m.set(t.eventId, new Set())
-      m.get(t.eventId)!.add(t.vehicleId)
+      if (!m.has(t.eventId)) m.set(t.eventId, [])
+      m.get(t.eventId)!.push({ vehicleId: t.vehicleId, driverId: t.driverId ?? null })
     }
     return m
   }, [fleet.trips])
 
-  const dayEvents = useMemo(
-    () =>
-      fleet.events
-        .filter((e) => e.date === dayKey)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
-    [fleet.events, dayKey],
-  )
+  // Build the entries for a single day based on the active layer.
+  function entriesForDay(date: Date): Entry[] {
+    const key = ymd(date)
+    const dow = date.getDay()
 
-  const dayMeals = useMemo(
-    () =>
-      fleet.mealDeliveries
-        .filter((m) => m.date === dayKey && m.status !== 'cancelled')
-        .sort((a, b) => a.departTime.localeCompare(b.departTime)),
-    [fleet.mealDeliveries, dayKey],
-  )
+    if (layer === 'event') {
+      return fleet.events
+        .filter((e) => e.date === key)
+        .map((e) => {
+          const start = toMin(e.startTime) ?? 9 * 60
+          const rawEnd = toMin(e.endTime)
+          const end = rawEnd && rawEnd > start ? rawEnd : start + 60
+          return {
+            key: e.id,
+            start,
+            end,
+            title: e.name,
+            subtitle: to12h(e.startTime),
+            sel: { kind: 'event', data: e } as SelectedItem,
+          }
+        })
+    }
 
-  // Reset the item filters when the day changes so a stale selection from
-  // another day doesn't blank the timeline.
-  useEffect(() => {
-    setEventFilter(ALL)
-    setMealFilter(ALL)
-  }, [dayKey])
+    if (layer === 'meal') {
+      return fleet.mealDeliveries
+        .filter((m) => m.date === key && m.status !== 'cancelled')
+        .map((m) => {
+          const start = toMin(m.departTime) ?? 11 * 60
+          const end = start + Math.max(m.durationMinutes || 0, 30)
+          return {
+            key: m.id,
+            start,
+            end,
+            title: `${m.runNumber} · ${m.mealType}`,
+            subtitle: to12h(m.departTime),
+            sel: { kind: 'meal', data: m } as SelectedItem,
+          }
+        })
+    }
 
-  // Scroll to the morning (or current hour) on first paint.
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const focusHour = isToday ? Math.max(0, new Date().getHours() - 1) : 7
-    el.scrollTop = focusHour * HOUR_H
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (layer === 'driver') {
+      return fleet.drivers
+        .filter((d) => d.shiftDays.includes(dow))
+        .map((d) => {
+          const start = toMin(d.shiftStart) ?? 0
+          let end = toMin(d.shiftEnd) ?? 24 * 60
+          // Overnight shift: display start → end of day within this column.
+          if (end <= start) end = 24 * 60
+          return {
+            key: d.id,
+            start,
+            end,
+            title: d.name,
+            subtitle: `${to12h(d.shiftStart)}–${to12h(d.shiftEnd)}`,
+            sel: { kind: 'driver', data: d } as SelectedItem,
+          }
+        })
+    }
 
-  const eventOptions = [
-    { value: ALL, label: 'All events' },
-    ...dayEvents.map((e) => ({ value: e.id, label: e.name })),
-  ]
-  const mealOptions = [
-    { value: ALL, label: 'All meals' },
-    ...dayMeals.map((m) => ({ value: m.id, label: `${m.runNumber} · ${m.mealType}` })),
-  ]
-  const vehicleOptions = [
-    { value: ALL, label: 'All vehicles' },
-    ...fleet.vehicles.map((v) => ({ value: v.id, label: v.name })),
-  ]
-
-  // Apply filters. Event/meal dropdowns filter their own lane; the vehicle
-  // dropdown narrows both lanes to items assigned that vehicle.
-  const shownEvents = dayEvents.filter((e) => {
-    if (eventFilter !== ALL && e.id !== eventFilter) return false
-    if (vehicleFilter !== ALL && !vehiclesByEvent.get(e.id)?.has(vehicleFilter)) return false
-    return true
-  })
-  const shownMeals = dayMeals.filter((m) => {
-    if (mealFilter !== ALL && m.id !== mealFilter) return false
-    if (vehicleFilter !== ALL && m.vehicleId !== vehicleFilter) return false
-    return true
-  })
-
-  const eventBlocks = useMemo(() => {
-    const items = shownEvents.map((e) => {
+    // vehicle bookings: derive from event trips + meal runs that use a vehicle.
+    const entries: Entry[] = []
+    const seen = new Set<string>()
+    for (const e of fleet.events.filter((ev) => ev.date === key)) {
       const start = toMin(e.startTime) ?? 9 * 60
       const rawEnd = toMin(e.endTime)
       const end = rawEnd && rawEnd > start ? rawEnd : start + 60
-      return { start, end, data: e }
-    })
-    return packColumns(items)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownEvents])
-
-  const mealBlocks = useMemo(() => {
-    const items = shownMeals.map((m) => {
+      for (const trip of tripsByEvent.get(e.id) ?? []) {
+        const dedupe = `${e.id}:${trip.vehicleId}`
+        if (seen.has(dedupe)) continue
+        seen.add(dedupe)
+        const veh = fleet.vehicleById(trip.vehicleId)
+        entries.push({
+          key: dedupe,
+          start,
+          end,
+          title: veh?.name ?? 'Vehicle',
+          subtitle: e.name,
+          sel: { kind: 'event', data: e },
+        })
+      }
+    }
+    for (const m of fleet.mealDeliveries.filter((md) => md.date === key && md.status !== 'cancelled')) {
+      if (!m.vehicleId) continue
       const start = toMin(m.departTime) ?? 11 * 60
       const end = start + Math.max(m.durationMinutes || 0, 30)
-      return { start, end, data: m }
-    })
-    return packColumns(items)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownMeals])
+      const veh = fleet.vehicleById(m.vehicleId)
+      entries.push({
+        key: `meal:${m.id}`,
+        start,
+        end,
+        title: veh?.name ?? 'Vehicle',
+        subtitle: `${m.runNumber} · ${m.mealType}`,
+        sel: { kind: 'meal', data: m },
+      })
+    }
+    return entries
+  }
 
-  const nowMin = isToday ? new Date().getHours() * 60 + new Date().getMinutes() : null
-  const totalShown = shownEvents.length + shownMeals.length
+  const columns = useMemo(
+    () => days.map((d) => ({ date: d, key: ymd(d), blocks: packColumns(entriesForDay(d)) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [days, layer, fleet.events, fleet.mealDeliveries, fleet.drivers, fleet.vehicles, tripsByEvent],
+  )
+
+  const totalShown = columns.reduce((n, c) => n + c.blocks.length, 0)
+  const rangeLabel = `${days[0].toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })} – ${days[DAY_COUNT - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+
+  // Scroll to the working hours (7 AM) on first paint.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = 7 * HOUR_H
+  }, [])
+
+  const active = LAYERS[layer]
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
 
   return (
     <GlassCard className="p-0 pb-4">
@@ -235,31 +333,27 @@ export function AuroraCalendars() {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setDayOffset((o) => o - 1)}
+              onClick={() => setWeekOffset((o) => o - 1)}
               className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
-              aria-label="Previous day"
+              aria-label="Previous 5 days"
             >
               <ChevronLeft className="size-4" />
             </button>
-            <span className="min-w-40 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-center text-xs font-medium text-slate-200">
-              {day.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
+            <span className="min-w-32 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-center text-xs font-medium text-slate-200">
+              {rangeLabel}
             </span>
             <button
               type="button"
-              onClick={() => setDayOffset((o) => o + 1)}
+              onClick={() => setWeekOffset((o) => o + 1)}
               className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
-              aria-label="Next day"
+              aria-label="Next 5 days"
             >
               <ChevronRight className="size-4" />
             </button>
-            {dayOffset !== 0 ? (
+            {weekOffset !== 0 ? (
               <button
                 type="button"
-                onClick={() => setDayOffset(0)}
+                onClick={() => setWeekOffset(0)}
                 className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/20"
               >
                 Today
@@ -270,49 +364,69 @@ export function AuroraCalendars() {
       >
         Schedule
         <span className="ml-2 text-xs font-normal text-slate-400">
-          Day view · {totalShown} item{totalShown === 1 ? '' : 's'}
+          5-day view · {totalShown} {active.label.toLowerCase()}
         </span>
       </PanelTitle>
 
-      {/* Filter dropdowns: Events / Meals / Vehicles */}
-      <div className="mt-3 grid grid-cols-1 gap-2 px-4 sm:grid-cols-3">
-        <FilterSelect
-          icon={CalendarDays}
-          value={eventFilter}
-          onChange={setEventFilter}
-          options={eventOptions}
-          placeholder="All events"
-        />
-        <FilterSelect
-          icon={UtensilsCrossed}
-          value={mealFilter}
-          onChange={setMealFilter}
-          options={mealOptions}
-          placeholder="All meals"
-        />
-        <FilterSelect
-          icon={Truck}
-          value={vehicleFilter}
-          onChange={setVehicleFilter}
-          options={vehicleOptions}
-          placeholder="All vehicles"
-        />
+      {/* Single layer dropdown */}
+      <div className="mt-3 px-4">
+        <div className="w-full sm:max-w-56">
+          <Select value={layer} onValueChange={(v) => v && setLayer(v as LayerKey)}>
+            <SelectTrigger className="w-full border-white/10 bg-white/5 text-slate-200">
+              <span className="flex min-w-0 items-center gap-2">
+                <active.icon className="size-3.5 shrink-0 text-slate-400" />
+                <SelectValue>
+                  {(v) => LAYER_OPTIONS.find((o) => o.value === v)?.label ?? 'Events'}
+                </SelectValue>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {LAYER_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Lane headers */}
+      {/* Day headers */}
       <div className="mt-3 flex px-4">
-        <div className="w-14 shrink-0" />
-        <div className="flex flex-1 gap-2">
-          <LaneHeader color="rgba(34,211,238,0.9)" label={`Events (${shownEvents.length})`} />
-          <LaneHeader color="rgba(16,185,129,0.9)" label={`Meals (${shownMeals.length})`} />
+        <div className="w-12 shrink-0" />
+        <div className="flex flex-1 gap-1.5">
+          {columns.map((c) => {
+            const isToday = c.key === todayKey
+            return (
+              <div
+                key={c.key}
+                className={cn(
+                  'flex flex-1 flex-col items-center gap-0.5 rounded-t-lg border-b-2 pb-1.5',
+                  isToday ? 'border-cyan-400' : 'border-white/10',
+                )}
+              >
+                <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                  {c.date.toLocaleDateString('en-US', { weekday: 'short' })}
+                </span>
+                <span
+                  className={cn(
+                    'flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
+                    isToday ? 'bg-cyan-400 text-slate-950' : 'text-white',
+                  )}
+                >
+                  {c.date.getDate()}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
       {/* Hourly timeline */}
-      <div ref={scrollRef} className="mt-1 max-h-100 overflow-y-auto px-4">
-        <div className="flex" style={{ height: 24 * HOUR_H }}>
+      <div ref={scrollRef} className="mt-1 max-h-100 overflow-auto px-4">
+        <div className="flex min-w-[560px]" style={{ height: 24 * HOUR_H }}>
           {/* Hour gutter */}
-          <div className="w-14 shrink-0">
+          <div className="w-12 shrink-0">
             {Array.from({ length: 24 }, (_, h) => (
               <div
                 key={h}
@@ -324,9 +438,9 @@ export function AuroraCalendars() {
             ))}
           </div>
 
-          {/* Lanes */}
-          <div className="relative flex flex-1 gap-2">
-            {/* Hour grid lines span both lanes */}
+          {/* Day columns */}
+          <div className="relative flex flex-1 gap-1.5">
+            {/* Shared hour grid lines */}
             <div className="pointer-events-none absolute inset-0">
               {Array.from({ length: 24 }, (_, h) => (
                 <div
@@ -337,84 +451,70 @@ export function AuroraCalendars() {
               ))}
             </div>
 
-            {/* Current-time indicator */}
-            {nowMin !== null ? (
-              <div
-                className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
-                style={{ top: (nowMin / 60) * HOUR_H }}
-              >
-                <span className="size-2 -translate-x-1 rounded-full bg-rose-400" />
-                <span className="h-px flex-1 bg-rose-400/70" />
-              </div>
-            ) : null}
+            {columns.map((c) => {
+              const isToday = c.key === todayKey
+              return (
+                <div
+                  key={c.key}
+                  className={cn(
+                    'relative flex-1 border-l border-white/5 first:border-l-0',
+                    isToday && 'bg-cyan-400/5',
+                  )}
+                >
+                  {/* Current-time indicator on today's column */}
+                  {isToday ? (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
+                      style={{ top: (nowMin / 60) * HOUR_H }}
+                    >
+                      <span className="size-1.5 -translate-x-0.5 rounded-full bg-rose-400" />
+                      <span className="h-px flex-1 bg-rose-400/70" />
+                    </div>
+                  ) : null}
 
-            {/* Events lane */}
-            <Lane empty={shownEvents.length === 0} emptyLabel="No events">
-              {eventBlocks.map((b) => {
-                const top = (b.start / 60) * HOUR_H
-                const height = Math.max(((b.end - b.start) / 60) * HOUR_H, 22)
-                const widthPct = 100 / b.cols
-                return (
-                  <button
-                    key={b.data.id}
-                    type="button"
-                    onClick={() => setSelected({ kind: 'event', data: b.data })}
-                    className="absolute overflow-hidden rounded-md border-l-2 border-cyan-400 px-1.5 py-1 text-left text-cyan-50 transition-colors hover:brightness-110"
-                    style={{
-                      top,
-                      height,
-                      left: `calc(${b.col * widthPct}% + 2px)`,
-                      width: `calc(${widthPct}% - 4px)`,
-                      background: 'rgba(34,211,238,0.16)',
-                    }}
-                    title={`${b.data.name} · ${to12h(b.data.startTime)}`}
-                  >
-                    <span className="block truncate text-[10px] font-semibold leading-tight">
-                      {b.data.name}
+                  {c.blocks.length === 0 ? (
+                    <span className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 whitespace-nowrap text-[10px] text-slate-600">
+                      None
                     </span>
-                    {height > 30 ? (
-                      <span className="block truncate text-[9px] tabular-nums text-cyan-200/80">
-                        {to12h(b.data.startTime)}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </Lane>
+                  ) : null}
 
-            {/* Meals lane */}
-            <Lane empty={shownMeals.length === 0} emptyLabel="No meals">
-              {mealBlocks.map((b) => {
-                const top = (b.start / 60) * HOUR_H
-                const height = Math.max(((b.end - b.start) / 60) * HOUR_H, 22)
-                const widthPct = 100 / b.cols
-                return (
-                  <button
-                    key={b.data.id}
-                    type="button"
-                    onClick={() => setSelected({ kind: 'meal', data: b.data })}
-                    className="absolute overflow-hidden rounded-md border-l-2 border-emerald-400 px-1.5 py-1 text-left text-emerald-50 transition-colors hover:brightness-110"
-                    style={{
-                      top,
-                      height,
-                      left: `calc(${b.col * widthPct}% + 2px)`,
-                      width: `calc(${widthPct}% - 4px)`,
-                      background: 'rgba(16,185,129,0.18)',
-                    }}
-                    title={`${b.data.runNumber} · ${to12h(b.data.departTime)}`}
-                  >
-                    <span className="block truncate text-[10px] font-semibold leading-tight">
-                      {b.data.runNumber} · {b.data.mealType}
-                    </span>
-                    {height > 30 ? (
-                      <span className="block truncate text-[9px] tabular-nums text-emerald-200/80">
-                        {to12h(b.data.departTime)}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </Lane>
+                  {c.blocks.map((b) => {
+                    const top = (b.start / 60) * HOUR_H
+                    const height = Math.max(((b.end - b.start) / 60) * HOUR_H, 20)
+                    const widthPct = 100 / b.cols
+                    return (
+                      <button
+                        key={b.key}
+                        type="button"
+                        onClick={() => b.sel && setSelected(b.sel)}
+                        className="absolute overflow-hidden rounded-md border-l-2 px-1.5 py-1 text-left text-white transition-[filter] hover:brightness-110"
+                        style={{
+                          top,
+                          height,
+                          left: `calc(${b.col * widthPct}% + 1px)`,
+                          width: `calc(${widthPct}% - 2px)`,
+                          borderColor: active.border,
+                          background: active.bg,
+                        }}
+                        title={`${b.title}${b.subtitle ? ` · ${b.subtitle}` : ''}`}
+                      >
+                        <span className="block truncate text-[10px] font-semibold leading-tight">
+                          {b.title}
+                        </span>
+                        {height > 28 && b.subtitle ? (
+                          <span
+                            className="block truncate text-[9px] leading-tight"
+                            style={{ color: active.sub }}
+                          >
+                            {b.subtitle}
+                          </span>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -423,71 +523,10 @@ export function AuroraCalendars() {
         <DialogContent className="max-w-md">
           {selected?.kind === 'event' ? <EventDetail event={selected.data} /> : null}
           {selected?.kind === 'meal' ? <MealDetail meal={selected.data} /> : null}
+          {selected?.kind === 'driver' ? <DriverDetail driver={selected.data} /> : null}
         </DialogContent>
       </Dialog>
     </GlassCard>
-  )
-}
-
-function FilterSelect({
-  icon: Icon,
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-  placeholder: string
-}) {
-  return (
-    <Select value={value} onValueChange={(v) => v && onChange(v)}>
-      <SelectTrigger className="w-full border-white/10 bg-white/5 text-slate-200">
-        <span className="flex min-w-0 items-center gap-2">
-          <Icon className="size-3.5 shrink-0 text-slate-400" />
-          <SelectValue>{(v) => options.find((o) => o.value === v)?.label ?? placeholder}</SelectValue>
-        </span>
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-function LaneHeader({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex flex-1 items-center gap-1.5 border-b border-white/10 pb-1">
-      <span className="size-2 rounded-full" style={{ background: color }} />
-      <span className="text-[11px] font-medium text-slate-300">{label}</span>
-    </div>
-  )
-}
-
-function Lane({
-  children,
-  empty,
-  emptyLabel,
-}: {
-  children: React.ReactNode
-  empty: boolean
-  emptyLabel: string
-}) {
-  return (
-    <div className="relative flex-1">
-      {empty ? (
-        <span className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-[10px] text-slate-600">
-          {emptyLabel}
-        </span>
-      ) : null}
-      {children}
-    </div>
   )
 }
 
@@ -619,6 +658,47 @@ function MealDetail({ meal }: { meal: MealDelivery }) {
               </span>
             ) : null}
             {driver ? <Star className="size-3 fill-warning text-warning" /> : null}
+          </span>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function DriverDetail({ driver }: { driver: Driver }) {
+  const fleet = useFleet()
+  const vehicle = driver.assignedVehicleId ? fleet.vehicleById(driver.assignedVehicleId) : undefined
+  const meta = driverStatusMeta[driver.status]
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <UserRound className="size-4 text-primary" />
+          {driver.name}
+        </DialogTitle>
+        <DialogDescription>Driver shift schedule and assignment.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <DetailRow>
+          <span className="flex items-center gap-1">
+            <Clock className="size-3.5" /> {to12h(driver.shiftStart)} – {to12h(driver.shiftEnd)}
+          </span>
+          <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', meta.cls)}>
+            {meta.label}
+          </span>
+        </DetailRow>
+        <DetailRow>
+          <span className="flex items-center gap-1">
+            <CalendarDays className="size-3.5" /> {formatShiftDays(driver.shiftDays)}
+          </span>
+        </DetailRow>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px]">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Truck className="size-3.5" /> {vehicle?.name ?? 'No vehicle assigned'}
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Star className="size-3 fill-warning text-warning" /> {driver.rating.toFixed(1)}
           </span>
         </div>
       </div>
