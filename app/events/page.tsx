@@ -1,9 +1,8 @@
 'use client'
 
 import { Fragment, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock, MapPin, Plus, Repeat, Sparkles, UtensilsCrossed, Users } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Plus, Repeat, UtensilsCrossed, Users } from 'lucide-react'
 import { MealDeliveryTab } from '@/components/events/meal-tabs'
 import { PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
@@ -32,6 +31,7 @@ import {
   type SortOption,
 } from '@/components/data-view/data-view'
 import { useFleet } from '@/lib/store'
+import { getPlanStatus } from '@/lib/planning-status'
 import { formatMonthDayYear } from '@/lib/date'
 import type { FleetEvent } from '@/lib/types'
 
@@ -113,6 +113,12 @@ export default function EventsPage() {
       .filter((t) => t.eventId === e.id && t.status !== 'cancelled')
       .flatMap((t) => t.stops.map((s) => s.participantId))
     return { assignedCount: new Set(assigned).size, total: e.participantIds.length }
+  }
+
+  // A dispatched event (one or more of its trips are en route / started) can no
+  // longer be deleted.
+  function isDispatched(e: FleetEvent) {
+    return getPlanStatus(e, fleet.trips).dispatched
   }
 
   function openAdd() {
@@ -213,6 +219,8 @@ export default function EventsPage() {
                         onDelete={() => fleet.deleteEvent(e.id, e.name)}
                         deleteTitle="Delete event"
                         deleteMessage={`Delete ${e.name}? Committed trips for this event will also be cancelled.`}
+                        canDelete={!isDispatched(e)}
+                        deleteDisabledReason="Dispatched — can't delete"
                       />
                     </div>
                   </div>
@@ -243,17 +251,6 @@ export default function EventsPage() {
                       </span>
                     </div>
                     <Progress value={total ? (assignedCount / total) * 100 : 0} className="h-1.5" />
-                    {assignedCount < total && e.status !== 'completed' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-3 w-full"
-                        nativeButton={false}
-                        render={<Link href={`/planner?id=${e.id}`} />}
-                      >
-                        <Sparkles className="size-3.5" /> Plan Transport
-                      </Button>
-                    ) : null}
                   </div>
                 </Card>
                 {detailId === e.id ? (
@@ -331,6 +328,8 @@ export default function EventsPage() {
                             onDelete={() => fleet.deleteEvent(e.id, e.name)}
                             deleteTitle="Delete event"
                             deleteMessage={`Delete ${e.name}? Committed trips for this event will also be cancelled.`}
+                            canDelete={!isDispatched(e)}
+                            deleteDisabledReason="Dispatched — can't delete"
                           />
                         </TableCell>
                       </TableRow>

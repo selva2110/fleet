@@ -19,18 +19,24 @@ export function Field({
   htmlFor,
   children,
   className,
+  required,
+  error,
 }: {
   label: string
   htmlFor?: string
   children: ReactNode
   className?: string
+  required?: boolean
+  error?: string
 }) {
   return (
     <div className={className}>
       <Label htmlFor={htmlFor} className="mb-1.5 block text-xs font-medium text-muted-foreground">
         {label}
+        {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </Label>
       {children}
+      {error ? <p className="mt-1 text-xs font-medium text-destructive">{error}</p> : null}
     </div>
   )
 }
@@ -50,6 +56,8 @@ export function AddressField({
   location,
   onLocationChange,
   placeholder = 'Enter an address',
+  required,
+  error,
 }: {
   label?: string
   value: string
@@ -57,6 +65,8 @@ export function AddressField({
   location: LatLng | null
   onLocationChange: (v: LatLng | null) => void
   placeholder?: string
+  required?: boolean
+  error?: string
 }) {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
@@ -214,12 +224,14 @@ export function AddressField({
   }
 
   return (
-    <Field label={label}>
+    <Field label={label} required={required} error={error}>
       <div className="flex flex-col gap-2">
         <div className="relative">
           <Input
             value={value}
             placeholder={placeholder}
+            aria-invalid={error ? true : undefined}
+            className={error ? 'border-destructive focus-visible:ring-destructive/40' : undefined}
             onChange={(e) => {
               onChange(e.target.value)
               setShowSuggestions(Boolean(e.target.value.trim()))
@@ -280,6 +292,8 @@ export function TextField({
   placeholder,
   type = 'text',
   min,
+  required,
+  error,
 }: {
   label: string
   value: string
@@ -287,14 +301,18 @@ export function TextField({
   placeholder?: string
   type?: string
   min?: string
+  required?: boolean
+  error?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} required={required} error={error}>
       <Input
         type={type}
         value={value}
         placeholder={placeholder}
         min={min}
+        aria-invalid={error ? true : undefined}
+        className={error ? 'border-destructive focus-visible:ring-destructive/40' : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
@@ -306,18 +324,24 @@ export function NumberField({
   value,
   onChange,
   min = 0,
+  required,
+  error,
 }: {
   label: string
   value: number
   onChange: (v: number) => void
   min?: number
+  required?: boolean
+  error?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} required={required} error={error}>
       <Input
         type="number"
         min={min}
         value={Number.isFinite(value) ? value : 0}
+        aria-invalid={error ? true : undefined}
+        className={error ? 'border-destructive focus-visible:ring-destructive/40' : undefined}
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </Field>
@@ -329,16 +353,20 @@ export function SelectField<T extends string>({
   value,
   options,
   onChange,
+  required,
+  error,
 }: {
   label: string
   value: T
   options: { value: T; label: string }[]
   onChange: (v: T) => void
+  required?: boolean
+  error?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} required={required} error={error}>
       <Select value={value} onValueChange={(v) => v && onChange(v as T)}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className={error ? 'w-full border-destructive' : 'w-full'}>
           <SelectValue>
             {(v) => options.find((o) => o.value === v)?.label ?? label}
           </SelectValue>

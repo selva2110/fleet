@@ -3,17 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
-import {
-  Activity,
   Bell,
   Bus,
   CalendarDays,
-  ChevronDown,
   LayoutDashboard,
   Menu,
   MessageSquare,
@@ -28,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { DISPATCHER_NAME } from '@/lib/labels'
 import { DeadlinePrompt } from '@/components/planner/deadline-prompt'
@@ -72,83 +64,7 @@ const NAV: NavSection[] = [
   },
 ]
 
-const TOP_NAV: NavItem[] = NAV.flatMap((s) => s.items)
-
-/** Horizontal, scrollable navigation used in the top bar on desktop. */
-function TopNavLinks() {
-  const pathname = usePathname()
-  return (
-    <nav className="flex items-center gap-1">
-      {TOP_NAV.map((item) => (
-        <TopNavItem key={item.href} item={item} pathname={pathname} />
-      ))}
-    </nav>
-  )
-}
-
-/**
- * A single top-bar entry. Items with children (e.g. Events → Trips) render a
- * dropdown trigger whose menu lists the parent page plus its sub-pages. The
- * menu is portalled, so it is never clipped by the nav's horizontal scroll
- * container.
- */
-function TopNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
-  const Icon = item.icon
-  const childActive = item.children?.some((c) => pathname === c.href) ?? false
-  const active = pathname === item.href || childActive
-
-  const linkCls = cn(
-    'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-    active
-      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-  )
-
-  if (!item.children?.length) {
-    return (
-      <Link href={item.href} className={linkCls}>
-        <Icon className="size-4 shrink-0" />
-        <span>{item.label}</span>
-      </Link>
-    )
-  }
-
-  const subItems = [{ ...item, label: `All ${item.label.toLowerCase()}` }, ...item.children]
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(linkCls, 'cursor-pointer')}
-        aria-label={`${item.label} menu`}
-      >
-        <Icon className="size-4 shrink-0" />
-        <span>{item.label}</span>
-        <ChevronDown className="size-3.5 shrink-0 opacity-60 transition-transform data-[popup-open]:rotate-180" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={6} className="w-52 min-w-52">
-        {subItems.map((sub) => {
-          const SubIcon = sub.icon
-          const subActive = pathname === sub.href
-          return (
-            <DropdownMenuItem
-              key={sub.href}
-              render={<Link href={sub.href} />}
-              className={cn(
-                'gap-2 px-2.5 py-2 text-[13px]',
-                subActive && 'bg-primary/10 text-primary',
-              )}
-            >
-              <SubIcon className="size-4 shrink-0" />
-              <span>{sub.label}</span>
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-/** Vertical, grouped navigation used inside the mobile sheet. */
+/** Vertical, grouped navigation used inside the left sidebar. */
 function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   return (
@@ -267,21 +183,6 @@ function ProfileChip() {
         <p className="text-[10px] uppercase tracking-wide text-sidebar-foreground/60">Dispatcher</p>
       </div>
     </div>
-  )
-}
-
-function SimToggle() {
-  const { simRunning, toggleSim } = useFleet()
-  return (
-    <Button
-      variant={simRunning ? 'secondary' : 'outline'}
-      size="sm"
-      onClick={toggleSim}
-      className="gap-2"
-    >
-      <Activity className={cn('size-4', simRunning && 'text-success')} />
-      <span className="hidden md:inline">{simRunning ? 'Live' : 'Paused'}</span>
-    </Button>
   )
 }
 
@@ -516,52 +417,77 @@ export function NotificationCenter() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Open the sidebar by default on large screens; keep it hidden on mobile.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setSidebarOpen(true)
+    }
+  }, [])
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <ReminderMonitorRoot />
 
-      {/* Top navigation */}
-      <header className="shrink-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm">
+      {/* Top bar */}
+      <header className="z-50 shrink-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm">
         <div className="flex h-14 items-center gap-3 px-4">
-          {/* Mobile menu */}
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger
-              render={
-                <Button variant="ghost" size="icon" className="xl:hidden">
-                  <Menu className="size-5" />
-                </Button>
-              }
-            />
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <div className="border-b border-border px-5 py-4">
-                <Brand />
-              </div>
-              <MobileNavLinks onNavigate={() => setOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          {/* Hamburger — shows/hides the left sidebar */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label={sidebarOpen ? 'Hide menu' : 'Show menu'}
+            aria-expanded={sidebarOpen}
+          >
+            <Menu className="size-5" />
+          </Button>
 
           <Brand className="shrink-0" onDark />
 
-          {/* Desktop horizontal nav */}
-          <div className="ml-4 hidden min-w-0 flex-1 overflow-x-auto xl:block scrollbar-none">
-            <TopNavLinks />
-          </div>
-
-          <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <LiveClock />
             <NotificationCenter />
-            <SimToggle />
             <ThemeToggle />
             <ProfileChip />
           </div>
         </div>
       </header>
 
-      {/* <DeadlinePrompt /> */}
-      <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+      <div className="relative flex min-h-0 flex-1">
+        {/* Mobile backdrop */}
+        {sidebarOpen ? (
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 top-14 z-30 bg-black/50 lg:hidden"
+          />
+        ) : null}
+
+        {/* Collapsible left sidebar */}
+        <aside
+          className={cn(
+            'overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200',
+            'fixed bottom-0 left-0 top-14 z-40 w-72 lg:static lg:top-0 lg:z-0 lg:w-64',
+            sidebarOpen
+              ? 'translate-x-0 lg:w-64'
+              : '-translate-x-full lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-r-0',
+          )}
+        >
+          <MobileNavLinks
+            onNavigate={() => {
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                setSidebarOpen(false)
+              }
+            }}
+          />
+        </aside>
+
+        {/* <DeadlinePrompt /> */}
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   )
 }

@@ -23,11 +23,17 @@ export function RowActions({
   onDelete,
   deleteTitle,
   deleteMessage,
+  canDelete = true,
+  deleteDisabledReason,
 }: {
   onEdit: () => void
   onDelete: () => void | Promise<void>
   deleteTitle: string
   deleteMessage: string
+  /** When false, the Delete action is disabled (e.g. dispatched events). */
+  canDelete?: boolean
+  /** Shown in place of the Delete label when deletion is not allowed. */
+  deleteDisabledReason?: string
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -56,8 +62,15 @@ export function RowActions({
           <DropdownMenuItem onClick={onEdit}>
             <Pencil className="size-3.5" /> Edit
           </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={() => setConfirmOpen(true)}>
-            <Trash2 className="size-3.5" /> Delete
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!canDelete}
+            onClick={() => {
+              if (canDelete) setConfirmOpen(true)
+            }}
+          >
+            <Trash2 className="size-3.5" />
+            {canDelete ? 'Delete' : deleteDisabledReason ?? 'Delete unavailable'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

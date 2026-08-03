@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { AuroraKpis } from '@/components/aurora/aurora-kpis'
 import { AuroraMain } from '@/components/aurora/aurora-main'
 import { AuroraWidgets, TodaysOverview } from '@/components/aurora/aurora-widgets'
-import { AuroraAnalytics } from '@/components/aurora/aurora-analytics'
 import { AuroraCalendars } from '@/components/aurora/aurora-calendars'
 import { FadeIn } from '@/components/aurora/aurora-ui'
 import { useAuroraData } from '@/components/aurora/use-aurora-data'
@@ -89,16 +88,7 @@ export default function DashboardPage() {
           </FadeIn>
         </div>
 
-        {/* Operations map removed — dashboard focuses on KPIs and analytics */}
-
-        {/* Analytics — real-data charts with axes (merged from Analytics page) */}
-        <FadeIn delay={0.14} className="mt-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight text-white">Analytics</h2>
-            <span className="text-xs text-slate-400">Operational trends from live data</span>
-          </div>
-          <AuroraAnalytics />
-        </FadeIn>
+        {/* Operations map removed — dashboard focuses on KPIs and schedule */}
       </div>
     </div>
   )

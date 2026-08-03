@@ -36,14 +36,6 @@ const MOBILITY_FILTERS: { value: 'all' | MobilityLevel; label: string }[] = [
   { value: 'stretcher', label: 'Stretcher' },
 ]
 
-const STATUS: { value: EventStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'planning', label: 'Planning' },
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'active', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-]
-
 const REMINDER_FREQ: { value: string; label: string }[] = [
   { value: '1440', label: 'Send reminder 24 hours before' },
   { value: '720', label: 'Send reminder 12 hours before' },
@@ -275,7 +267,6 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 placeholder="e.g. Tuesday Dialysis Session"
                 onChange={(v) => set('name', v)}
               />
-              <SelectField label="Status" value={form.status} options={STATUS} onChange={(v) => set('status', v)} />
               <div className="grid gap-4 sm:grid-cols-3">
                 <TextField label="Start date" type="date" value={form.date} min={todayStr} onChange={(v) => set('date', v)} />
                 <TextField

@@ -60,20 +60,22 @@ export function AuroraCalendars() {
   const fleet = useFleet()
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [tab, setTab] = useState<DetailTab>('events')
-  // Window offset in days: paged 5 at a time, backward (past) or forward (upcoming).
-  const [offset, setOffset] = useState(0)
+  // Window offset in weeks: paged a full Mon–Sun week at a time (Teams-style).
+  const [weekOffset, setWeekOffset] = useState(0)
 
-  // Five-day window, pageable to past and upcoming dates from today.
+  // Monday-start 7-day week, pageable to past and upcoming weeks from today.
   const days = useMemo(() => {
     const start = new Date()
     start.setHours(0, 0, 0, 0)
-    start.setDate(start.getDate() + offset)
-    return Array.from({ length: 5 }, (_, i) => {
+    // Shift back to Monday (getDay: 0 = Sun .. 6 = Sat).
+    const dow = (start.getDay() + 6) % 7
+    start.setDate(start.getDate() - dow + weekOffset * 7)
+    return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start)
       d.setDate(start.getDate() + i)
       return d
     })
-  }, [offset])
+  }, [weekOffset])
 
   const todayKey = ymd(new Date())
   const totalVehicles = fleet.vehicles.length
@@ -105,7 +107,7 @@ export function AuroraCalendars() {
   const rangeLabel = `${days[0].toLocaleString("en-US", {
     month: "short",
     day: "numeric",
-  })} – ${days[4].toLocaleString("en-US", {
+  })} – ${days[6].toLocaleString("en-US", {
     month: "short",
     day: "numeric",
   })}`;
@@ -128,9 +130,9 @@ export function AuroraCalendars() {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setOffset((o) => o - 5)}
+              onClick={() => setWeekOffset((o) => o - 1)}
               className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
-              aria-label="Previous 5 days"
+              aria-label="Previous week"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -139,16 +141,16 @@ export function AuroraCalendars() {
             </span>
             <button
               type="button"
-              onClick={() => setOffset((o) => o + 5)}
+              onClick={() => setWeekOffset((o) => o + 1)}
               className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-300 transition-colors hover:bg-white/10"
-              aria-label="Next 5 days"
+              aria-label="Next week"
             >
               <ChevronRight className="size-4" />
             </button>
-            {offset !== 0 ? (
+            {weekOffset !== 0 ? (
               <button
                 type="button"
-                onClick={() => setOffset(0)}
+                onClick={() => setWeekOffset(0)}
                 className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/20"
               >
                 Today
@@ -159,77 +161,99 @@ export function AuroraCalendars() {
       >
         Schedule
         <span className="ml-2 text-xs font-normal text-slate-400">
-          5-day view · {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
+          Week view · {weekEventCount} event{weekEventCount === 1 ? '' : 's'}
         </span>
       </PanelTitle>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:grid-cols-3 lg:grid-cols-5">
-        {days.map((d) => {
-          const key = ymd(d)
-          const info = perDay[key]
-          const isToday = key === todayKey
-          const eventCount = info?.events.length ?? 0
-          const mealCount = info?.meals.length ?? 0
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => openDayDialog(key)}
-              className={cn(
-                'flex min-h-28 flex-col rounded-xl border p-2.5 text-left transition-colors',
-                isToday
-                  ? 'border-cyan-400/50 bg-cyan-400/10'
-                  : 'border-white/10 bg-white/2 hover:bg-white/6',
-              )}
-            >
-              <div className="flex items-center justify-between">
+      <div className="mt-3 overflow-x-auto px-4">
+        <div className="grid min-w-[720px] grid-cols-7 overflow-hidden rounded-xl border border-white/10">
+          {days.map((d, i) => {
+            const key = ymd(d)
+            const isToday = key === todayKey
+            return (
+              <div
+                key={`h-${key}`}
+                className={cn(
+                  'flex flex-col items-center gap-1 border-b border-white/10 py-2',
+                  i < 6 ? 'border-r border-white/10' : '',
+                  isToday ? 'bg-cyan-400/10' : 'bg-white/2',
+                )}
+              >
                 <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                  {WEEKDAYS[(d.getDay() + 6) % 7]}
+                  {WEEKDAYS[i]}
                 </span>
                 <span
                   className={cn(
-                    'text-sm font-semibold tabular-nums',
-                    isToday ? 'text-cyan-300' : 'text-white',
+                    'flex size-7 items-center justify-center rounded-full text-sm font-semibold tabular-nums',
+                    isToday ? 'bg-cyan-400 text-slate-950' : 'text-white',
                   )}
                 >
                   {d.getDate()}
                 </span>
               </div>
+            )
+          })}
 
-              <div className="mt-2 flex flex-1 flex-col gap-1.5">
-                {eventCount > 0 ? (
-                  <span
-                    className="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-cyan-100"
-                    style={{ background: 'rgba(34,211,238,0.18)' }}
-                  >
-                    <CalendarDays className="size-3" /> {eventCount} event{eventCount === 1 ? '' : 's'}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500">No events</span>
+          {days.map((d, i) => {
+            const key = ymd(d)
+            const info = perDay[key]
+            const isToday = key === todayKey
+            const events = info?.events ?? []
+            const mealCount = info?.meals.length ?? 0
+            return (
+              <button
+                key={`c-${key}`}
+                type="button"
+                onClick={() => openDayDialog(key)}
+                className={cn(
+                  'flex min-h-36 flex-col gap-1 p-1.5 text-left align-top transition-colors',
+                  i < 6 ? 'border-r border-white/10' : '',
+                  isToday ? 'bg-cyan-400/6 hover:bg-cyan-400/12' : 'hover:bg-white/6',
                 )}
-                {mealCount > 0 ? (
-                  <span
-                    className="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-emerald-100"
-                    style={{ background: 'rgba(16,185,129,0.18)' }}
-                  >
-                    <UtensilsCrossed className="size-3" /> {mealCount} meal{mealCount === 1 ? '' : 's'}
-                  </span>
-                ) : null}
-              </div>
+              >
+                <div className="flex flex-1 flex-col gap-1">
+                  {events.length === 0 && mealCount === 0 ? (
+                    <span className="px-1 pt-1 text-[10px] text-slate-600">No events</span>
+                  ) : null}
+                  {events.slice(0, 3).map((e) => (
+                    <span
+                      key={e.id}
+                      className="flex items-center gap-1 truncate rounded-md border-l-2 border-cyan-400 px-1.5 py-1 text-[10px] font-medium text-cyan-50"
+                      style={{ background: 'rgba(34,211,238,0.14)' }}
+                    >
+                      <span className="shrink-0 tabular-nums text-cyan-200/90">{to12h(e.startTime)}</span>
+                      <span className="truncate">{e.name}</span>
+                    </span>
+                  ))}
+                  {events.length > 3 ? (
+                    <span className="px-1 text-[10px] font-medium text-slate-400">
+                      +{events.length - 3} more
+                    </span>
+                  ) : null}
+                  {mealCount > 0 ? (
+                    <span
+                      className="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-emerald-100"
+                      style={{ background: 'rgba(16,185,129,0.18)' }}
+                    >
+                      <UtensilsCrossed className="size-3" /> {mealCount} meal{mealCount === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
 
-              <div className="mt-1.5 flex items-center gap-2 border-t border-white/5 pt-1.5 text-[10px] text-slate-400">
-                <span className="flex items-center gap-0.5" title="Drivers on shift">
-                  <UserRound className="size-3" style={{ color: AURORA_ACCENTS.emerald }} />
-                  {info?.drivers.length ?? 0}
-                </span>
-                <span className="flex items-center gap-0.5" title="Vehicles available">
-                  <Truck className="size-3" style={{ color: AURORA_ACCENTS.blue }} />
-                  {info?.available.length ?? 0}
-                </span>
-              </div>
-            </button>
-          )
-        })}
+                <div className="mt-auto flex items-center gap-2 border-t border-white/5 pt-1.5 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-0.5" title="Drivers on shift">
+                    <UserRound className="size-3" style={{ color: AURORA_ACCENTS.emerald }} />
+                    {info?.drivers.length ?? 0}
+                  </span>
+                  <span className="flex items-center gap-0.5" title="Vehicles available">
+                    <Truck className="size-3" style={{ color: AURORA_ACCENTS.blue }} />
+                    {info?.available.length ?? 0}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <Dialog open={openKey !== null} onOpenChange={(v) => !v && setOpenKey(null)}>
