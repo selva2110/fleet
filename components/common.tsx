@@ -2,8 +2,10 @@ import type { ComponentType } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { constraintLabels } from '@/lib/labels'
-import type { MedicalPriority, TransportConstraints } from '@/lib/types'
+import { ParticipantConfig } from '@/lib/participant/config';
+import { TransportConstraints } from '@/lib/participant/types';
+import { useTranslation } from './context/language-provider';
+import { Tooltip, TooltipContent, TooltipTrigger } from './context/tooltip-provdier';
 
 export function PageHeader({
   title,
@@ -67,24 +69,13 @@ export function StatusBadge({ label, cls }: { label: string; cls: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium flex-wrap',
         cls,
       )}
     >
       {label}
     </span>
   )
-}
-
-const priorityMeta: Record<MedicalPriority, { label: string; cls: string }> = {
-  routine: { label: 'Routine', cls: 'bg-muted text-muted-foreground' },
-  elevated: { label: 'Elevated', cls: 'bg-warning/20 text-warning-foreground' },
-  critical: { label: 'Critical', cls: 'bg-destructive/15 text-destructive' },
-}
-
-export function PriorityBadge({ priority }: { priority: MedicalPriority }) {
-  const m = priorityMeta[priority]
-  return <StatusBadge label={m.label} cls={m.cls} />
 }
 
 export function ConstraintChips({
@@ -94,15 +85,16 @@ export function ConstraintChips({
   constraints: TransportConstraints
   max?: number
 }) {
-  const active = constraintLabels.filter((c) => constraints[c.key as keyof TransportConstraints])
+  const {t} = useTranslation();
+  const active = ParticipantConfig.constraintLabels.filter((c) => constraints[c.key as keyof TransportConstraints])
   if (active.length === 0)
-    return <span className="text-xs text-muted-foreground">No special needs</span>
+    return <span className="text-xs text-muted-foreground">{t('part.nospecialneeds')}</span>
   const shown = active.slice(0, max)
   return (
     <div className="flex flex-wrap gap-1">
       {shown.map((c) => (
         <Badge key={c.key} variant="secondary" className="px-1.5 py-0 text-[10px] font-medium">
-          {c.short}
+          {t(c.short)}
         </Badge>
       ))}
       {active.length > max ? (
@@ -113,3 +105,36 @@ export function ConstraintChips({
     </div>
   )
 }
+
+export const HoverTooltip = ({
+  children,
+  message,
+}: {
+  children: React.ReactNode;
+  message: string;
+}) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger>{children}</TooltipTrigger>
+      <TooltipContent>{message}</TooltipContent>
+    </Tooltip>
+  );
+};
+
+export const createFieldSetter = <T extends object>(
+  setForm: React.Dispatch<React.SetStateAction<T>>,
+  setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+) => {
+  return <K extends keyof T>(key: K, value: T[K]) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+
+    setErrors((prev) =>
+      prev[key as string]
+        ? { ...prev, [key as string]: "" }
+        : prev
+    );
+  };
+};

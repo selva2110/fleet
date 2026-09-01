@@ -27,39 +27,19 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { StatusBadge } from '@/components/common'
-import { useFleet } from '@/lib/store'
-import { formatMonthDayYear, formatMonthDayYearTime } from '@/lib/date'
-import {
-  RESPONSE_META,
-  isResponseWindowOpen,
-  responseCutoff,
-} from '@/lib/notifications'
-import { cn } from '@/lib/utils'
-import type { FleetEvent, Participant, SmsNotification } from '@/lib/types'
-
-const deliveryMeta: Record<
-  string,
-  { label: string; cls: string }
-> = {
-  queued: { label: 'Queued', cls: 'bg-muted text-muted-foreground' },
-  sent: { label: 'Sent', cls: 'bg-accent text-accent-foreground' },
-  delivered: { label: 'Delivered', cls: 'bg-success/20 text-success' },
-  received: { label: 'Replied', cls: 'bg-primary/15 text-primary' },
-  undelivered: { label: 'Undelivered', cls: 'bg-warning/20 text-warning-foreground' },
-  failed: { label: 'Failed', cls: 'bg-destructive/15 text-destructive' },
-}
-
-const CONSTRAINT_LABELS: Record<string, string> = {
-  wheelchair: 'Wheelchair',
-  poweredWheelchair: 'Powered wheelchair',
-  walker: 'Walker',
-  oxygen: 'Oxygen',
-  caregiverRequired: 'Caregiver required',
-  bariatric: 'Bariatric',
-  visualAssist: 'Visual assist',
-  cognitiveAssist: 'Cognitive assist',
-  serviceAnimal: 'Service animal',
-}
+import { useCenters, useSmsNotifications, useNotificationActions } from '@/lib/events/hooks'
+import { useParticipants } from '@/lib/participant/hooks'
+import { formatMonthDayYear, formatMonthDayYearTime, formatTimeOfDay } from '@/lib/date'
+import { cn, findById } from '@/lib/utils'
+import { PartResponseConfig } from '@/lib/responses/config';
+import { ParticipantConfig } from '@/lib/participant/config';
+import { EventsConfig } from '@/lib/events/config';
+import { Participant } from '@/lib/participant/types';
+import { FleetEvent } from '@/lib/events/types';
+import { SmsNotification } from '@/lib/notification/types';
+import { NotificationUtils } from '@/lib/notification/utils';
+import { EventUtils } from '@/lib/events/utils';
+import { useTranslation } from '../context/language-provider';
 
 function StatCard({
   label,
@@ -72,13 +52,6 @@ function StatCard({
   icon: React.ReactNode
   tone?: 'default' | 'primary' | 'success' | 'danger' | 'warning'
 }) {
-  const toneCls: Record<string, string> = {
-    default: 'text-foreground',
-    primary: 'text-primary',
-    success: 'text-success',
-    danger: 'text-destructive',
-    warning: 'text-warning-foreground',
-  }
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2.5">
       <div className="flex items-center justify-between">
@@ -87,25 +60,9 @@ function StatCard({
         </span>
         <span className="text-muted-foreground">{icon}</span>
       </div>
-      <p className={cn('mt-1 text-2xl font-semibold tabular-nums', toneCls[tone])}>{value}</p>
+      <p className={cn('mt-1 text-2xl font-semibold tabular-nums', EventsConfig.toneCls[tone])}>{value}</p>
     </div>
   )
-}
-
-function toCsv(rows: string[][]): string {
-  return rows
-    .map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n')
-}
-
-function downloadCsv(filename: string, rows: string[][]) {
-  const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 export function EventDetail({
@@ -120,30 +77,35 @@ export function EventDetail({
   /** When true, render as an in-flow expandable panel instead of a modal dialog. */
   inline?: boolean
 }) {
-  const fleet = useFleet()
+  const { centers } = useCenters()
+  const { participants } = useParticipants()
+  const { smsNotifications } = useSmsNotifications(useMemo(() => (event ? [event] : []), [event]))
+  const { sendEventNotifications, assignTransport } = useNotificationActions()
+  const {t} = useTranslation()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [assigning, setAssigning] = useState(false)
   const [banner, setBanner] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
 
-  const center = fleet.centerById(event?.centerId)
+  const center = findById(centers, event?.centerId)
 
   const notifByParticipant = useMemo(() => {
     const map = new Map<string, SmsNotification>()
     if (!event) return map
-    for (const n of fleet.smsNotifications) {
+    for (const n of smsNotifications) {
       if (n.eventId === event.id) map.set(n.participantId, n)
     }
     return map
-  }, [fleet.smsNotifications, event])
+  }, [smsNotifications, event])
 
   const roster = useMemo<Participant[]>(() => {
     if (!event) return []
-    return event.participantIds
-      .map((id) => fleet.participantById(id))
+    const participantIds = Array.isArray(event.participantIds) ? event.participantIds : []
+    return participantIds
+      .map((id) => findById(participants, id))
       .filter((p): p is Participant => Boolean(p))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [event, fleet])
+  }, [event, participants])
 
   const stats = useMemo(() => {
     const notifs = [...notifByParticipant.values()]
@@ -163,15 +125,15 @@ export function EventDetail({
 
   if (!event) return null
 
-  const windowOpen = isResponseWindowOpen(event)
-  const cutoff = responseCutoff(event)
+  const windowOpen = NotificationUtils.isResponseWindowOpen(event)
+  const cutoff = NotificationUtils.responseCutoff(event)
 
   async function handleSend() {
     if (!event) return
     setSending(true)
     setBanner(null)
     try {
-      const result = await fleet.sendEventNotifications(event.id)
+      const result = await sendEventNotifications(event.id)
       setBanner({
         tone: result.sent > 0 ? 'success' : 'error',
         text: result.message,
@@ -188,10 +150,12 @@ export function EventDetail({
     setAssigning(true)
     setBanner(null)
     try {
-      const { assigned } = await fleet.assignTransport(event.id)
+      const { assigned } = await assignTransport(event.id)
       setBanner({
         tone: 'success',
-        text: `Queued ${assigned} participant${assigned === 1 ? '' : 's'} needing transport for planning.`,
+        text: t('e.queuedtransport')
+          .replace('{{count}}', String(assigned))
+          .replace('{{suffix}}', assigned === 1 ? '' : 's'),
       })
     } catch (err) {
       setBanner({ tone: 'error', text: (err as Error).message })
@@ -202,40 +166,38 @@ export function EventDetail({
 
   function exportResponses() {
     if (!event) return
-    const header = ['Name', 'Phone', 'Delivery', 'Response', 'Responded at', 'Mobility', 'Priority']
+    const header = [t('common.name'), t('common.phone'), t('resp.delivery'), t('resp.response'), t('e.respondedat'), t('common.mobility'), t('common.priority')]
     const rows = roster.map((p) => {
       const n = notifByParticipant.get(p.id)
       return [
         p.name,
         p.phone,
-        n ? deliveryMeta[n.deliveryStatus]?.label ?? n.deliveryStatus : 'Not sent',
-        n?.response ? RESPONSE_META[n.response].label : 'No response',
+        n ? t(PartResponseConfig.deliveryMeta[n.deliveryStatus]?.label) ?? n.deliveryStatus : t('e.notsent'),
+        n?.response ? t(PartResponseConfig.RESPONSE_META[n.response].label) : t('e.noresponse'),
         n?.respondedAt ? formatMonthDayYearTime(n.respondedAt) : '',
-        p.mobilityLevel,
-        p.medicalPriority,
       ]
     })
-    downloadCsv(`${event.name.replace(/\s+/g, '-')}-responses.csv`, [header, ...rows])
+    EventUtils.downloadCsv(`${event.name.replace(/\s+/g, '-')}-responses.csv`, [header, ...rows])
   }
 
   function exportTransportRequests() {
     if (!event) return
-    const header = ['Name', 'Phone', 'Address', 'Mobility', 'Priority', 'Pickup window']
+    const header = [t('common.name'), t('common.phone'), t('common.address')]
     const rows = roster
       .filter((p) => notifByParticipant.get(p.id)?.response === 'attending_transport')
-      .map((p) => [p.name, p.phone, p.address, p.mobilityLevel, p.medicalPriority, p.pickupWindow])
-    downloadCsv(`${event.name.replace(/\s+/g, '-')}-transport-requests.csv`, [header, ...rows])
+      .map((p) => [p.name, p.phone, p.address])
+    EventUtils.downloadCsv(`${event.name.replace(/\s+/g, '-')}-transport-requests.csv`, [header, ...rows])
   }
 
   const metaRow = (
     <>
       <span className="inline-flex items-center gap-1">
-        <MapPin className="size-3.5" /> {center?.name ?? 'No center'}
+        <MapPin className="size-3.5" /> {center?.name ?? t('e.nocenter')}
       </span>
       <span className="inline-flex items-center gap-1">
-        <Clock className="size-3.5" /> {formatMonthDayYear(event.date)} · {event.startTime}–{event.endTime}
+        <Clock className="size-3.5" /> {formatMonthDayYear(event.date)} · {formatTimeOfDay(event.startTime)}–{formatTimeOfDay(event.endTime)}
       </span>
-      <span>{event.type}</span>
+      <span>{t(EventsConfig.TYPE_OPTION_LABELS[event.type])}</span>
     </>
   )
 
@@ -248,11 +210,11 @@ export function EventDetail({
         )}
       >
         <span className={cn('size-1.5 rounded-full', windowOpen ? 'bg-success' : 'bg-muted-foreground')} />
-        {windowOpen ? 'Responses open' : 'Responses closed'}
+        {windowOpen ? t('e.responsesopen') : t('e.responsesclosed')}
       </span>
       {cutoff ? (
         <span className="text-xs text-muted-foreground">
-          Cutoff: {formatMonthDayYearTime(cutoff.toISOString())}
+          {t('e.cutoff')} {formatMonthDayYearTime(cutoff.toISOString())}
         </span>
       ) : null}
     </div>
@@ -264,17 +226,17 @@ export function EventDetail({
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={handleSend} disabled={sending} size="sm">
                 {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                {stats.sent > 0 ? 'Resend SMS' : `Send SMS to ${stats.total}`}
+                {stats.sent > 0 ? t('e.resendsms') : t('e.sendsmsto').replace('{{count}}', String(stats.total))}
               </Button>
               <Button onClick={handleAssign} disabled={assigning || stats.needTransport === 0} size="sm" variant="outline">
                 {assigning ? <Loader2 className="size-4 animate-spin" /> : <Bus className="size-4" />}
-                Assign transport ({stats.needTransport})
+                {t('e.assigntransport')} ({stats.needTransport})
               </Button>
               <Button onClick={exportResponses} size="sm" variant="outline">
-                <Download className="size-4" /> Export responses
+                <Download className="size-4" /> {t('e.exportresponses')}
               </Button>
               <Button onClick={exportTransportRequests} size="sm" variant="ghost" disabled={stats.needTransport === 0}>
-                <Download className="size-4" /> Transport list
+                <Download className="size-4" /> {t('e.transportlist')}
               </Button>
             </div>
 
@@ -295,37 +257,37 @@ export function EventDetail({
             {/* Delivery stats */}
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Notification delivery
+                {t('e.notificationdelivery')}
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <StatCard label="Sent" value={stats.sent} icon={<MessageSquare className="size-3.5" />} />
-                <StatCard label="Delivered" value={stats.delivered} icon={<CheckCircle2 className="size-3.5" />} tone="success" />
-                <StatCard label="Pending" value={stats.pending} icon={<Clock className="size-3.5" />} tone="warning" />
-                <StatCard label="Failed" value={stats.failed} icon={<XCircle className="size-3.5" />} tone="danger" />
+                <StatCard label={t('e.sent')} value={stats.sent} icon={<MessageSquare className="size-3.5" />} />
+                <StatCard label={t('common.delivered')} value={stats.delivered} icon={<CheckCircle2 className="size-3.5" />} tone="success" />
+                <StatCard label={t('e.pending')} value={stats.pending} icon={<Clock className="size-3.5" />} tone="warning" />
+                <StatCard label={t('e.failed')} value={stats.failed} icon={<XCircle className="size-3.5" />} tone="danger" />
               </div>
             </div>
 
             {/* Response stats */}
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Attendance responses
+                {t('e.attendanceresponses')}
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <StatCard label="Need transport" value={stats.needTransport} icon={<Bus className="size-3.5" />} tone="primary" />
-                <StatCard label="Own transport" value={stats.attendingSelf} icon={<CheckCircle2 className="size-3.5" />} tone="success" />
-                <StatCard label="Not attending" value={stats.notAttending} icon={<XCircle className="size-3.5" />} tone="danger" />
-                <StatCard label="No response" value={stats.noResponse} icon={<Users className="size-3.5" />} />
+                <StatCard label={t('e.needtransport')} value={stats.needTransport} icon={<Bus className="size-3.5" />} tone="primary" />
+                <StatCard label={t('e.owntransport')} value={stats.attendingSelf} icon={<CheckCircle2 className="size-3.5" />} tone="success" />
+                <StatCard label={t('e.notattending')} value={stats.notAttending} icon={<XCircle className="size-3.5" />} tone="danger" />
+                <StatCard label={t('e.noresponse')} value={stats.noResponse} icon={<Users className="size-3.5" />} />
               </div>
             </div>
 
             {/* Participant list */}
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Participants ({roster.length})
+                {t('common.participants')} ({roster.length})
               </h3>
               {roster.length === 0 ? (
                 <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                  No participants on the roster. Edit the event to add participants.
+                  {t('e.noroster')}
                 </p>
               ) : (
                 <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
@@ -334,7 +296,7 @@ export function EventDetail({
                     const isOpen = expanded === p.id
                     const activeConstraints = Object.entries(p.constraints)
                       .filter(([, v]) => v)
-                      .map(([k]) => CONSTRAINT_LABELS[k] ?? k)
+                      .map(([k]) => t(ParticipantConfig.CONSTRAINT_LABELS[k]) ?? k)
                     return (
                       <li key={p.id} className="bg-card">
                         <button
@@ -345,23 +307,20 @@ export function EventDetail({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">{p.name}</p>
-                            <p className="truncate text-xs text-muted-foreground capitalize">
-                              {p.mobilityLevel} · {p.medicalPriority}
-                            </p>
                           </div>
                           {n?.response ? (
-                            <StatusBadge label={RESPONSE_META[n.response].short} cls={RESPONSE_META[n.response].cls} />
+                            <StatusBadge label={t(PartResponseConfig.RESPONSE_META[n.response].short)} cls={PartResponseConfig.RESPONSE_META[n.response].cls} />
                           ) : (
-                            <span className="text-[11px] text-muted-foreground">No reply</span>
+                            <span className="text-[11px] text-muted-foreground">{t('e.noreply')}</span>
                           )}
                           {n ? (
                             <StatusBadge
-                              label={deliveryMeta[n.deliveryStatus]?.label ?? n.deliveryStatus}
-                              cls={deliveryMeta[n.deliveryStatus]?.cls ?? 'bg-muted text-muted-foreground'}
+                              label={t(PartResponseConfig.deliveryMeta[n.deliveryStatus]?.label) ?? n.deliveryStatus}
+                              cls={PartResponseConfig.deliveryMeta[n.deliveryStatus]?.cls ?? 'bg-muted text-muted-foreground'}
                             />
                           ) : (
                             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                              Not sent
+                              {t('e.notsent')}
                             </span>
                           )}
                           <ChevronDown
@@ -376,22 +335,14 @@ export function EventDetail({
                             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                               <div className="flex items-center gap-2">
                                 <Phone className="size-3.5 text-muted-foreground" />
-                                <span>{p.phone || 'No phone'}</span>
+                                <span>{p.phone || t('e.nophone')}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <MapPin className="size-3.5 text-muted-foreground" />
-                                <span className="truncate">{p.address || 'No address'}</span>
-                              </div>
-                              <div>
-                                <dt className="text-xs text-muted-foreground">Pickup window</dt>
-                                <dd>{p.pickupWindow || '—'}</dd>
-                              </div>
-                              <div>
-                                <dt className="text-xs text-muted-foreground">Emergency contact</dt>
-                                <dd>{p.emergencyContact || '—'}</dd>
+                                <span className="truncate">{p.address || t('e.noaddress')}</span>
                               </div>
                               <div className="sm:col-span-2">
-                                <dt className="text-xs text-muted-foreground">Transport constraints</dt>
+                                <dt className="text-xs text-muted-foreground">{t('e.transportconstraints')}</dt>
                                 <dd className="mt-1 flex flex-wrap gap-1">
                                   {activeConstraints.length ? (
                                     activeConstraints.map((c) => (
@@ -400,38 +351,38 @@ export function EventDetail({
                                       </span>
                                     ))
                                   ) : (
-                                    <span className="text-muted-foreground">None</span>
+                                    <span className="text-muted-foreground">{t('e.nonelabel')}</span>
                                   )}
                                 </dd>
                               </div>
                               {p.medicalNotes ? (
                                 <div className="sm:col-span-2">
-                                  <dt className="text-xs text-muted-foreground">Medical notes</dt>
+                                  <dt className="text-xs text-muted-foreground">{t('part.medicalNotes')}</dt>
                                   <dd className="text-pretty">{p.medicalNotes}</dd>
                                 </div>
                               ) : null}
                               <div className="sm:col-span-2 rounded-md border border-border bg-card px-3 py-2">
-                                <dt className="mb-1 text-xs font-medium text-muted-foreground">SMS status</dt>
+                                <dt className="mb-1 text-xs font-medium text-muted-foreground">{t('e.smsstatus')}</dt>
                                 <dd className="space-y-0.5 text-xs">
                                   {n ? (
                                     <>
                                       <p>
-                                        Delivery:{' '}
+                                        {t('e.deliverylabel')}{' '}
                                         <span className="font-medium">
-                                          {deliveryMeta[n.deliveryStatus]?.label ?? n.deliveryStatus}
+                                          {t(PartResponseConfig.deliveryMeta[n.deliveryStatus]?.label) ?? n.deliveryStatus}
                                         </span>
-                                        {n.sentAt ? ` · sent ${formatMonthDayYearTime(n.sentAt)}` : ''}
+                                        {n.sentAt ? ` · ${t('e.sent')} ${formatMonthDayYearTime(n.sentAt)}` : ''}
                                       </p>
                                       <p>
-                                        Response:{' '}
+                                        {t('e.responselabel')}{' '}
                                         <span className="font-medium">
-                                          {n.response ? RESPONSE_META[n.response].label : 'Awaiting reply'}
+                                          {n.response ? t(PartResponseConfig.RESPONSE_META[n.response].label) : t('e.awaitingreply')}
                                         </span>
                                         {n.respondedAt ? ` · ${formatMonthDayYearTime(n.respondedAt)}` : ''}
                                       </p>
                                     </>
                                   ) : (
-                                    <p className="text-muted-foreground">No notification sent yet.</p>
+                                    <p className="text-muted-foreground">{t('e.nonotification')}</p>
                                   )}
                                 </dd>
                               </div>
@@ -464,7 +415,7 @@ export function EventDetail({
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
-            aria-label="Close details"
+            aria-label={t('e.closedetails')}
             className="shrink-0"
           >
             <X className="size-4" />

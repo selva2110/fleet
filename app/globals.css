@@ -1,7 +1,8 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
-@import 'leaflet/dist/leaflet.css';
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "leaflet/dist/leaflet.css";
+@import "react-big-calendar/lib/css/react-big-calendar.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,8 +42,8 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
-  --font-sans: 'Geist', 'Geist Fallback', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -50,6 +51,10 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-muted: var(--danger-muted);
+  --color-danger-border: var(--danger-border);
 }
 
 :root {
@@ -92,6 +97,10 @@
   --success-foreground: oklch(0.99 0.01 247);
   --warning: oklch(0.72 0.16 70);
   --warning-foreground: oklch(0.28 0.05 70);
+  --danger: oklch(0.577 0.245 27);
+  --danger-foreground: oklch(0.985 0.01 25);
+  --danger-muted: oklch(0.965 0.035 25);
+  --danger-border: oklch(0.88 0.09 25);
 }
 
 .dark {
@@ -131,48 +140,59 @@
   --success-foreground: oklch(0.14 0.02 162);
   --warning: oklch(0.78 0.16 70);
   --warning-foreground: oklch(0.2 0.04 70);
+  --danger: oklch(0.577 0.245 27);
+  --danger-foreground: oklch(0.985 0.01 25);
+  --danger-muted: oklch(0.965 0.035 25);
+  --danger-border: oklch(0.88 0.09 25);
 }
 
-/* On Lok — faithful senior-care palette: mint canvas, deep teal primary,
-   green success, warm orange accent, deep-teal sidebar. */
+/* On Lok — senior-care palette
+   Blue-teal primary, soft mint surfaces,
+   warm amber accent, green success,
+   deep blue-teal navigation. */
+
 .onlok {
   color-scheme: light;
-  --background: oklch(0.98 0.014 174);
-  --foreground: oklch(0.28 0.03 195);
+  --background: oklch(0.985 0.008 195);
+  --foreground: oklch(0.24 0.035 210);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.03 195);
+  --card-foreground: oklch(0.24 0.035 210);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.03 195);
-  --primary: oklch(0.44 0.072 178);
-  --primary-foreground: oklch(0.99 0.01 175);
-  --secondary: oklch(0.93 0.035 172);
-  --secondary-foreground: oklch(0.34 0.05 182);
-  --muted: oklch(0.95 0.022 174);
-  --muted-foreground: oklch(0.5 0.03 186);
-  --accent: oklch(0.91 0.06 68);
-  --accent-foreground: oklch(0.44 0.11 58);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.9 0.022 174);
-  --input: oklch(0.9 0.022 174);
-  --ring: oklch(0.44 0.072 178);
-  --chart-1: oklch(0.44 0.072 178);
-  --chart-2: oklch(0.58 0.12 165);
-  --chart-3: oklch(0.75 0.14 62);
-  --chart-4: oklch(0.68 0.1 135);
-  --chart-5: oklch(0.55 0.11 250);
+  --popover-foreground: oklch(0.24 0.035 210);
+  --primary: oklch(0.43 0.09 205);
+  --primary-foreground: oklch(0.99 0.008 205);
+  --secondary: oklch(0.93 0.03 195);
+  --secondary-foreground: oklch(0.31 0.055 205);
+  --muted: oklch(0.955 0.015 195);
+  --muted-foreground: oklch(0.5 0.028 205);
+  --accent: oklch(0.91 0.065 82);
+  --accent-foreground: oklch(0.38 0.075 65);
+  --destructive: oklch(0.57 0.19 28);
+  --success: oklch(0.56 0.135 158);
+  --success-foreground: oklch(0.99 0.01 160);
+  --warning: oklch(0.72 0.145 75);
+  --warning-foreground: oklch(0.3 0.055 70);
+  --border: oklch(0.89 0.018 195);
+  --input: oklch(0.89 0.018 195);
+  --ring: oklch(0.49 0.095 205);
+  --chart-1: oklch(0.43 0.09 205);
+  --chart-2: oklch(0.56 0.135 158);
+  --chart-3: oklch(0.72 0.14 78);
+  --chart-4: oklch(0.62 0.1 225);
+  --chart-5: oklch(0.58 0.11 275);
   --radius: 0.75rem;
-  --sidebar: oklch(0.31 0.045 185);
-  --sidebar-foreground: oklch(0.95 0.02 175);
-  --sidebar-primary: oklch(0.68 0.13 156);
-  --sidebar-primary-foreground: oklch(0.18 0.03 175);
-  --sidebar-accent: oklch(0.37 0.05 185);
-  --sidebar-accent-foreground: oklch(0.96 0.02 175);
-  --sidebar-border: oklch(0.4 0.05 185);
-  --sidebar-ring: oklch(0.68 0.13 156);
-  --success: oklch(0.58 0.12 165);
-  --success-foreground: oklch(0.99 0.01 175);
-  --warning: oklch(0.75 0.14 65);
-  --warning-foreground: oklch(0.3 0.05 65);
+  --sidebar: oklch(0.25 0.045 205);
+  --sidebar-foreground: oklch(0.94 0.018 200);
+  --sidebar-primary: oklch(0.68 0.11 185);
+  --sidebar-primary-foreground: oklch(0.18 0.035 200);
+  --sidebar-accent: oklch(0.31 0.05 205);
+  --sidebar-accent-foreground: oklch(0.96 0.018 200);
+  --sidebar-border: oklch(0.36 0.045 205);
+  --sidebar-ring: oklch(74.697% 0.16091 58.839);
+  --danger: oklch(0.577 0.245 27);
+  --danger-foreground: oklch(0.985 0.01 25);
+  --danger-muted: oklch(0.965 0.035 25);
+  --danger-border: oklch(0.88 0.09 25);
 }
 
 /* Evergreen — warm forest calm: soft green-cream canvas, forest-green
@@ -215,6 +235,10 @@
   --success-foreground: oklch(0.99 0.01 135);
   --warning: oklch(0.74 0.14 72);
   --warning-foreground: oklch(0.3 0.05 72);
+  --danger: oklch(0.577 0.245 27);
+  --danger-foreground: oklch(0.985 0.01 25);
+  --danger-muted: oklch(0.965 0.035 25);
+  --danger-border: oklch(0.88 0.09 25);
 }
 
 /* Sunrise — warm coral & teal: cream-peach canvas, warm coral primary,
@@ -257,6 +281,10 @@
   --success-foreground: oklch(0.99 0.01 160);
   --warning: oklch(0.74 0.14 72);
   --warning-foreground: oklch(0.3 0.05 72);
+  --danger: oklch(0.577 0.245 27);
+  --danger-foreground: oklch(0.985 0.01 25);
+  --danger-muted: oklch(0.965 0.035 25);
+  --danger-border: oklch(0.88 0.09 25);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -297,6 +325,10 @@
     --success-foreground: oklch(0.14 0.02 162);
     --warning: oklch(0.78 0.16 70);
     --warning-foreground: oklch(0.2 0.04 70);
+    --danger: oklch(0.577 0.245 27);
+    --danger-foreground: oklch(0.985 0.01 25);
+    --danger-muted: oklch(0.965 0.035 25);
+    --danger-border: oklch(0.88 0.09 25);
   }
 }
 
@@ -320,7 +352,8 @@
   color: var(--muted-foreground);
 }
 .dark .leaflet-tile {
-  filter: brightness(0.8) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.75);
+  filter: brightness(0.8) invert(1) contrast(0.9) hue-rotate(180deg)
+    saturate(0.75);
 }
 .map-marker {
   display: flex;
@@ -351,4 +384,159 @@
 }
 .map-marker-pulse {
   animation: marker-pulse 1.8s infinite;
+}
+
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 15px;
+  border: none;
+}
+
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  border-top: none;
+  border-bottom-color: var(--card) !important;
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 1px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* react-big-calendar theming
+   Scoped under .aurora-rbc-calendar so it only touches the aurora
+   schedule widget and rides the app's active theme automatically —
+   every value below is one of the CSS custom properties defined per
+   theme class above, never a hardcoded color. */
+
+.aurora-rbc-calendar .rbc-calendar {
+  font-family: var(--font-sans);
+  color: var(--foreground);
+}
+
+.aurora-rbc-calendar .rbc-off-range-bg {
+  background: var(--muted);
+}
+
+.aurora-rbc-calendar .rbc-off-range {
+  color: var(--muted-foreground);
+}
+
+.aurora-rbc-calendar .rbc-today {
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+}
+
+.aurora-rbc-calendar .rbc-header,
+.aurora-rbc-calendar .rbc-time-header-content .rbc-header,
+.aurora-rbc-calendar .rbc-time-gutter .rbc-timeslot-group,
+.aurora-rbc-calendar .rbc-label {
+  color: var(--muted-foreground);
+}
+
+.aurora-rbc-calendar .rbc-header {
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-color: var(--border) !important;
+}
+
+.aurora-rbc-calendar .rbc-date-cell {
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--foreground);
+}
+
+.aurora-rbc-calendar .rbc-date-cell.rbc-now {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.aurora-rbc-calendar .rbc-month-view,
+.aurora-rbc-calendar .rbc-time-view,
+.aurora-rbc-calendar .rbc-month-row,
+.aurora-rbc-calendar .rbc-day-bg + .rbc-day-bg,
+.aurora-rbc-calendar .rbc-header + .rbc-header,
+.aurora-rbc-calendar .rbc-header,
+.aurora-rbc-calendar .rbc-time-content,
+.aurora-rbc-calendar .rbc-time-content > * + * > *,
+.aurora-rbc-calendar .rbc-timeslot-group,
+.aurora-rbc-calendar .rbc-time-header.rbc-overflowing,
+.aurora-rbc-calendar .rbc-time-header-content,
+.aurora-rbc-calendar .rbc-day-slot .rbc-time-slot,
+.aurora-rbc-calendar .rbc-month-row + .rbc-month-row {
+  border-color: var(--border) !important;
+}
+
+.aurora-rbc-calendar .rbc-time-header-content,
+.aurora-rbc-calendar .rbc-time-header-gutter,
+.aurora-rbc-calendar .rbc-resource-header {
+  background: var(--card);
+}
+
+/* react-big-calendar's resource view hardcodes the sticky time gutter to
+   a white background — override it so it follows the theme instead. */
+.aurora-rbc-calendar .rbc-time-view-resources .rbc-time-gutter {
+  background: var(--card);
+  color: var(--muted-foreground);
+}
+
+.aurora-rbc-calendar .rbc-time-slot {
+  color: var(--muted-foreground);
+}
+
+.aurora-rbc-calendar .rbc-current-time-indicator {
+  background-color: var(--primary);
+  height: 2px;
+}
+
+.aurora-rbc-calendar .rbc-event {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  box-shadow: none;
+}
+
+.dark .aurora-rbc-calendar .rbc-event {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.aurora-rbc-calendar .rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.aurora-rbc-calendar .rbc-event-label {
+  display: none;
+}
+
+.aurora-rbc-calendar .rbc-show-more {
+  background: color-mix(in oklch, var(--muted) 80%, transparent);
+  color: var(--foreground);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.aurora-rbc-calendar .rbc-show-more:hover {
+  background: var(--muted);
+}
+
+.aurora-rbc-calendar .rbc-time-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 9999px;
 }

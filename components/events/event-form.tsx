@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useNotifications } from '@/components/context/notification-provider'
 import {
   Bell,
   Building2,
@@ -14,7 +15,6 @@ import {
   Search,
   Trash2,
   Users,
-  X,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,80 +24,19 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NumberField, SelectField, TextField } from '@/components/crud/form-fields'
 import { DestinationMap } from '@/components/events/destination-map'
-import { useFleet } from '@/lib/store'
-import { formatMonthDayYear } from '@/lib/date'
-import type { EventStatus, EventType, FleetEvent, MobilityLevel, Participant } from '@/lib/types'
-
-const MOBILITY_FILTERS: { value: 'all' | MobilityLevel; label: string }[] = [
-  { value: 'all', label: 'All mobility' },
-  { value: 'independent', label: 'Independent' },
-  { value: 'assisted', label: 'Assisted' },
-  { value: 'wheelchair', label: 'Wheelchair' },
-  { value: 'stretcher', label: 'Stretcher' },
-]
-
-const REMINDER_FREQ: { value: string; label: string }[] = [
-  { value: '1440', label: 'Send reminder 24 hours before' },
-  { value: '720', label: 'Send reminder 12 hours before' },
-  { value: '120', label: 'Send reminder 2 hours before' },
-  { value: '60', label: 'Send reminder 1 hour before' },
-  { value: '0', label: 'No automatic reminder' },
-]
-
-// Transport type derived from a participant's mobility level, with a
-// healthcare-coded badge (blue = wheelchair, green = ambulatory, orange = stretcher).
-function transportBadge(level: MobilityLevel): { label: string; cls: string } {
-  switch (level) {
-    case 'wheelchair':
-      return { label: 'Wheelchair', cls: 'bg-primary/10 text-primary' }
-    case 'stretcher':
-      return { label: 'Stretcher', cls: 'bg-warning/20 text-warning-foreground' }
-    default:
-      return { label: 'Ambulatory', cls: 'bg-success/15 text-success' }
-  }
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
-
-function isoToLocalInput(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function localInputToIso(value: string): string | null {
-  if (!value) return null
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
-}
-
-function blank(centerId: string): Omit<FleetEvent, 'id'> {
-  return {
-    name: '',
-    type: 'Clinical Appointment',
-    centerId,
-    date: new Date().toISOString().slice(0, 10),
-    startTime: '09:00',
-    endTime: '12:00',
-    expectedAttendance: 0,
-    participantIds: [],
-    reminders: [],
-    registrationDeadline: null,
-    roundTrip: false,
-    returnTime: null,
-    status: 'draft',
-  }
-}
+import { useCenters, useEventMutations } from '@/lib/events/hooks'
+import { useParticipants } from '@/lib/participant/hooks'
+import { formatMonthDayYear, formatTimeOfDay } from '@/lib/date'
+import { validateSchema } from '../validation/zod-validation';
+import { EventsConfig } from '@/lib/events/config';
+import { Participant } from '@/lib/participant/types';
+import { EventStatus, EventType, FleetEvent } from '@/lib/events/types';
+import { ParticipantUtils } from '@/lib/participant/utils';
+import { EventUtils } from '@/lib/events/utils';
+import { findById, uppperCaseInitials } from '@/lib/utils';
+import { useTranslation } from '../context/language-provider';
+import { createFieldSetter } from '../common';
+import { createEventSchema } from '../validation/event';
 
 function SectionCard({
   icon: Icon,
@@ -134,17 +73,21 @@ function SectionCard({
 }
 
 export function EventForm({ editing }: { editing: FleetEvent | null }) {
-  const fleet = useFleet()
-  const router = useRouter()
+  const { centers } = useCenters();
+  const { participants } = useParticipants();
+  const { saveEvent } = useEventMutations();
+  const router = useRouter();
+  const { t } = useTranslation();
+  const EventSchema = useMemo(() => createEventSchema(t), [t]);
 
-  const centerOptions = fleet.centers.map((c) => ({ value: c.id, label: c.name }))
+  const centerOptions = centers.map((c) => ({ value: c.id, label: c.name }))
   const [form, setForm] = useState<Omit<FleetEvent, 'id'>>(() => {
     if (editing) {
       const { id, ...rest } = editing
       void id
       return rest
     }
-    return blank(fleet.centers[0]?.id ?? '')
+    return EventUtils.blankEvent(centers[0]?.id ?? '')
   })
   const [reminderFreq, setReminderFreq] = useState<string>(() => {
     const first = editing?.reminders?.[0]?.offsetMinutes
@@ -156,52 +99,91 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   const [saving, setSaving] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [addQuery, setAddQuery] = useState('')
-  const [mobilityFilter, setMobilityFilter] = useState<'all' | MobilityLevel>('all')
-  const [eligibleOnly, setEligibleOnly] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const set = createFieldSetter(setForm, setErrors);
 
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
-    setForm((f) => ({ ...f, [k]: v }))
-    // Clear a field's error as soon as the user edits it.
-    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
-  }
-
+  const { addToast } = useNotifications()
   function validate() {
-    const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Event name is required.'
-    if (!form.date) next.date = 'Start date is required.'
-    if (!form.startTime) next.startTime = 'Start time is required.'
-    if (!form.endTime) next.endTime = 'End time is required.'
-    if (form.startTime && form.endTime && form.endTime <= form.startTime) {
-      next.endTime = 'End time must be after the start time.'
+    const baseValid = validateSchema(EventSchema, form, setErrors)
+    if (!baseValid) {
+      addToast({
+        title: t('common.validationfailed'),
+        message: t('common.fixhighlightedfields'),
+        kind: 'danger',
+      })
+      return false
     }
-    if (!form.centerId) next.centerId = 'Select a destination / care center.'
-    setErrors(next)
-    return Object.keys(next).length === 0
+
+    if (!notifyParticipants) return true
+
+    if (!form.registrationDeadline) {
+      setErrors((current) => ({
+        ...current,
+        registrationDeadline: t('e.regdeadlinereq'),
+      }))
+      return false
+    }
+
+    const eventStart = new Date(`${form.date}T${form.startTime}`)
+    const deadline = new Date(form.registrationDeadline)
+    const minimumDeadline = new Date(eventStart.getTime() - 3 * 60 * 60 * 1000)
+
+    if (Number.isNaN(deadline.getTime()) || deadline > minimumDeadline) {
+      setErrors((current) => ({
+        ...current,
+        registrationDeadline: t('e.regdeadlinemin'),
+      }))
+      return false
+    }
+
+    setErrors((current) => ({ ...current, registrationDeadline: '' }))
+    return true
   }
 
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const nowTimeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`
+  const [todayStr, setTodayStr] = useState("");
+  const [nowTimeStr, setNowTimeStr] = useState("");
 
-  const center = fleet.centerById(form.centerId)
+  useEffect(() => {
+    const now = new Date();
+    setTodayStr(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+        now.getDate(),
+      ).padStart(2, "0")}`,
+    );
+    setNowTimeStr(
+      `${String(now.getHours()).padStart(2, "0")}:${String(
+        now.getMinutes(),
+      ).padStart(2, "0")}`,
+    );
+  }, []);
+
+  const center = findById(centers, form.centerId)
   const selected = useMemo(
     () =>
       form.participantIds
-        .map((id) => fleet.participantById(id))
+        .map((id) => findById(participants, id))
         .filter((p): p is Participant => Boolean(p)),
-    [form.participantIds, fleet],
+    [form.participantIds, participants],
   )
 
   const addable = useMemo(() => {
     const q = addQuery.trim().toLowerCase()
-    return fleet.participants
+    return participants
+      .filter((p)=> p.status === "registered")
       .filter((p) => !form.participantIds.includes(p.id))
-      .filter((p) => !eligibleOnly || p.eligible)
-      .filter((p) => mobilityFilter === 'all' || p.mobilityLevel === mobilityFilter)
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.address.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [fleet.participants, form.participantIds, addQuery, mobilityFilter, eligibleOnly])
+  }, [participants, form.participantIds, addQuery])
+
+  const registrationDeadlineMin = useMemo(() => {
+    if (!form.date || !form.startTime) return undefined
+
+    const eventStart = new Date(`${form.date}T${form.startTime}`)
+    eventStart.setHours(eventStart.getHours() - 3)
+
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${eventStart.getFullYear()}-${pad(eventStart.getMonth() + 1)}-${pad(eventStart.getDate())}T${pad(eventStart.getHours())}:${pad(eventStart.getMinutes())}`
+  }, [form.date, form.startTime])
 
   function addParticipant(id: string) {
     setForm((f) => ({ ...f, participantIds: [...f.participantIds, id] }))
@@ -226,20 +208,47 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
               },
             ]
           : []
-      await fleet.saveEvent({
+      await saveEvent({
         ...form,
         status,
         expectedAttendance: form.expectedAttendance || form.participantIds.length,
         reminders,
         id: editing?.id,
       })
+
+      const recipients: string[] = []
+      if (notifyParticipants) recipients.push(t('common.participants').toLowerCase())
+      if (notifyDrivers) recipients.push(t('common.drivers').toLowerCase())
+      if (notifyCenter) recipients.push(t('e.carecenterrecipient'))
+
+      const recipientText =
+        recipients.length === 0
+          ? ''
+          : recipients.length === 1
+          ? recipients[0]
+          : `${recipients.slice(0, -1).join(', ')} and ${recipients[recipients.length - 1]}`
+
+      addToast({
+        title: editing ? t('e.eventupdated') : t('e.eventcreated'),
+        message: recipients.length
+          ? t('e.eventcreatednotif').replace('{{recipients}}', recipientText)
+          : t('e.eventcreated'),
+        kind: 'success',
+      })
+
       router.push('/events')
+    } catch {
+      addToast({
+        title: t('common.savefailed'),
+        message: t('common.savefailedmessage'),
+        kind: 'danger',
+      })
     } finally {
       setSaving(false)
     }
   }
 
-  const timeWindow = `${form.startTime} – ${form.endTime}`
+  const timeWindow = `${formatTimeOfDay(form.startTime)} – ${formatTimeOfDay(form.endTime)}`
 
   return (
     <div className="flex min-h-full flex-col">
@@ -247,21 +256,21 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
       <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/95 px-6 py-4 backdrop-blur">
         <div>
           <h1 className="text-lg font-semibold text-balance">
-            {editing ? 'Edit Event' : 'Create New Event'}
+            {editing ? t('e.editEvent') : t('e.createevent')}
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground text-pretty">
-            Schedule a new transportation event for participants.
+            {t('e.newTrans')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => router.push('/events')} disabled={saving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="outline" onClick={() => submit('draft')} disabled={saving}>
-            Save as Draft
+            {t('e.saveasdraft')}
           </Button>
           <Button onClick={() => submit('scheduled')} disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Publish Event'}
+            {saving ? t('common.saving') : editing ? t('common.savchanges') : t('e.publishev')}
           </Button>
         </div>
       </div>
@@ -271,21 +280,21 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
         <div className="flex flex-col gap-6 lg:col-span-3">
           <SectionCard
             icon={CalendarDays}
-            title="Event Details"
-            description="Core information about the program and its schedule."
+            title={t('e.details')}
+            description={t('e.form_details')}
           >
             <div className="flex flex-col gap-4">
               <TextField
-                label="Event name"
+                label={t('e.name')}
                 value={form.name}
-                placeholder="e.g. Tuesday Dialysis Session"
+                placeholder={t('e.example')}
                 onChange={(v) => set('name', v)}
                 required
                 error={errors.name}
               />
               <div className="grid gap-4 sm:grid-cols-3">
                 <TextField
-                  label="Start date"
+                  label={t('e.startdate')}
                   type="date"
                   value={form.date}
                   min={todayStr}
@@ -294,7 +303,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                   error={errors.date}
                 />
                 <TextField
-                  label="Start time"
+                  label={t('e.startTime')}
                   type="time"
                   value={form.startTime}
                   min={form.date === todayStr ? nowTimeStr : undefined}
@@ -303,7 +312,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                   error={errors.startTime}
                 />
                 <TextField
-                  label="End time"
+                  label={t('e.endTime')}
                   type="time"
                   value={form.endTime}
                   onChange={(v) => set('endTime', v)}
@@ -311,22 +320,33 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                   error={errors.endTime}
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <TextField
-                  label="Registration / reporting deadline"
+                  label={t('e.regdealine')}
                   type="datetime-local"
-                  value={isoToLocalInput(form.registrationDeadline)}
-                  onChange={(v) => set('registrationDeadline', localInputToIso(v))}
+                  min={notifyParticipants ? registrationDeadlineMin : undefined}
+                  required={notifyParticipants}
+                  value={EventUtils.isoToLocalInput(form.registrationDeadline)}
+                  onChange={(v) => set('registrationDeadline', EventUtils.localInputToIso(v))}
+                  error={errors.registrationDeadline}
                 />
                 <NumberField
-                  label="Expected attendance"
+                  label={t('e.expatt')}
                   value={form.expectedAttendance}
                   onChange={(v) => set('expectedAttendance', v)}
+                  error={errors.expectedAttendance}
                 />
+                <SelectField
+                label={t('e.eventType')}
+                value={form.type}
+                options={EventsConfig.TYPE_OPTIONS}
+                onChange={(v) => set('type', v as EventType)}
+                required
+                error={errors.type}
+              />
               </div>
               <p className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                SMS responses are accepted until the deadline above, and always close one hour before
-                the event starts — whichever comes first.
+                {t('e.smscutoff')}
               </p>
 
               {/* Trip type: one-way vs round trip */}
@@ -337,11 +357,11 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                       <Repeat className="size-4.5" />
                     </span>
                     <div>
-                      <p className="text-sm font-medium">Round trip</p>
+                      <p className="text-sm font-medium">{t('e.roundTrip')}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
                         {form.roundTrip
-                          ? 'Transport is assigned for both the outbound and return leg. A matching return trip (center → home) is created automatically when you dispatch.'
-                          : 'One-way only (home → center). Turn on to also schedule the return journey.'}
+                          ? t('e.roundTripOn')
+                          : t('e.roundTripOff') }
                       </p>
                     </div>
                   </div>
@@ -359,14 +379,15 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 {form.roundTrip ? (
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <TextField
-                      label="Return departs center at"
+                      label={t('e.returndepartsat')}
                       type="time"
                       value={form.returnTime ?? form.endTime}
                       onChange={(v) => set('returnTime', v)}
+                      error={errors.returnTime}
                     />
                     <div className="flex items-end">
                       <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-primary">
-                        Both legs use the same vehicle, driver, and riders.
+                        {t('e.bothlegs')}
                       </p>
                     </div>
                   </div>
@@ -377,12 +398,12 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
 
           <SectionCard
             icon={MapPin}
-            title="Destination"
-            description="Where participants are being transported."
+            title={t('common.dest')}
+            description={t('e.centerdesc')}
           >
             <div className="flex flex-col gap-4">
               <SelectField
-                label="Destination / care center"
+                label={`${t('common.dest')} / ${t('common.carecenter')}`}
                 value={form.centerId}
                 options={centerOptions}
                 onChange={(v) => set('centerId', v)}
@@ -390,10 +411,10 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 error={errors.centerId}
               />
               {center ? (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <DetailPill label="Type" value={center.type} />
-                  <DetailPill label="Operating hours" value={center.operatingHours} />
-                  <DetailPill label="Capacity" value={`${center.capacity} participants`} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* <DetailPill label="Type" value={center.type} /> */}
+                  <DetailPill label={t('e.operatehrs')} value={center.operatingHours} />
+                  <DetailPill label={t('common.capacity')} value={`${center.capacity} ${t('common.participants')}`} />
                 </div>
               ) : null}
               <div className="h-56 overflow-hidden rounded-lg border border-border">
@@ -404,14 +425,18 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
 
           <SectionCard
             icon={Users}
-            title="Participants"
-            description="People who need transportation to this event."
+            title={t('common.participants')}
+            description={t('part.transdesc')}
             action={
               <Button size="sm" variant={addOpen ? 'secondary' : 'outline'} onClick={() => setAddOpen((v) => !v)}>
-                <Plus className="size-4" /> Add Participant
+                <Plus className="size-4" /> {t('e.addpart')}
               </Button>
             }
           >
+            {errors.participantIds ? (
+              <p className="text-sm text-destructive">{errors.participantIds}</p>
+            ) : null}
+
             <div className="flex flex-col gap-3">
               {addOpen ? (
                 <div className="rounded-lg border border-border bg-muted/40 p-3">
@@ -420,52 +445,19 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                     <Input
                       value={addQuery}
                       onChange={(e) => setAddQuery(e.target.value)}
-                      placeholder="Search participants by name or address"
+                      placeholder={t('e.searchparticipants')}
                       className="pl-8"
                     />
                   </div>
 
-                  {/* Participant filters */}
-                  <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                    {MOBILITY_FILTERS.map((m) => {
-                      const active = mobilityFilter === m.value
-                      return (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => setMobilityFilter(m.value)}
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                            active
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          {m.label}
-                        </button>
-                      )
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => setEligibleOnly((v) => !v)}
-                      className={`ml-auto rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                        eligibleOnly
-                          ? 'bg-success/15 text-success'
-                          : 'bg-card text-muted-foreground hover:text-foreground'
-                      }`}
-                      aria-pressed={eligibleOnly}
-                    >
-                      {eligibleOnly ? 'Eligible only' : 'All statuses'}
-                    </button>
-                  </div>
                   <ScrollArea className="h-44 rounded-md border border-border bg-card">
                     {addable.length === 0 ? (
                       <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                        No more participants to add.
+                        {t('e.noparticipantstoadd')}
                       </p>
                     ) : (
                       <div className="divide-y divide-border">
                         {addable.map((p) => {
-                          const badge = transportBadge(p.mobilityLevel)
                           return (
                             <button
                               key={p.id}
@@ -475,16 +467,13 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                             >
                               <Avatar className="size-8">
                                 <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
-                                  {initials(p.name)}
+                                  {uppperCaseInitials(p.name)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{p.name}</p>
                                 <p className="truncate text-xs text-muted-foreground">{p.address}</p>
                               </div>
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                                {badge.label}
-                              </span>
                               <Plus className="size-4 shrink-0 text-muted-foreground" />
                             </button>
                           )
@@ -497,12 +486,11 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
 
               {selected.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                  No participants added yet. Use “Add Participant” to include riders.
+                  {t('e.nopartadded')}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {selected.map((p) => {
-                    const badge = transportBadge(p.mobilityLevel)
                     return (
                       <div
                         key={p.id}
@@ -510,21 +498,18 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                       >
                         <Avatar className="size-9">
                           <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                            {initials(p.name)}
+                            {uppperCaseInitials(p.name)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{p.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{p.address}</p>
                         </div>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                          {badge.label}
-                        </span>
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => removeParticipant(p.id)}
-                          aria-label={`Remove ${p.name}`}
+                          aria-label={t('e.removeparticipant').replace('{{name}}', p.name)}
                         >
                           <Trash2 className="size-4 text-muted-foreground" />
                         </Button>
@@ -535,44 +520,46 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
               )}
 
               <p className="text-xs font-medium text-muted-foreground">
-                {selected.length} participant{selected.length === 1 ? '' : 's'} added
+               {t("e.participantsadded")
+                .replace("{{count}}", String(selected.length))
+                .replace("{{suffix}}", selected.length === 1 ? "" : "s")}
               </p>
             </div>
           </SectionCard>
 
           <SectionCard
             icon={Bell}
-            title="Notification Preferences"
-            description="Control who is notified and how reminders are sent."
+            title={t('e.notification')}
+            description={t('e.notdesc')}
           >
             <div className="flex flex-col gap-4">
               <div className="grid gap-2 sm:grid-cols-3">
-                <ToggleRow label="Notify participants" checked={notifyParticipants} onChange={setNotifyParticipants} />
-                <ToggleRow label="Notify drivers" checked={notifyDrivers} onChange={setNotifyDrivers} />
-                <ToggleRow label="Notify care center" checked={notifyCenter} onChange={setNotifyCenter} />
+                <ToggleRow label={t('e.notifypart')} checked={notifyParticipants} onChange={setNotifyParticipants} />
+                <ToggleRow label={t('e.drivers')} checked={notifyDrivers} onChange={setNotifyDrivers} />
+                <ToggleRow label={t('e.notifycare')} checked={notifyCenter} onChange={setNotifyCenter} />
               </div>
 
               <div>
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Communication channels</p>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t('e.commchan')}</p>
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                    <MessageSquare className="size-3.5" /> SMS
+                    <MessageSquare className="size-3.5" /> {t('common.sms')}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                    Email — coming soon
+                    {t('common.emailcs')}
                   </span>
                 </div>
               </div>
 
               <SelectField
-                label="Reminder frequency"
+                label={t('e.remfreq')}
                 value={reminderFreq}
-                options={REMINDER_FREQ}
+                options={EventsConfig.REMINDER_FREQ}
                 onChange={setReminderFreq}
               />
               {!notifyParticipants ? (
                 <p className="text-xs text-muted-foreground">
-                  Participant notifications are off — no reminders will be scheduled.
+                  {t('e.partNotifyNote')}
                 </p>
               ) : null}
             </div>
@@ -584,25 +571,25 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
           <div className="lg:sticky lg:top-24 flex flex-col gap-6">
             <Card className="overflow-hidden">
               <div className="border-b border-border bg-primary/5 px-5 py-4">
-                <h2 className="text-sm font-semibold text-foreground">Event Summary</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t('e.summary')}</h2>
               </div>
               <div className="flex flex-col gap-3 p-5">
-                <SummaryRow label="Event" value={form.name || 'Untitled event'} />
-                <SummaryRow label="Type" value={form.type} />
+                <SummaryRow label={t('e.event')} value={form.name || t('e.untitled')} />
+                <SummaryRow label={t('common.type')} value={form.type} />
                 <SummaryRow
                   icon={CalendarDays}
-                  label="Start date"
+                  label={t('e.startdate')}
                   value={form.date ? formatMonthDayYear(form.date) : '—'}
                 />
-                <SummaryRow icon={Clock} label="Time window" value={timeWindow} />
-                <SummaryRow icon={MapPin} label="Destination" value={center?.name ?? '—'} />
-                <SummaryRow icon={Users} label="Participants" value={String(form.participantIds.length)} />
+                <SummaryRow icon={Clock} label={t('e.timewindow')} value={timeWindow} />
+                <SummaryRow icon={MapPin} label={t('common.dest')} value={center?.name ?? '—'} />
+                <SummaryRow icon={Users} label={t('common.participants')} value={String(form.participantIds.length)} />
               </div>
             </Card>
 
             <Card className="overflow-hidden">
               <div className="border-b border-border px-5 py-4">
-                <h2 className="text-sm font-semibold text-foreground">Destination Details</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t('e.destdet')}</h2>
               </div>
               <div className="flex flex-col gap-3 p-5">
                 {center ? (
@@ -626,7 +613,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Select a destination center to see details.</p>
+                  <p className="text-sm text-muted-foreground">{t('e.selectDet')}</p>
                 )}
               </div>
             </Card>

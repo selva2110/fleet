@@ -2,6 +2,7 @@
 
 import { MapboxSimpleMap } from '@/components/map/mapbox-simple'
 import type { LatLng } from '@/lib/types'
+import { useTranslation } from '@/components/context/language-provider'
 
 export default function DestinationMapInner({
   location,
@@ -10,5 +11,6 @@ export default function DestinationMapInner({
   location: LatLng
   label?: string
 }) {
-  return <MapboxSimpleMap location={location} label={label} className="h-full w-full" emptyMessage="The selected destination will appear here." />
+  const {t} = useTranslation()
+  return <MapboxSimpleMap location={location} label={label} className="h-full w-full" emptyMessage={t('map.destinationplaceholder')} />
 }

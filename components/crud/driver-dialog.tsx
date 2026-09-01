@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -13,29 +13,14 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AddressField, DaysOfWeekField, NumberField, SelectField, SwitchField, TextField } from './form-fields'
-import { useFleet } from '@/lib/store'
-import type { Driver } from '@/lib/types'
-
-type DriverForm = Omit<Driver, 'id' | 'status' | 'location'> & {
-  location: Driver['location'] | null
-}
-
-function blank(): DriverForm {
-  return {
-    name: '',
-    phone: '',
-    address: '',
-    location: null,
-    license: '',
-    certifications: { wheelchairAssist: false, medicalTransport: false },
-    assignedVehicleId: null,
-    rating: 4.5,
-    shiftStart: '08:00',
-    shiftEnd: '16:00',
-    shiftDays: [1, 2, 3, 4, 5],
-    imageUrl: null,
-  }
-}
+import { useDrivers, useDriverMutations } from '@/lib/driver/hooks'
+import { validateSchema } from '../validation/zod-validation';
+import { createDriverFormSchema } from '../validation/driver';
+import { Driver, DriverForm } from '@/lib/driver/types';
+import { DriverUtils } from '@/lib/driver/utils';
+import { useTranslation } from '../context/language-provider';
+import { createFieldSetter } from '../common';
+import { useNotifications } from '../context/notification-provider';
 
 export function DriverDialog({
   open,
@@ -46,10 +31,15 @@ export function DriverDialog({
   onOpenChange: (v: boolean) => void
   editing: Driver | null
 }) {
-  const fleet = useFleet()
-  const [form, setForm] = useState<DriverForm>(blank())
+  const { drivers } = useDrivers()
+  const { saveDriver } = useDriverMutations()
+  const {t} = useTranslation();
+  const { addToast } = useNotifications();
+  const DriverFormSchema = useMemo(() => createDriverFormSchema(t), [t]);
+  const [form, setForm] = useState<DriverForm>(DriverUtils.blankDriver())
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const set = createFieldSetter(setForm, setErrors);
 
   useEffect(() => {
     if (editing) {
@@ -58,43 +48,59 @@ export function DriverDialog({
       void status
       setForm({ ...rest, location: rest.location ?? null })
     } else {
-      setForm(blank())
+      setForm(DriverUtils.blankDriver())
     }
     setErrors({})
   }, [editing, open])
 
-  const set = <K extends keyof DriverForm>(k: K, v: DriverForm[K]) => {
-    setForm((f) => ({ ...f, [k]: v }))
-    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
-  }
-
-  const vehicleOptions = [
-    { value: '__none__', label: 'Unassigned' },
-    ...fleet.vehicles.map((v) => ({ value: v.id, label: v.name })),
-  ]
-
   function validate() {
-    const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Full name is required.'
-    if (!form.phone.trim()) next.phone = 'Phone number is required.'
-    if (!form.address.trim()) next.address = 'Address is required.'
-    if (!form.license.trim()) next.license = 'License number is required.'
-    setErrors(next)
-    return Object.keys(next).length === 0
+    const isValid = validateSchema(DriverFormSchema, form, setErrors);
+    if (!isValid) {
+      addToast({
+        title: t('common.validationfailed'),
+        message: t('common.fixhighlightedfields'),
+        kind: 'danger',
+      });
+    }
+    return isValid;
   }
 
   async function submit() {
-    if (!validate()) return
-    setSaving(true)
+    if (!validate()) return;
+    setSaving(true);
     try {
-      await fleet.saveDriver({
+      const duplicatePhoneNumber = drivers.find(
+        (item) => form.mobile_number === item.mobile_number && item.id !== editing?.id,
+      );
+      if (duplicatePhoneNumber) {
+        addToast({
+          title: t('driver.duplicatephonetitle'),
+          message: t('driver.duplicatephonemessage'),
+          kind: "info",
+        });
+        return;
+      }
+      await saveDriver({
         ...form,
         id: editing?.id,
         location: form.location ?? undefined,
-      })
-      onOpenChange(false)
+      });
+      addToast({
+        title: t('common.success'),
+        message: editing
+          ? t('driver.updatedsuccess')
+          : t('driver.addedsuccess'),
+        kind: "success",
+      });
+      onOpenChange(false);
+    } catch {
+      addToast({
+        title: t('common.savefailed'),
+        message: t('common.savefailedmessage'),
+        kind: "danger",
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
@@ -102,10 +108,9 @@ export function DriverDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit driver' : 'Add driver'}</DialogTitle>
+          <DialogTitle>{editing ? t('driver.edit') : t('driver.add')}</DialogTitle>
           <DialogDescription>
-            Certifications gate assignment to specialized trips; shift hours and working days gate assignment to
-            routes outside the driver&apos;s availability.
+            {t('driver.dialogdesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -113,22 +118,30 @@ export function DriverDialog({
           <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <TextField
-              label="Full name"
+              label={t('common.fullname')}
               value={form.name}
               onChange={(v) => set('name', v)}
               required
               error={errors.name}
             />
-            <TextField
-              label="Phone"
-              value={form.phone}
-              onChange={(v) => set('phone', v)}
-              required
-              error={errors.phone}
+            <div className="flex items-center gap-2 justify-center">
+              <TextField
+              label={t('common.code')}
+              className="w-10"
+              value={form.dial_code}
+              onChange={()=>{}}
             />
+            <TextField
+              label={t('common.phone')}
+              value={form.mobile_number}
+              onChange={(v) => set('mobile_number', v)}
+              required
+              error={errors.mobile_number}
+            />
+            </div>
           </div>
           <AddressField
-            label="Address"
+            label={t('common.address')}
             value={form.address}
             onChange={(v) => set('address', v)}
             location={form.location}
@@ -138,57 +151,101 @@ export function DriverDialog({
           />
           <div className="grid grid-cols-2 gap-3">
             <TextField
-              label="License #"
-              value={form.license}
-              onChange={(v) => set('license', v)}
+              label={`${t('driver.license')} #`}
+              value={form.license_number}
+              onChange={(v) => set('license_number', v)}
               required
-              error={errors.license}
+              error={errors.license_number}
             />
-            <NumberField label="Rating" value={form.rating} onChange={(v) => set('rating', v)} min={0} />
+             <TextField
+              label={t('part.bloodgroup')}
+              value={form.blood_group}
+              onChange={(v) => set('blood_group', v)}
+              required
+              error={errors.license_number}
+            />
+            <NumberField label={t('driver.rating')} value={form.rating} onChange={(v) => set('rating', v)} min={0} />
           </div>
-          <TextField
-            label="Image URL"
+          {/* <TextField
+            label={t('common.imageurl')}
             value={form.imageUrl ?? ''}
             onChange={(v) => set('imageUrl', v.trim() ? v : null)}
-          />
-          <SelectField
-            label="Assigned vehicle"
+          /> */}
+          {/* <SelectField
+            label={t('driver.assignedvehicle')}
             value={form.assignedVehicleId ?? '__none__'}
             options={vehicleOptions}
             onChange={(v) => set('assignedVehicleId', v === '__none__' ? null : v)}
-          />
+          /> */}
           <div className="grid grid-cols-2 gap-3">
             <TextField
-              label="Shift start"
+              label={t('driver.shstart')}
               type="time"
               value={form.shiftStart}
               onChange={(v) => set('shiftStart', v)}
+              error={errors.shiftStart}
             />
             <TextField
-              label="Shift end"
+              label={t('driver.shend')}
               type="time"
               value={form.shiftEnd}
               onChange={(v) => set('shiftEnd', v)}
+              error={errors.shiftEnd}
             />
           </div>
           <DaysOfWeekField
-            label="Working days"
+            label={t('driver.workingdays')}
             value={form.shiftDays}
             onChange={(v) => set('shiftDays', v)}
+            error={errors.shiftDays}
           />
           <div>
-            <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">Certifications</Label>
+            <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('common.cert')}</Label>
             <div className="grid grid-cols-1 gap-2">
               <SwitchField
-                label="Wheelchair assist"
-                checked={form.certifications.wheelchairAssist}
-                onChange={(v) => set('certifications', { ...form.certifications, wheelchairAssist: v })}
+                label={t('driver.whassist')}
+                checked={form.certifications.wheelchairAssist.enabled}
+                onChange={(v) =>
+                  set('certifications', {
+                    ...form.certifications,
+                    wheelchairAssist: { ...form.certifications.wheelchairAssist, enabled: v },
+                  })
+                }
               />
+              {form.certifications.wheelchairAssist.enabled && (
+                <TextField
+                  label={`${t('driver.whassist')} #`}
+                  value={form.certifications.wheelchairAssist.certificateNo}
+                  onChange={(v) =>
+                    set('certifications', {
+                      ...form.certifications,
+                      wheelchairAssist: { ...form.certifications.wheelchairAssist, certificateNo: v },
+                    })
+                  }
+                />
+              )}
               <SwitchField
-                label="Medical transport"
-                checked={form.certifications.medicalTransport}
-                onChange={(v) => set('certifications', { ...form.certifications, medicalTransport: v })}
+                label={t('driver.medtrans')}
+                checked={form.certifications.medicalTransport.enabled}
+                onChange={(v) =>
+                  set('certifications', {
+                    ...form.certifications,
+                    medicalTransport: { ...form.certifications.medicalTransport, enabled: v },
+                  })
+                }
               />
+              {form.certifications.medicalTransport.enabled && (
+                <TextField
+                  label={`${t('driver.medtrans')} #`}
+                  value={form.certifications.medicalTransport.certificateNo}
+                  onChange={(v) =>
+                    set('certifications', {
+                      ...form.certifications,
+                      medicalTransport: { ...form.certifications.medicalTransport, certificateNo: v },
+                    })
+                  }
+                />
+              )}
             </div>
           </div>
           </div>
@@ -196,7 +253,7 @@ export function DriverDialog({
 
         <DialogFooter showCloseButton>
           <Button onClick={submit} disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add driver'}
+            {saving ? t('common.saving') : editing ? t('common.savchanges') : t('driver.add')}
           </Button>
         </DialogFooter>
       </DialogContent>

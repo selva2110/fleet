@@ -4,26 +4,10 @@ import { useEffect, useRef } from 'react'
 import { useMap } from 'react-map-gl/mapbox'
 import mapboxgl from 'mapbox-gl'
 import * as THREE from 'three'
-
-export type Vehicle3D = {
-  id: string
-  lng: number
-  lat: number
-  /** Bearing in degrees, 0 = north, increasing clockwise. */
-  heading: number
-  color: string
-  highlighted: boolean
-}
+import { Vehicle3D } from '@/lib/vehicles/types';
 
 const LAYER_ID = 'vehicles-3d'
 
-/**
- * Renders true 3D vehicle models on the map using a Mapbox custom WebGL layer
- * backed by three.js. A single detailed car model is drawn once per vehicle
- * with a per-vehicle model matrix (position + heading + scale), so vehicles
- * appear as tilt-aware 3D objects that rotate to face their direction of
- * travel rather than flat markers.
- */
 export function Vehicles3DLayer({ vehicles }: { vehicles: Vehicle3D[] }) {
   const mapCollection = useMap()
   const mapRef = mapCollection.current

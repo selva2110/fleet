@@ -1,336 +1,35 @@
 'use server'
 
-import { db } from '@/lib/db'
-import { centers, drivers, events, participants, trips, vehicles } from '@/lib/db/schema'
-import { toCenter, toDriver, toParticipant, toVehicle } from '@/lib/db/mappers'
-import { emit } from '@/lib/db/emit'
-import { planTransportation } from '@/lib/planning-engine'
-import { getEventStart } from '@/lib/planning-status'
-import type { PlanRecommendation, PlanResult, Trip } from '@/lib/types'
-import { eq, inArray } from 'drizzle-orm'
+// Thin proxies to trip-service, which now owns the planning engine, dispatch
+// orchestration, and round-trip mirroring logic that used to live here.
 
-// Runs the planning engine against live DB data for an event and records that a
-// plan was generated. Returns recommendations (and anyone the planner could not
-// place) for the UI to display.
-export async function generatePlan(
-  eventId: string,
-  actorRole = 'operations',
-): Promise<PlanResult> {
-  const EMPTY: PlanResult = { recommendations: [], unassigned: [] }
-  const [evtRows, allVehicles, allDrivers, allCenters] = await Promise.all([
-    db.select().from(events).where(eq(events.id, eventId)),
-    db.select().from(vehicles),
-    db.select().from(drivers),
-    db.select().from(centers),
-  ])
-  const evt = evtRows[0]
-  if (!evt) return EMPTY
+import * as tripsApi from '@/lib/api/trips'
+import { PlanRecommendation, PlanResult } from '@/lib/trips/types';
 
-  // Participants for this event that are not already committed to a trip.
-  const committedTrips = await db.select().from(trips)
-  const committedPids = new Set(
-    committedTrips
-      .filter((t) => t.status !== 'cancelled')
-      .flatMap((t) => (t.stops as Trip['stops']).map((s) => s.participantId)),
-  )
-  const partRows = evt.participantIds.length
-    ? await db.select().from(participants).where(inArray(participants.id, evt.participantIds))
-    : []
-  const alreadyAssignedReasons: PlanResult['unassigned'] = partRows
-    .filter((p) => committedPids.has(p.id))
-    .map((p) => ({
-      participantId: p.id,
-      reason: `${p.name} is already assigned to an event`,
-    }))
-  const pending = partRows.map(toParticipant).filter((p) => !committedPids.has(p.id))
-
-  const center = allCenters.map(toCenter).find((c) => c.id === evt.centerId)
-  if (!center || pending.length === 0) return EMPTY
-
-  const plan = await planTransportation({
-    participants: pending,
-    vehicles: allVehicles.map(toVehicle),
-    drivers: allDrivers.map(toDriver),
-    center,
-    eventDate: evt.date,
-    eventStartTime: evt.startTime,
-  })
-  const allUnassigned = [...plan.unassigned, ...alreadyAssignedReasons]
-
-  await emit({
-    eventType: 'plan.generated',
-    aggregateType: 'plan',
-    aggregateId: eventId,
-    actorRole,
-    summary: `Generated ${plan.recommendations.length} route${plan.recommendations.length === 1 ? '' : 's'} for ${evt.name}${plan.unassigned.length ? ` (${plan.unassigned.length} unassigned)` : ''}`,
-    payload: {
-      routes: plan.recommendations.length,
-      participants: pending.length,
-      unassigned: plan.unassigned.length,
-      unassignedReason: allUnassigned,
-    },
-  })
-
-  return {
-    ...plan,
-    unassigned: allUnassigned,
-  }
+export async function generatePlan(eventId: string, _actorRole = 'operations'): Promise<PlanResult> {
+  return tripsApi.generatePlan(eventId)
 }
 
-// Commits selected plan recommendations into real trips and emits the full
-// chain of dispatch events. Also flips vehicle/driver/participant statuses.
-export async function commitPlan(
-  eventId: string,
-  recs: PlanRecommendation[],
-  actorRole = 'dispatcher',
-) {
-  const evtRows = await db.select().from(events).where(eq(events.id, eventId))
-  const evt = evtRows[0]
-  if (!evt) return
-
-  // Guard: an event can no longer be dispatched once its start time has passed.
-  if (Date.now() >= getEventStart(evt).getTime()) {
-    await emit({
-      eventType: 'plan.blocked',
-      aggregateType: 'event',
-      aggregateId: eventId,
-      actorRole,
-      summary: `Dispatch blocked for ${evt.name} — event start time has already passed`,
-    })
-    return
-  }
-
-  let counter = Date.now() % 10000
-  for (const rec of recs) {
-    const tripId = `trip-${Date.now().toString(36)}-${counter++}`
-    const tripNumber = `TR-${counter}`
-    const startLocationRows = await db
-      .select()
-      .from(vehicles)
-      .where(eq(vehicles.id, rec.vehicleId))
-    const startLocation = startLocationRows[0]?.location ?? rec.routePath[0]
-
-    await db.insert(trips).values({
-      id: tripId,
-      tripNumber,
-      eventId,
-      vehicleId: rec.vehicleId,
-      driverId: rec.driverId || null,
-      stops: rec.stops,
-      destinationCenterId: evt.centerId,
-      status: rec.driverId ? 'driver-assigned' : 'vehicle-assigned',
-      tripKind: 'outbound',
-      distanceKm: rec.distanceKm,
-      durationMinutes: rec.durationMinutes,
-      etaCenter: `${rec.durationMinutes} min`,
-      progress: 0,
-      currentLocation: startLocation,
-      routePath: rec.routePath,
-      startedAt: null,
-      lastTickAt: null,
-    })
-
-    // Round-trip events get a matching return leg (center -> homes). It reuses
-    // the same vehicle/driver/riders but reverses the route so it animates as
-    // the drop-off journey after the event ends.
-    if (evt.roundTrip) {
-      const returnId = `trip-${Date.now().toString(36)}-${counter++}`
-      const returnNumber = `TR-${counter}R`
-      const reversedPath = [...rec.routePath].reverse()
-      // Re-order stops so the last person picked up is the first dropped off.
-      const reversedStops = [...rec.stops]
-        .reverse()
-        .map((s, i) => ({ ...s, order: i, status: 'pending' as const }))
-      await db.insert(trips).values({
-        id: returnId,
-        tripNumber: returnNumber,
-        eventId,
-        vehicleId: rec.vehicleId,
-        driverId: rec.driverId || null,
-        stops: reversedStops,
-        destinationCenterId: evt.centerId,
-        status: rec.driverId ? 'driver-assigned' : 'vehicle-assigned',
-        tripKind: 'return',
-        distanceKm: rec.distanceKm,
-        durationMinutes: rec.durationMinutes,
-        etaCenter: `${rec.durationMinutes} min`,
-        progress: 0,
-        currentLocation: reversedPath[0] ?? startLocation,
-        routePath: reversedPath,
-        startedAt: null,
-        lastTickAt: null,
-      })
-      await emit({
-        eventType: 'trip.created',
-        aggregateType: 'trip',
-        aggregateId: returnId,
-        actorRole,
-        summary: `Return trip ${returnNumber} created for round-trip event (${rec.participantIds.length} riders)`,
-        payload: { vehicleId: rec.vehicleId, driverId: rec.driverId, tripNumber: returnNumber, tripKind: 'return' },
-      })
-    }
-
-    // Side effects: mark vehicle assigned, driver on-trip, participants scheduled.
-    await db.update(vehicles).set({ status: 'assigned' }).where(eq(vehicles.id, rec.vehicleId))
-    if (rec.driverId) {
-      await db.update(drivers).set({ status: 'on-trip' }).where(eq(drivers.id, rec.driverId))
-    }
-    if (rec.participantIds.length) {
-      await db
-        .update(participants)
-        .set({ status: 'vehicle-assigned' })
-        .where(inArray(participants.id, rec.participantIds))
-    }
-
-    await emit({
-      eventType: 'trip.created',
-      aggregateType: 'trip',
-      aggregateId: tripId,
-      actorRole,
-      summary: `Trip ${tripNumber} created (${rec.participantIds.length} riders)`,
-      payload: { vehicleId: rec.vehicleId, driverId: rec.driverId, tripNumber },
-    })
-    if (rec.driverId) {
-      await emit({
-        eventType: 'trip.driver_assigned',
-        aggregateType: 'trip',
-        aggregateId: tripId,
-        actorRole,
-        summary: `Driver assigned to ${tripNumber}`,
-        payload: { driverId: rec.driverId },
-      })
-    }
-  }
-
-  await db.update(events).set({ status: 'active' }).where(eq(events.id, eventId))
-  await emit({
-    eventType: 'plan.committed',
-    aggregateType: 'event',
-    aggregateId: eventId,
-    actorRole,
-    summary: `Committed ${recs.length} trip${recs.length === 1 ? '' : 's'} for ${evt.name}`,
-    payload: { trips: recs.length },
-  })
+export async function commitPlan(eventId: string, recs: PlanRecommendation[], _actorRole = 'dispatcher') {
+  await tripsApi.commitPlan(eventId, recs)
 }
 
-export async function startTrip(tripId: string, actorRole = 'dispatcher') {
-  const now = new Date()
-
-  // Guard: a trip cannot be started once its event's start time has passed.
-  const existing = (await db.select().from(trips).where(eq(trips.id, tripId)))[0]
-  if (existing?.eventId) {
-    const evt = (await db.select().from(events).where(eq(events.id, existing.eventId)))[0]
-    if (evt && now.getTime() >= getEventStart(evt).getTime()) {
-      await emit({
-        eventType: 'trip.start_blocked',
-        aggregateType: 'trip',
-        aggregateId: tripId,
-        actorRole,
-        summary: `Cannot start ${existing.tripNumber} — event ${evt.name} has already started`,
-      })
-      return
-    }
-  }
-
-  await db
-    .update(trips)
-    .set({ status: 'en-route', startedAt: now, lastTickAt: now, progress: 0 })
-    .where(eq(trips.id, tripId))
-  const t = (await db.select().from(trips).where(eq(trips.id, tripId)))[0]
-  if (t?.vehicleId) {
-    await db.update(vehicles).set({ status: 'heading-to-pickup' }).where(eq(vehicles.id, t.vehicleId))
-  }
-  await emit({
-    eventType: 'trip.started',
-    aggregateType: 'trip',
-    aggregateId: tripId,
-    actorRole,
-    summary: `Trip ${t?.tripNumber ?? tripId} started — en route to first pickup`,
-  })
+export async function startTrip(tripId: string, _actorRole = 'dispatcher') {
+  await tripsApi.startTrip(tripId)
 }
 
-export async function cancelTrip(tripId: string, actorRole = 'dispatcher') {
-  const t = (await db.select().from(trips).where(eq(trips.id, tripId)))[0]
-  if (!t) return
-  await db.update(trips).set({ status: 'cancelled' }).where(eq(trips.id, tripId))
-  if (t.vehicleId) {
-    await db.update(vehicles).set({ status: 'available' }).where(eq(vehicles.id, t.vehicleId))
-  }
-  if (t.driverId) {
-    await db.update(drivers).set({ status: 'available' }).where(eq(drivers.id, t.driverId))
-  }
-  const pids = (t.stops as Trip['stops']).map((s) => s.participantId)
-  if (pids.length) {
-    await db
-      .update(participants)
-      .set({ status: 'registered' })
-      .where(inArray(participants.id, pids))
-  }
-  await emit({
-    eventType: 'trip.cancelled',
-    aggregateType: 'trip',
-    aggregateId: tripId,
-    actorRole,
-    summary: `Trip ${t.tripNumber} cancelled`,
-  })
+export async function cancelTrip(tripId: string, _actorRole = 'dispatcher') {
+  await tripsApi.cancelTrip(tripId)
 }
 
-// Removes every trip (planned, active, or completed) and releases whatever
-// vehicles/drivers/participants they were holding back to their idle states —
-// the same release logic as cancelTrip, applied to the whole fleet at once.
-// Unlike reseedDatabase(), this leaves centers/participants/vehicles/drivers/
-// events untouched; it only clears trips.
-export async function clearAllTrips(actorRole = 'dispatcher') {
-  const allTrips = await db.select().from(trips)
-  if (allTrips.length === 0) return { cleared: 0 }
-
-  const vehicleIds = [...new Set(allTrips.map((t) => t.vehicleId).filter((id): id is string => !!id))]
-  const driverIds = [...new Set(allTrips.map((t) => t.driverId).filter((id): id is string => !!id))]
-  const participantIds = [
-    ...new Set(allTrips.flatMap((t) => (t.stops as Trip['stops']).map((s) => s.participantId))),
-  ]
-
-  if (vehicleIds.length) {
-    await db.update(vehicles).set({ status: 'available' }).where(inArray(vehicles.id, vehicleIds))
-  }
-  if (driverIds.length) {
-    await db.update(drivers).set({ status: 'available' }).where(inArray(drivers.id, driverIds))
-  }
-  if (participantIds.length) {
-    await db.update(participants).set({ status: 'registered' }).where(inArray(participants.id, participantIds))
-  }
-
-  await db.delete(trips)
-
-  await emit({
-    eventType: 'trips.cleared_all',
-    aggregateType: 'system',
-    actorRole,
-    summary: `Cleared ${allTrips.length} trip${allTrips.length === 1 ? '' : 's'} and released their vehicles/drivers/participants`,
-    payload: { count: allTrips.length },
-  })
-
-  return { cleared: allTrips.length }
+export async function clearAllTrips(_actorRole = 'dispatcher') {
+  return tripsApi.clearAllTrips()
 }
 
-export async function assignDriverToTrip(
-  tripId: string,
-  driverId: string,
-  actorRole = 'dispatcher',
-) {
-  const t = (await db.select().from(trips).where(eq(trips.id, tripId)))[0]
-  if (!t) return
-  await db
-    .update(trips)
-    .set({ driverId, status: t.status === 'vehicle-assigned' ? 'driver-assigned' : t.status })
-    .where(eq(trips.id, tripId))
-  await db.update(drivers).set({ status: 'on-trip' }).where(eq(drivers.id, driverId))
-  await emit({
-    eventType: 'trip.driver_assigned',
-    aggregateType: 'trip',
-    aggregateId: tripId,
-    actorRole,
-    summary: `Driver assigned to ${t.tripNumber}`,
-    payload: { driverId },
-  })
+export async function assignDriverToTrip(tripId: string, driverId: string, _actorRole = 'dispatcher') {
+  await tripsApi.assignDriverToTrip(tripId, driverId)
+}
+
+export async function replanTripByTripId(tripId:string) {
+  return tripsApi.replanTripByTripId(tripId)
 }

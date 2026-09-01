@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -20,54 +21,15 @@ import {
   SwitchField,
   TextField,
 } from './form-fields'
-import { useFleet } from '@/lib/store'
-import type { MedicalPriority, MobilityLevel, Participant, TransportConstraints } from '@/lib/types'
-
-const MOBILITY: { value: MobilityLevel; label: string }[] = [
-  { value: 'independent', label: 'Independent' },
-  { value: 'assisted', label: 'Assisted' },
-  { value: 'wheelchair', label: 'Wheelchair' },
-  { value: 'stretcher', label: 'Stretcher' },
-]
-const PRIORITY: { value: MedicalPriority; label: string }[] = [
-  { value: 'routine', label: 'Routine' },
-  { value: 'elevated', label: 'Elevated' },
-  { value: 'critical', label: 'Critical' },
-]
-
-const CONSTRAINT_KEYS: { key: keyof TransportConstraints; label: string }[] = [
-  { key: 'wheelchair', label: 'Wheelchair' },
-  { key: 'poweredWheelchair', label: 'Powered wheelchair' },
-  { key: 'walker', label: 'Walker' },
-  { key: 'oxygen', label: 'Oxygen' },
-  { key: 'caregiverRequired', label: 'Caregiver required' },
-  { key: 'bariatric', label: 'Bariatric' },
-  { key: 'visualAssist', label: 'Visual assist' },
-  { key: 'cognitiveAssist', label: 'Cognitive assist' },
-  { key: 'serviceAnimal', label: 'Service animal' },
-]
- 
-type ParticipantForm = Omit<Participant, 'id' | 'status' | 'location'> & {
-  location: Participant['location'] | null
-}
-
-function blank(): ParticipantForm {
-  return {
-    name: '',
-    phone: '',
-    emergencyContact: '',
-    address: '',
-    medicalNotes: '',
-    constraints: {},
-    maxTravelMinutes: 40,
-    pickupWindow: '',
-    mobilityLevel: 'independent',
-    medicalPriority: 'routine',
-    eligible: true,
-    eventId: null,
-    location: null,
-  }
-}
+import { useParticipantMutations } from '@/lib/participant/hooks'
+import { createParticipantFormSchema } from '../validation/participant';
+import { validateSchema } from '../validation/zod-validation';
+import { ParticipantConfig } from '@/lib/participant/config';
+import { Participant, ParticipantForm } from '@/lib/participant/types';
+import { ParticipantUtils } from '@/lib/participant/utils';
+import { useTranslation } from '../context/language-provider';
+import { createFieldSetter } from '../common';
+import { useNotifications } from '../context/notification-provider';
 
 export function ParticipantDialog({
   open,
@@ -78,47 +40,85 @@ export function ParticipantDialog({
   onOpenChange: (v: boolean) => void
   editing: Participant | null
 }) {
-  const fleet = useFleet()
-  const [form, setForm] = useState<ParticipantForm>(blank())
+  const { saveParticipant } = useParticipantMutations()
+  const {t} = useTranslation();
+  const { addToast } = useNotifications();
+  const ParticipantFormSchema = useMemo(
+    () => createParticipantFormSchema(t),
+    [t],
+  );
+  const [form, setForm] = useState<ParticipantForm>(ParticipantUtils.participantBlank())
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
- 
+  const set = createFieldSetter(setForm, setErrors);
+
+  // companionDetails/emergencyContactDetails hold both `address` and
+  // `location`, which AddressField updates via two synchronous callbacks
+  // (onChange then onLocationChange) in the same event. set() builds its
+  // value from the outer `form` closure, so the second call would overwrite
+  // the first's change before either commits. Merging from `prev` avoids that.
+  function setNested<K extends "companionDetails" | "emergencyContactDetails">(
+    key: K,
+    patch: Partial<ParticipantForm[K]>,
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], ...patch },
+    }));
+  }
+
   useEffect(() => {
     if (editing) {
       const { id, location, status, ...rest } = editing
       void id
       void status
-      setForm({ ...rest, location })
+      setForm({
+        ...rest,
+        location,
+        emergencyContactDetails:
+          rest.emergencyContactDetails ?? ParticipantUtils.personalDetails(),
+        companionDetails:
+          rest.companionDetails ?? ParticipantUtils.personalDetails(),
+      })
     } else {
-      setForm(blank())
+      setForm(ParticipantUtils.participantBlank())
     }
     setErrors({})
   }, [editing, open])
 
-  const set = <K extends keyof ParticipantForm>(k: K, v: ParticipantForm[K]) => {
-    setForm((f) => ({ ...f, [k]: v }))
-    setErrors((e) => (e[k as string] ? { ...e, [k as string]: '' } : e))
+  function validate() {
+    const isValid = validateSchema(ParticipantFormSchema, form, setErrors);
+    if (!isValid) {
+      addToast({
+        title: t('common.validationfailed'),
+        message: t('common.fixhighlightedfields'),
+        kind: 'danger',
+      });
+    }
+    return isValid;
   }
 
-  function validate() {
-    const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Full name is required.'
-    if (!form.phone.trim()) next.phone = 'Phone number is required.'
-    if (!form.address.trim()) next.address = 'Address is required.'
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
- 
   async function submit() {
     if (!validate()) return
     setSaving(true)
     try {
-      await fleet.saveParticipant({
+      await saveParticipant({
         ...form,
         id: editing?.id,
         location: form.location ?? undefined,
       })
+      addToast({
+        title: t('common.success'),
+        message: editing ? t('part.updatedsuccess') : t('part.addedsuccess'),
+        kind: 'success',
+      })
       onOpenChange(false)
+    } catch {
+      addToast({
+        title: t('common.savefailed'),
+        message: t('common.savefailedmessage'),
+        kind: 'danger',
+      })
     } finally {
       setSaving(false)
     }
@@ -128,107 +128,219 @@ export function ParticipantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit member' : 'Add member'}</DialogTitle>
-          <DialogDescription>
-            Medical and mobility details drive vehicle matching in the planner.
-          </DialogDescription>
+          <DialogTitle>
+            {editing ? t("part.editmember") : t("part.addmember")}
+          </DialogTitle>
+          <DialogDescription>{t("part.dialogdesc")}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="-mx-1 max-h-[60vh] px-1">
+        <ScrollArea className="max-h-[60vh] px-1 w-full overflow-hidden">
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <TextField
-                label="Full name"
+                label={t("common.fullname")}
                 value={form.name}
-                onChange={(v) => set('name', v)}
+                onChange={(v) => set("name", v)}
                 required
                 error={errors.name}
               />
               <TextField
-                label="Phone"
+                label={t("common.phone")}
                 value={form.phone}
-                onChange={(v) => set('phone', v)}
+                onChange={(v) => set("phone", v)}
                 required
                 error={errors.phone}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <TextField
-                label="Emergency contact"
-                value={form.emergencyContact}
-                onChange={(v) => set('emergencyContact', v)}
-              />
-            </div>
-            <AddressField
-              label="Address"
-              value={form.address}
-              onChange={(v) => set('address', v)}
-              location={form.location}
-              onLocationChange={(v) => set('location', v)}
-              required
-              error={errors.address}
-            />
- 
-            <div className="grid grid-cols-3 gap-3">
-              <SelectField
-                label="Mobility"
-                value={form.mobilityLevel}
-                options={MOBILITY}
-                onChange={(v) => set('mobilityLevel', v)}
-              />
-              <SelectField
-                label="Priority"
-                value={form.medicalPriority}
-                options={PRIORITY}
-                onChange={(v) => set('medicalPriority', v)}
-              />
               <NumberField
-                label="Max travel (min)"
+                label={`${t("common.maxTravel")} (${t("common.min")})`}
                 value={form.maxTravelMinutes}
-                onChange={(v) => set('maxTravelMinutes', v)}
+                onChange={(v) => set("maxTravelMinutes", v)}
+                error={errors.maxTravelMinutes}
+              />
+              <TextField
+                label={t('part.bloodgroup')}
+                value={form.bloodGroup}
+                onChange={(v) => set("bloodGroup", v)}
+                required
+                error={errors.bloodGroup}
               />
             </div>
 
-            <Field label="Medical notes">
+            <AddressField
+              label={t("common.address")}
+              value={form.address}
+              onChange={(v) => set("address", v)}
+              location={form.location}
+              onLocationChange={(v) => set("location", v)}
+              required
+              error={errors.address ?? errors.location}
+            />
+
+            <div className="rounded-md">
+              <SwitchField
+                label={t('part.companionrequired')}
+                checked={form.companionNeeded}
+                onChange={(v) => set("companionNeeded", v)}
+              />
+              <div className="rounded-md border border-border px-3 py-2 mt-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField
+                    label={t("common.fullname")}
+                    value={form.companionDetails.name}
+                    onChange={(v) => setNested("companionDetails", { name: v })}
+                    required={form.companionNeeded}
+                    error={errors["companionDetails.name"]}
+                  />
+
+                  <TextField
+                    label={t("common.phone")}
+                    value={form.companionDetails.phone}
+                    onChange={(v) => setNested("companionDetails", { phone: v })}
+                    required={form.companionNeeded}
+                    error={errors["companionDetails.phone"]}
+                  />
+                </div>
+
+                <AddressField
+                  label={t("common.address")}
+                  value={form.companionDetails.address}
+                  onChange={(v) => setNested("companionDetails", { address: v })}
+                  location={form.companionDetails.location}
+                  onLocationChange={(v) =>
+                    setNested("companionDetails", { location: v })
+                  }
+                  required={form.companionNeeded}
+                  error={
+                    errors["companionDetails.address"] ??
+                    errors["companionDetails.location"]
+                  }
+                />
+
+                <TextField
+                  label={t('part.relation')}
+                  value={form.companionDetails.relation}
+                  onChange={(v) => setNested("companionDetails", { relation: v })}
+                  required={form.companionNeeded}
+                  error={errors["companionDetails.relation"]}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 flex-col rounded-md border border-border">
+              <span className=" px-3 py-2">{t('part.emergencycontactdetails')}</span>
+              <div className="px-3 py-2 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <TextField
+                  label={t("common.fullname")}
+                  value={form.emergencyContactDetails.name}
+                  onChange={(v) =>
+                    setNested("emergencyContactDetails", { name: v })
+                  }
+                  required
+                  error={errors["emergencyContactDetails.name"]}
+                />
+
+                <TextField
+                  label={t("common.phone")}
+                  value={form.emergencyContactDetails.phone}
+                  onChange={(v) =>
+                    setNested("emergencyContactDetails", { phone: v })
+                  }
+                  required
+                  error={errors["emergencyContactDetails.phone"]}
+                />
+              </div>
+              <AddressField
+                label={t("common.address")}
+                value={form.emergencyContactDetails.address}
+                onChange={(v) =>
+                  setNested("emergencyContactDetails", { address: v })
+                }
+                location={form.emergencyContactDetails.location}
+                onLocationChange={(v) =>
+                  setNested("emergencyContactDetails", { location: v })
+                }
+                required
+                error={
+                  errors["emergencyContactDetails.address"] ??
+                  errors["emergencyContactDetails.location"]
+                }
+              />
+              <TextField
+                label="Relation"
+                value={form.emergencyContactDetails.relation}
+                onChange={(v) =>
+                  setNested("emergencyContactDetails", { relation: v })
+                }
+                required
+                error={errors["emergencyContactDetails.relation"]}
+              />
+              </div>
+            </div>
+
+            <Field label={t("part.medicalNotes")}>
               <Textarea
                 rows={2}
                 value={form.medicalNotes}
-                onChange={(e) => set('medicalNotes', e.target.value)}
+                className="resize-none"
+                maxLength={500}
+                onChange={(e) => set("medicalNotes", e.target.value)}
               />
+              {form.medicalNotes && (
+                <div className="flex items-center justify-end text-xs mx-2 mt-1">
+                  {form.medicalNotes.length}/500
+                </div>
+              )}
             </Field>
-
+            <Field label={t('part.routenotes')}>
+              <Textarea
+                rows={2}
+                value={form.routeNotes}
+                className="resize-none"
+                maxLength={500}
+                onChange={(e) => set("routeNotes", e.target.value)}
+              />
+              {form.routeNotes && (
+                <div className="flex items-center justify-end text-xs mx-2 mt-1">
+                  {form.routeNotes.length}/500
+                </div>
+              )}
+            </Field>
             <div>
               <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Transport requirements
+                {t("part.transportreq")}
               </Label>
               <div className="grid grid-cols-2 gap-2">
-                {CONSTRAINT_KEYS.map((c) => (
+                {ParticipantConfig.CONSTRAINT_KEYS.map((c) => (
                   <SwitchField
                     key={c.key}
-                    label={c.label}
+                    label={t(c.label)}
                     checked={!!form.constraints[c.key]}
                     onChange={(v) =>
-                      set('constraints', { ...form.constraints, [c.key]: v })
+                      set("constraints", { ...form.constraints, [c.key]: v })
                     }
                   />
                 ))}
               </div>
             </div>
-
-            <SwitchField
-              label="Eligible for transport"
-              checked={form.eligible}
-              onChange={(v) => set('eligible', v)}
-            />
           </div>
         </ScrollArea>
 
-        <DialogFooter showCloseButton>
+        <DialogFooter>
           <Button onClick={submit} disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add member'}
+            {saving
+              ? t("common.saving")
+              : editing
+                ? t("common.savchanges")
+                : t("part.addmember")}
           </Button>
+          <DialogClose render={<Button variant="outline" />}>
+            {t("common.close")}
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

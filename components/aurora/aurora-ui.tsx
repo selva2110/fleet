@@ -3,39 +3,11 @@
 import { forwardRef } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { TableHead } from '../ui/table';
+import { AuroraAccent } from '@/lib/aurora/types';
+import { AuroraConfig } from '@/lib/aurora/config';
+import { useTranslation } from '../context/language-provider';
 
-/**
- * Aurora is an immersive, self-contained "premium" surface: a dark neon
- * command-center canvas that intentionally uses its own fixed palette rather
- * than the app's themeable design tokens. These primitives keep that styling
- * consistent across every Aurora widget.
- */
-
-export const AURORA_ACCENTS = {
-  cyan: '#22d3ee',
-  blue: '#60a5fa',
-  violet: '#a78bfa',
-  emerald: '#34d399',
-  amber: '#fbbf24',
-  rose: '#fb7185',
-} as const
-
-export type AuroraAccent = keyof typeof AURORA_ACCENTS
-
-/** Tailwind fragments for a given accent (text / ring / soft glow bg). */
-export const accentClasses: Record<
-  AuroraAccent,
-  { text: string; glow: string; ring: string; from: string }
-> = {
-  cyan: { text: 'text-cyan-300', glow: 'shadow-[0_0_30px_-6px_rgba(34,211,238,0.55)]', ring: 'ring-cyan-400/30', from: 'from-cyan-500/25' },
-  blue: { text: 'text-blue-300', glow: 'shadow-[0_0_30px_-6px_rgba(96,165,250,0.55)]', ring: 'ring-blue-400/30', from: 'from-blue-500/25' },
-  violet: { text: 'text-violet-300', glow: 'shadow-[0_0_30px_-6px_rgba(167,139,250,0.55)]', ring: 'ring-violet-400/30', from: 'from-violet-500/25' },
-  emerald: { text: 'text-emerald-300', glow: 'shadow-[0_0_30px_-6px_rgba(52,211,153,0.55)]', ring: 'ring-emerald-400/30', from: 'from-emerald-500/25' },
-  amber: { text: 'text-amber-300', glow: 'shadow-[0_0_30px_-6px_rgba(251,191,36,0.55)]', ring: 'ring-amber-400/30', from: 'from-amber-500/25' },
-  rose: { text: 'text-rose-300', glow: 'shadow-[0_0_30px_-6px_rgba(251,113,133,0.55)]', ring: 'ring-rose-400/30', from: 'from-rose-500/25' },
-}
-
-/** Frosted-glass container used for every card/panel in Aurora. */
 export const GlassCard = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { interactive?: boolean }
@@ -44,9 +16,9 @@ export const GlassCard = forwardRef<
     <div
       ref={ref}
       className={cn(
-        'relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl',
+        'relative overflow-hidden rounded-2xl border border-border bg-card/95 backdrop-blur-xl',
         'shadow-[0_8px_32px_rgba(2,6,23,0.45)]',
-        interactive && 'transition-all duration-300 hover:border-white/20 hover:bg-white/[0.07]',
+        interactive && 'transition-all duration-300 hover:border-border hover:bg-card/90',
         className,
       )}
       {...props}
@@ -60,45 +32,29 @@ export function PanelTitle({
   icon: Icon,
   accent = 'cyan',
   action,
+  className
 }: {
   children: React.ReactNode
   icon?: React.ComponentType<{ className?: string }>
   accent?: AuroraAccent
   action?: React.ReactNode
+  className?:string
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 px-5 pt-4">
+    <div className={`flex items-center justify-between gap-2 ${className}`}>
       <div className="flex items-center gap-2">
         {Icon ? (
-          <span className={cn('flex size-7 items-center justify-center rounded-lg bg-white/5', accentClasses[accent].text)}>
+          <span className={cn('flex size-7 items-center justify-center rounded-lg bg-muted/30', AuroraConfig.accentClasses[accent].text)}>
             <Icon className="size-4" />
           </span>
         ) : null}
-        <h2 className="text-sm font-semibold tracking-tight text-white">{children}</h2>
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">{children}</h2>
       </div>
       {action}
     </div>
   )
 }
 
-/**
- * Deterministic pseudo-random series (Lehmer PRNG) so SSR and client render
- * identical sparklines — random-per-render would cause hydration mismatches.
- */
-export function seededSeries(seed: number, points = 18, base = 50, variance = 34): number[] {
-  let s = Math.floor(seed) % 2147483647
-  if (s <= 0) s += 2147483646
-  const out: number[] = []
-  for (let i = 0; i < points; i++) {
-    s = (s * 16807) % 2147483647
-    const r = (s - 1) / 2147483646
-    const wave = Math.sin(i / 2.4) * variance * 0.35
-    out.push(Math.max(3, base + (r - 0.5) * variance + wave))
-  }
-  return out
-}
-
-/** Lightweight SVG sparkline with gradient area fill. */
 export function Sparkline({
   data,
   color,
@@ -157,15 +113,26 @@ export function FadeIn({
 }
 
 /** Small colored status/trend pill. */
-export function TrendPill({ up, value }: { up: boolean; value: string }) {
+export function TrendPill({ up, value,sublabel }: { up: boolean; value: string;sublabel:string }) {
+  const {t} =useTranslation()
   return (
     <span
       className={cn(
         'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
-        up ? 'bg-emerald-400/15 text-emerald-300' : 'bg-rose-400/15 text-rose-300',
+        up ? 'bg-emerald-400/15 text-emerald-700' : 'bg-rose-400/15 text-rose-300',
       )}
     >
-      {up ? '▲' : '▼'} {value}
+      {up ? '▲' : '▼'} {value} {t(sublabel)}
     </span>
+  )
+}
+
+export function tableHeaderRow(tableHeadings: string[]) {
+  return (
+    <>
+      {tableHeadings.map((item, idx) => (
+        <TableHead key={idx}>{item}</TableHead>
+      ))}
+    </>
   )
 }

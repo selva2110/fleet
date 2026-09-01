@@ -1,16 +1,21 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
+  FileDown,
   LayoutGrid,
   List as ListIcon,
+  Loader2,
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,12 +37,40 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '../context/language-provider';
 
 export type ViewMode = 'grid' | 'list'
 export type SortDir = 'asc' | 'desc'
 export interface SortOption {
   key: string
   label: string
+}
+
+export interface DataViewProps {
+  query: string;
+  onQueryChange: (v: string) => void;
+  searchPlaceholder?: string;
+  sortOptions: SortOption[];
+  sortKey: string;
+  onSortKeyChange: (v: string) => void;
+  sortDir: SortDir;
+  onToggleSortDir: () => void;
+  view: ViewMode;
+  onViewChange: (v: ViewMode) => void;
+  activeFilterCount?: number;
+  actions?: {
+    import?: isEnabled;
+    export?: isEnabled;
+    downloadTemplate?: isEnabled;
+  };
+  onOpenFilters?: () => void;
+  resultCount?: number;
+}
+
+interface isEnabled {
+  enabled?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
 }
 
 // -------------------------------------------------------------------------
@@ -50,6 +83,12 @@ export function useDataView(defaultSortKey: string, defaultView: ViewMode = 'gri
   const [view, setView] = useState<ViewMode>(defaultView)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem('view-mode')
+    if (saved === 'grid' || saved === 'list') {
+      setView(saved)
+    }
+  }, [])
   const toggleSortDir = useCallback(
     () => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc')),
     [],
@@ -90,10 +129,12 @@ export function usePagination<T>(items: T[], defaultSize: PageSize = 20) {
   const currentPage = Math.min(page, pageCount)
   const start = (currentPage - 1) * pageSize
   const pageItems = useMemo(
-    () => items.slice(start, start + pageSize),
+    () =>
+      items
+        .slice(start, start + pageSize)
+        .map((item, idx) => ({ ...item, idx: start + idx+1 })),
     [items, start, pageSize],
-  )
-
+  );
   const setPageSizeReset = useCallback((size: PageSize) => {
     setPageSize(size)
     setPage(1)
@@ -121,7 +162,7 @@ export function Pagination({
   rangeStart,
   rangeEnd,
   total,
-  itemLabel = 'records',
+  itemLabel,
 }: {
   page: number
   pageCount: number
@@ -133,10 +174,12 @@ export function Pagination({
   total: number
   itemLabel?: string
 }) {
+  const {t} = useTranslation();
+  const resolvedItemLabel = itemLabel ?? t('common.records')
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="whitespace-nowrap">Rows per page</span>
+        <span className="whitespace-nowrap">{t('common.rowsperpage')}</span>
         <Select
           value={String(pageSize)}
           onValueChange={(v) => v && onPageSizeChange(Number(v) as PageSize)}
@@ -156,7 +199,7 @@ export function Pagination({
 
       <div className="flex items-center gap-3">
         <span className="text-xs tabular-nums text-muted-foreground">
-          {rangeStart}–{rangeEnd} of {total} {itemLabel}
+          {rangeStart}–{rangeEnd} {t('common.of')} {total} {resolvedItemLabel}
         </span>
         <div className="flex items-center gap-1">
           <Button
@@ -165,12 +208,12 @@ export function Pagination({
             className="size-8"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            aria-label="Previous page"
+            aria-label={t('common.previouspage')}
           >
             <ChevronLeft className="size-4" />
           </Button>
           <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
-            Page {page} / {pageCount}
+            {t('common.page')} {page} / {pageCount}
           </span>
           <Button
             variant="outline"
@@ -178,7 +221,7 @@ export function Pagination({
             className="size-8"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= pageCount}
-            aria-label="Next page"
+            aria-label={t('common.nextpage')}
           >
             <ChevronRight className="size-4" />
           </Button>
@@ -207,36 +250,36 @@ export function ViewToggle({
   view: ViewMode
   onChange: (v: ViewMode) => void
 }) {
+  const {t} = useTranslation()
+  const views: { value: ViewMode; label: string; icon: React.ElementType }[] = [
+    { value: 'grid', label: t('common.gridview'), icon: LayoutGrid },
+    { value: 'list', label: t('common.listview'), icon: ListIcon },
+  ]
+
+  const changeView = (v: ViewMode) => {
+    sessionStorage.setItem('view-mode', v)
+    onChange(v)
+  }
+
   return (
     <div className="inline-flex rounded-md border border-border p-0.5">
-      <button
-        type="button"
-        onClick={() => onChange('grid')}
-        aria-label="Grid view"
-        aria-pressed={view === 'grid'}
-        className={cn(
-          'flex size-7 items-center justify-center rounded-[5px] transition-colors',
-          view === 'grid'
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted',
-        )}
-      >
-        <LayoutGrid className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('list')}
-        aria-label="List view"
-        aria-pressed={view === 'list'}
-        className={cn(
-          'flex size-7 items-center justify-center rounded-[5px] transition-colors',
-          view === 'list'
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted',
-        )}
-      >
-        <ListIcon className="size-4" />
-      </button>
+      {views.map(({ value, label, icon: Icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => changeView(value)}
+          aria-label={label}
+          aria-pressed={view === value}
+          className={cn(
+            'flex size-7 items-center justify-center rounded-[5px] transition-colors',
+            view === value
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted',
+          )}
+        >
+          <Icon className="size-4" />
+        </button>
+      ))}
     </div>
   )
 }
@@ -247,7 +290,7 @@ export function ViewToggle({
 export function DataToolbar({
   query,
   onQueryChange,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder,
   sortOptions,
   sortKey,
   onSortKeyChange,
@@ -258,23 +301,10 @@ export function DataToolbar({
   activeFilterCount = 0,
   onOpenFilters,
   resultCount,
-}: {
-  query: string
-  onQueryChange: (v: string) => void
-  searchPlaceholder?: string
-  sortOptions: SortOption[]
-  sortKey: string
-  onSortKeyChange: (v: string) => void
-  sortDir: SortDir
-  onToggleSortDir: () => void
-  view: ViewMode
-  onViewChange: (v: ViewMode) => void
-  activeFilterCount?: number
-  /** When omitted, the Filters button is hidden (filters live in a side rail). */
-  onOpenFilters?: () => void
-  resultCount?: number
-}) {
-  const activeSort = sortOptions.find((s) => s.key === sortKey)
+  actions,
+}: DataViewProps) {
+  const {t} = useTranslation()
+  const activeSort = sortOptions.find((s) => s.key === sortKey);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-52 flex-1">
@@ -282,26 +312,31 @@ export function DataToolbar({
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={searchPlaceholder}
+          placeholder={searchPlaceholder ?? t('common.searchellipsis')}
           className="pl-8"
         />
       </div>
 
-      {typeof resultCount === 'number' ? (
+      {typeof resultCount === "number" ? (
         <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">
-          {resultCount} result{resultCount === 1 ? '' : 's'}
+          {resultCount} {t('common.result')}{resultCount === 1 ? "" : "s"}
         </span>
       ) : null}
 
       <div className="flex items-center gap-1">
-        <Select value={sortKey} onValueChange={(v) => onSortKeyChange(v ?? sortKey)}>
+        <Select
+          value={sortKey}
+          onValueChange={(v) => onSortKeyChange(v ?? sortKey)}
+        >
           <SelectTrigger className="w-40">
-            <SelectValue>{() => `Sort: ${activeSort?.label ?? ''}`}</SelectValue>
+            <SelectValue>
+              {() => `${t('common.sortlabel')} ${t(activeSort?.label ?? "")}`}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {sortOptions.map((s) => (
               <SelectItem key={s.key} value={s.key}>
-                {s.label}
+                {t(s.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -310,10 +345,10 @@ export function DataToolbar({
           variant="outline"
           size="icon"
           onClick={onToggleSortDir}
-          aria-label={sortDir === 'asc' ? 'Sort ascending' : 'Sort descending'}
-          title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+          aria-label={sortDir === "asc" ? t('common.sortascending') : t('common.sortdescending')}
+          title={sortDir === "asc" ? t('common.ascending') : t('common.descending')}
         >
-          {sortDir === 'asc' ? (
+          {sortDir === "asc" ? (
             <ArrowUpAZ className="size-4" />
           ) : (
             <ArrowDownAZ className="size-4" />
@@ -321,12 +356,59 @@ export function DataToolbar({
         </Button>
       </div>
 
+      {actions?.downloadTemplate?.enabled && (
+        <Button
+          title={t('common.downloadtemplate')}
+          disabled={actions.downloadTemplate.loading}
+          onClick={actions.downloadTemplate.onClick}
+        >
+          {actions.downloadTemplate.loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <FileDown className="size-4" />
+          )}
+        </Button>
+      )}
+
+      {actions?.import?.enabled && (
+        <Button
+          title={t('common.import')}
+          disabled={actions.import.loading}
+          onClick={actions.import.onClick}
+        >
+          {actions.import.loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Upload className="size-4" />
+          )}
+        </Button>
+      )}
+
+      {actions?.export?.enabled && (
+        <Button
+          title={t('common.export')}
+          disabled={actions.export.loading}
+          onClick={actions.export.onClick}
+        >
+          {actions.export.loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
+      )}
+
       <ViewToggle view={view} onChange={onViewChange} />
 
       {onOpenFilters ? (
-        <Button variant="outline" size="sm" onClick={onOpenFilters} className="gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onOpenFilters}
+          className="gap-2"
+        >
           <SlidersHorizontal className="size-4" />
-          <span className="hidden sm:inline">Filters</span>
+          <span className="hidden sm:inline">{t('common.filters')}</span>
           {activeFilterCount > 0 ? (
             <Badge className="ml-0.5 size-5 justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
               {activeFilterCount}
@@ -335,7 +417,7 @@ export function DataToolbar({
         </Button>
       ) : null}
     </div>
-  )
+  );
 }
 
 // -------------------------------------------------------------------------
@@ -366,12 +448,13 @@ export function FilterRail({
   onReset: () => void
   children: React.ReactNode
 }) {
+  const {t} = useTranslation()
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Filters</h2>
+          <h2 className="text-sm font-semibold">{t('common.filters')}</h2>
           {activeCount > 0 ? (
             <Badge className="size-5 justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
               {activeCount}
@@ -385,7 +468,7 @@ export function FilterRail({
           onClick={onReset}
           disabled={activeCount === 0}
         >
-          <RotateCcw className="size-3.5" /> Reset
+          <RotateCcw className="size-3.5" /> {t('common.reset')}
         </Button>
       </div>
       <div className="flex flex-col divide-y divide-border">{children}</div>
@@ -409,16 +492,19 @@ export function FilterSheet({
   onReset: () => void
   children: React.ReactNode
 }) {
+  const {t} = useTranslation()
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-sm">
         <SheetHeader className="flex-row items-center justify-between border-b border-border pr-14">
           <div>
-            <SheetTitle>Filters</SheetTitle>
+            <SheetTitle>{t('common.filters')}</SheetTitle>
             <SheetDescription>
               {activeCount > 0
-                ? `${activeCount} active filter${activeCount === 1 ? '' : 's'}`
-                : 'Refine the results'}
+                ? t('common.activefilters')
+                    .replace('{{count}}', String(activeCount))
+                    .replace('{{suffix}}', activeCount === 1 ? '' : 's')
+                : t('common.refineresults')}
             </SheetDescription>
           </div>
         </SheetHeader>
@@ -434,10 +520,10 @@ export function FilterSheet({
             onClick={onReset}
             disabled={activeCount === 0}
           >
-            <RotateCcw className="size-4" /> Reset
+            <RotateCcw className="size-4" /> {t('common.reset')}
           </Button>
           <Button className="flex-1" onClick={() => onOpenChange(false)}>
-            Show results
+            {t('common.showres')}
           </Button>
         </div>
       </SheetContent>
@@ -448,18 +534,22 @@ export function FilterSheet({
 export function FilterSection({
   title,
   children,
+  defaultOpen = true,
 }: {
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="flex flex-col gap-2.5 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </p>
-      {children}
+    <div className="border-b">
+      <button type="button" onClick={() => setOpen((prev) => !prev)}  className="flex w-full items-center justify-between p-4 text-left">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}/>
+      </button>
+      {open && <div className="flex flex-col gap-2.5 px-4 pb-4">{children}</div>}
     </div>
-  )
+  );
 }
 
 /** Multi-select checkbox group backed by a string[] value. */
@@ -472,6 +562,7 @@ export function CheckboxGroupFilter({
   selected: string[]
   onChange: (next: string[]) => void
 }) {
+  const {t} = useTranslation()
   const toggle = (value: string, checked: boolean) => {
     if (checked) onChange([...selected, value])
     else onChange(selected.filter((v) => v !== value))
@@ -489,7 +580,7 @@ export function CheckboxGroupFilter({
               checked={checked}
               onCheckedChange={(v) => toggle(opt.value, v === true)}
             />
-            <span className="text-foreground">{opt.label}</span>
+            <span className="text-foreground">{t(opt.label)}</span>
           </label>
         )
       })}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,10 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useTranslation } from '../context/language-provider';
 
 export function RowActions({
   onEdit,
   onDelete,
+  onPto,
   deleteTitle,
   deleteMessage,
   canDelete = true,
@@ -28,6 +30,7 @@ export function RowActions({
 }: {
   onEdit: () => void
   onDelete: () => void | Promise<void>
+  onPto?: () => void
   deleteTitle: string
   deleteMessage: string
   /** When false, the Delete action is disabled (e.g. dispatched events). */
@@ -35,6 +38,7 @@ export function RowActions({
   /** Shown in place of the Delete label when deletion is not allowed. */
   deleteDisabledReason?: string
 }) {
+  const {t} = useTranslation();
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -53,15 +57,20 @@ export function RowActions({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="icon-sm" aria-label="Row actions">
+            <Button variant="ghost" size="icon-sm" aria-label={t('common.rowactions')}>
               <MoreHorizontal className="size-4" />
             </Button>
           }
         />
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="size-3.5" /> Edit
+            <Pencil className="size-3.5" /> {t('common.edit')}
           </DropdownMenuItem>
+          {onPto ? (
+            <DropdownMenuItem onClick={onPto}>
+              <CalendarDays className="size-3.5" /> {t('driver.ptorequests')}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
             disabled={!canDelete}
@@ -70,7 +79,7 @@ export function RowActions({
             }}
           >
             <Trash2 className="size-3.5" />
-            {canDelete ? 'Delete' : deleteDisabledReason ?? 'Delete unavailable'}
+            {canDelete ? t('common.delete') : deleteDisabledReason ?? t('common.deleteunavailable')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -83,7 +92,7 @@ export function RowActions({
           </DialogHeader>
           <DialogFooter showCloseButton>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t('common.deleting') : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

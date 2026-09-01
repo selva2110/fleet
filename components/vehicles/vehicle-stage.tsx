@@ -1,10 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { vehicleTypeImages } from '@/lib/vehicle-images'
-import type { VehicleType } from '@/lib/types'
+import { VehiclesConfig } from '@/lib/vehicles/config';
+import { VehicleType } from '@/lib/vehicles/types';
 
 type Rot = { x: number; y: number }
 
@@ -20,7 +19,7 @@ export function VehicleStage({ type }: { type: VehicleType }) {
   const [rot, setRot] = useState<Rot>(START)
   const [dragging, setDragging] = useState(false)
   const drag = useRef<{ px: number; py: number; rx: number; ry: number } | null>(null)
-  const img = vehicleTypeImages[type] || '/placeholder.svg'
+  const img = VehiclesConfig.vehicleTypeImages[type] || '/placeholder.svg'
 
   // Reset orientation whenever the vehicle type changes.
   useEffect(() => setRot(START), [type])
@@ -34,29 +33,11 @@ export function VehicleStage({ type }: { type: VehicleType }) {
     [rot],
   )
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!drag.current) return
-    const dx = e.clientX - drag.current.px
-    const dy = e.clientY - drag.current.py
-    const y = drag.current.ry + dx * 0.4
-    const x = Math.max(-CLAMP_X, Math.min(CLAMP_X, drag.current.rx - dy * 0.3))
-    setRot({ x, y })
-  }, [])
-
-  const onPointerUp = useCallback(() => {
-    drag.current = null
-    setDragging(false)
-  }, [])
-
   return (
     <div className="relative flex size-full items-center justify-center overflow-hidden">
       <div
         className="relative flex size-full cursor-grab touch-none select-none items-center justify-center px-8 active:cursor-grabbing"
         style={{ perspective: '1200px' }}
-        // onPointerDown={onPointerDown}
-        // onPointerMove={onPointerMove}
-        // onPointerUp={onPointerUp}
-        // onPointerLeave={onPointerUp}
         role="img"
         aria-label={`${type} — drag to rotate`}
       >
