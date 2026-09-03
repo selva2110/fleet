@@ -529,6 +529,8 @@ export const chTranslations = {
   "nav.operations": "运营",
   "nav.scheduling": "调度",
   "nav.fleet": "车队",
+  "nav.configuration": "配置",
+  "nav.ruleengine": "规则引擎",
   "nav.administration": "管理",
   "nav.usermanagement": "用户管理",
   "nav.dashboard": "仪表板",
@@ -696,7 +698,7 @@ export const chTranslations = {
   "meal.selectkitchen": "选择厨房 / 中心",
   "meal.newrun": "新建送餐行程",
   "meal.newrundesc":
-    "车队在所选中心领取准备好的餐食，并将其送到每位参与者的家中。",
+    "车队在所选中心领取准备好的餐食，并将其送到每���参与者的家中。",
   "meal.pickupkitchencenter": "取餐厨房 / 中心",
   "meal.departuretime": "出发时间",
   "meal.deliverystops": "配送停靠点",

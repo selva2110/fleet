@@ -547,6 +547,8 @@ export const enTranslations = {
   "nav.operations": "Operations",
   "nav.scheduling": "Scheduling",
   "nav.fleet": "Fleet",
+  "nav.configuration": "Configuration",
+  "nav.ruleengine": "Rule Engine",
   "nav.administration": "Administration",
   "nav.usermanagement": "User Management",
   "nav.dashboard": "Dashboard",

@@ -127,7 +127,7 @@ export const hiTranslations = {
   "e.eventsdesc":
     "अनुसूचित कार्यक्रम और नियुक्तियां जिनके लिए परिवहन की आवश्यकता होती है।",
   "e.mealdel": "भोजन वितरण",
-  "e.mealdeldesc": "अनुसूचित भोजन वितरण जिसके लिए परिवहन की आवश्यकता होती है।",
+  "e.mealdeldesc": "अनुसूचित भोजन वितरण जिसके लिए परिवहन की आव��्यकता होती है।",
   "e.catalogserv": "कैटलॉग सेवा",
   "e.catalogdesc": "देखभाल वस्तुओं और सेवा प्रकारों का प्रबंधन करें।",
   "e.plannewrun": "नया रन व्यवस्थित करें",
@@ -224,7 +224,7 @@ export const hiTranslations = {
   "e.bothlegs":
     "दोनों यात्राएं एक ही वाहन, ड्राइवर और यात्रियों का उपयोग करती हैं।",
   "e.smscutoff":
-    "यह एसएमएस उत्तरों की अंतिम सीमा है। जब प्रतिभागी सूचनाएं सक्षम होती हैं, तो यह आवश्यक है और कार्यक्रम शुरू होने से कम से कम 3 घंटे पहले होना चाहिए।",
+    "यह एसएमएस उत्तरों की अंतिम सीमा है। जब प्रतिभागी सूचनाएं सक्षम होती हैं, तो यह आवश्यक है और क��र्यक्रम शुरू होने से कम से कम 3 घंटे पहले होना चाहिए।",
   "e.createevent": "नया कार्यक्रम बनाएं",
   "e.editEvent": "कार्यक्रम संपादित करें",
   "e.newTrans": "प्रतिभागियों के लिए एक नया परिवहन कार्यक्रम शेड्यूल करें।",
@@ -420,11 +420,11 @@ export const hiTranslations = {
   "trip.desc": "प्रत्येक नियोजित, सक्रिय और पूर्ण परिवहन रन।",
   "trip.clearall": "सभी यात्राएं साफ़ करें",
   "trip.clearing": "साफ़ किया जा रहा है…",
-  "trip.livemap": "लाइव मानचित्र",
+  "trip.livemap": "लाइव म��नचित्र",
   "trip.quickgroups": "त्वरित समूह",
   "trip.exactstatus": "सटीक स्थिति",
   "trip.crewassignment": "क्रू असाइनमेंट",
-  "trip.searchplaceholder": "यात्रा, कार्यक्रम, वाहन या ड्राइवर खोजें",
+  "trip.searchplaceholder": "यात्रा, कार्यक्रम, वाहन या ड्र��इवर खोजें",
   "trip.none": "आपकी खोज और फ़िल्टर से कोई यात्रा मेल नहीं खाती।",
   "trip.novehicle": "कोई वाहन नहीं",
   "trip.riderspickedup": "यात्रियों को पिकअप किया गया",
@@ -557,6 +557,8 @@ export const hiTranslations = {
   "nav.operations": "संचालन",
   "nav.scheduling": "शेड्यूलिंग",
   "nav.fleet": "फ़्लीट",
+  "nav.configuration": "कॉन्फ़िगरेशन",
+  "nav.ruleengine": "नियम इंजन",
   "nav.administration": "प्रशासन",
   "nav.usermanagement": "उपयोगकर्ता प्रबंधन",
   "nav.dashboard": "डैशबोर्ड",
@@ -624,7 +626,7 @@ export const hiTranslations = {
   "planner.recommendedroutemap": "अनुशंसित मार्ग मानचित्र",
   "planner.routewithstops": "पिकअप स्टॉप के साथ मार्ग {{index}}",
   "planner.needsschedulerreview":
-    "{{count}} प्रतिभागी{{suffix}} को शेड्यूलर समीक्षा की आवश्यकता है",
+    "{{count}} प्रतिभागी{{suffix}} को श��ड्यूलर समीक्षा की आवश्यकता है",
   "planner.addcoveragenote":
     "एक वाहन, ड्राइवर या शिफ्ट कवरेज जोड़ें जो इन यात्रियों की ज़रूरतों को पूरा करता हो, या मैन्युअल रूप से परिवहन की व्यवस्था करें।",
   "planner.routescommitted":
@@ -733,7 +735,7 @@ export const hiTranslations = {
   "meal.selectkitchen": "एक रसोई / केंद्र चुनें",
   "meal.newrun": "नया भोजन-वितरण रन",
   "meal.newrundesc":
-    "फ़्लीट चयनित केंद्र से तैयार भोजन प्राप्त करती है और उन्हें प्रत्येक प्रतिभागी के घर तक पहुंचाती है।",
+    "फ़्लीट चयनित केंद्र ��े तैयार भोजन प्राप्त करती है और उन्हें प्रत्येक प्रतिभागी के घर तक पहुंचाती है।",
   "meal.pickupkitchencenter": "पिकअप रसोई / केंद्र",
   "meal.departuretime": "प्रस्थान का समय",
   "meal.deliverystops": "वितरण स्टॉप",
@@ -825,7 +827,7 @@ export const hiTranslations = {
   "aurora.insightdemandtitle": "परिवहन मांग का पूर्वानुमान",
   "aurora.insightdemanddetail":
     "आगामी कार्यक्रमों के लिए {{count}} पुष्टीकृत परिवहन अनुरोध ~{{trend}} की ओर बढ़ रहे हैं। {{extra}} अतिरिक्त वाहन पहले से तैयार रखें।",
-  "aurora.insightattendancetitle": "उपस्थिति का पूर्वानुमान",
+  "aurora.insightattendancetitle": "उपस्��िति का पूर्वानुमान",
   "aurora.insightattendancedetail":
     "{{replies}} उत्तरों के आधार पर, ~{{rate}}% उपस्थिति की उम्मीद करें। {{nonresponders}} गैर-उत्तरदाता इसे बढ़ा या घटा सकते हैं — एक रिमाइंडर {{recoverable}} तक पुनः प्राप्त कर सकता है।",
   "aurora.insightfleettitle": "वाहन उपयोग अलर्ट",
@@ -874,7 +876,7 @@ export const hiTranslations = {
   "map.destinationplaceholder": "चयनित गंतव्य यहाँ दिखाई देगा।",
   "map.pickuppoint": "पिकअप बिंदु",
   "map.pickuplocation": "पिकअप स्थान",
-  "map.deliverystop": "वितरण स्टॉप",
+  "map.deliverystop": "वितरण स���टॉप",
   "map.deliverylocation": "वितरण स्थान",
   "map.mealdeliveryvehicle": "भोजन वितरण वाहन",
   "map.livetraffic": "लाइव यातायात",
