@@ -16,6 +16,7 @@ import {
   Pill,
   Radio,
   Route,
+  Scale,
   Trash2,
   Truck,
   UserCog,
@@ -88,6 +89,9 @@ function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
         { href: "/drivers/availability", label: "driver.availability", icon: Calendar },
         { href: "/drivers/pto", label: "driver.ptotitle", icon: ClipboardList },
       ]},
+    ]},
+    { title: "Configuration", items: [
+      { href: "/rules", label: "Rule Engine", icon: Scale },
     ]},
     ...(isAdmin ? [{ title: "nav.administration", items: [
       { href: "/users", label: "nav.usermanagement", icon: UserCog },
