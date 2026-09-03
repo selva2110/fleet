@@ -1,4 +1,5 @@
-import { LatLng } from "../types";
+import { ApiResponse, LatLng, ListQueryParams, metaData } from "../types";
+import { Vehicle } from "../vehicles/types";
 
 export interface TransportConstraints {
   wheelchair?: boolean;
@@ -10,6 +11,7 @@ interface contactDetails {
   name: string;
   phone: string;
   address: string;
+  dialCode: string;
   location: LatLng | null;
   relation: string;
 }
@@ -18,6 +20,7 @@ export interface Participant {
   id: string;
   name: string;
   phone: string;
+  dialCode: string;
   bloodGroup: string;
   emergencyContactDetails: contactDetails;
   companionNeeded: boolean;
@@ -61,11 +64,6 @@ export interface ParticipantResponse extends Omit<Participant, "eventId"> {
   updatedAt: string;
 }
 
-export interface ParticipantListResponse {
-  data: ParticipantResponse[];
-  total: number;
-}
-
 export interface ParticipantResponseRow {
   event_participant_id: number;
   event_id: string;
@@ -82,3 +80,11 @@ export type ParticipantForm = Omit<
 };
 
 export type ParticipantCreateInput = Omit<Participant, "id"> & { id?: string };
+
+export type ParticipantQueryParams = {
+  specialNeeds?:string[];
+} & ListQueryParams;
+
+export type ParticipantListResponse = ApiResponse<Participant[]> & {
+  metadata: metaData;
+};

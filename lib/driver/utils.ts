@@ -52,7 +52,9 @@ export class DriverUtils {
     eventStartTime: string,
   ): boolean {
     return (
-      driver.shiftDays.includes(DriverUtils.dayOfWeekFromDate(eventDate)) &&
+      Boolean(
+        driver.shiftDays?.includes(DriverUtils.dayOfWeekFromDate(eventDate)),
+      ) &&
       DriverUtils.timeWithinShift(
         DriverUtils.timeToMinutes(driver.shiftStart),
         DriverUtils.timeToMinutes(driver.shiftEnd),
@@ -74,6 +76,8 @@ export class DriverUtils {
       certifications: {
         wheelchairAssist: { enabled: false, certificateNo: "" },
         medicalTransport: { enabled: false, certificateNo: "" },
+        cprCert: { enabled: false, certificateNo: "" },
+        nemCert: { enabled: false, certificateNo: "" },
       },
       assignedVehicleId: null,
       rating: 4.5,

@@ -194,7 +194,7 @@ export default function DriversPage() {
             ) : dv.view === "grid" ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {pg.pageItems.map((d) => {
-                  const meta = DriversConfig.driverStatusMeta[d.status];
+                  const meta = DriversConfig.getDriverStatusMeta(d.status);
                   const vehicle = d.assignedVehicleId
                     ? findById(vehicles, d.assignedVehicleId)
                     : undefined;
@@ -297,7 +297,7 @@ export default function DriversPage() {
                     </TableHeader>
                     <TableBody>
                       {pg.pageItems.map((d) => {
-                        const meta = DriversConfig.driverStatusMeta[d.status];
+                        const meta = DriversConfig.getDriverStatusMeta(d.status);
                         const vehicle = d.assignedVehicleId
                           ? findById(vehicles, d.assignedVehicleId)
                           : undefined;

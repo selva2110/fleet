@@ -1,15 +1,14 @@
 import { SortOption } from "@/components/data-view/data-view";
 import { TransportConstraints } from "./types";
 export class ParticipantConfig {
-
   static readonly constraintLabels: {
     key: string;
     label: string;
     short: string;
   }[] = [
     { key: "wheelchair", label: "part.wheelchaireq", short: "WC" },
-    { key: "poweredWheelchair", label: "part.pwheelchair", short: "PWC" },
     { key: "oxygen", label: "part.oxygencylinder", short: "O2" },
+    { key: "caregiverRequired", label: "part.carereq", short: "Caregiver" },
   ];
 
   static readonly NEEDS_OPTIONS = this.constraintLabels.map((c) => ({

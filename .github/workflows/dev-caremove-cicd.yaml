@@ -1,0 +1,94 @@
+name: DEV CareMove FE CICD
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_to_deploy:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - dev
+ 
+env:
+  AWS_DEFAULT_REGION: us-west-2
+  SG_ID: sg-023cc7dd03d2b2e5e
+  DOCKER_IMAGE: dev-caremove-fe:latest
+ 
+permissions:
+      id-token: write
+      contents: read
+ 
+jobs:
+ 
+  build:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+ 
+    steps:
+        
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch_to_deploy }}
+ 
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.CONCLAVES_BASTION_KEY }}
+        known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+ 
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.CONCLAVES_ROLE_TO_ASSUME }}
+        role-session-name: ${{ secrets.CONCLAVES_ROLE_SESSION_NAME }}
+        role-duration-seconds: 1200
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+    - name: Sts GetCallerIdentity
+      run: |
+        aws sts get-caller-identity
+ 
+    - name: Get Public IP
+      id: get_ip
+      run: |
+        echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_ENV
+ 
+    - name: Add Rules To SG
+      run: aws ec2 authorize-security-group-ingress --group-id ${{ env.SG_ID }} --protocol tcp --port 22 --cidr ${{ env.ipv4 }}/32
+
+    - name: Adding Known Hosts
+      run: ssh-keyscan -H ${{ secrets.CONCLAVES_BASTION_IP }} >> ~/.ssh/known_hosts
+ 
+    - name: Build the Docker image
+      run: docker build -t ${{ env.DOCKER_IMAGE }} -f Dockerfile .
+
+    - name: Generate Deployment Package
+      run: docker save ${{ env.DOCKER_IMAGE }} -o caremove-fe.tar
+
+    - name: DeployToBastion
+      run: |
+        rsync -avz -e "ssh -i /home/runner/.ssh/id_rsa" caremove-fe.tar ${{ secrets.CONCLAVES_BASTION_USER }}@${{ secrets.CONCLAVES_BASTION_IP }}:/home/${{ secrets.CONCLAVES_BASTION_USER }}/caremove_fe/
+    - name: Deploy to Private Server via Bastion
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        script: |
+          rsync -avz -e "ssh -i /home/runner/.ssh/id_rsa" /home/ec2-user/caremove_fe/caremove-fe.tar conclaves-app-dev:/home/ubuntu/caremove_fe/
+          ssh -A conclaves-app-dev << 'EOF'
+            hostname -I
+            sudo docker load -i /home/${{ secrets.CONCLAVES_PVT_DEV_USER }}/caremove_fe/caremove-fe.tar
+            sudo docker-compose -f /home/${{ secrets.CONCLAVES_PVT_DEV_USER }}/caremove_fe/docker-compose.yaml down
+            sudo docker-compose -f /home/${{ secrets.CONCLAVES_PVT_DEV_USER }}/caremove_fe/docker-compose.yaml build --no-cache
+            sudo docker-compose -f /home/${{ secrets.CONCLAVES_PVT_DEV_USER }}/caremove_fe/docker-compose.yaml up -d
+          EOF  
+        host: ${{ secrets.CONCLAVES_BASTION_IP }}
+        username: ${{ secrets.CONCLAVES_BASTION_USER }}
+        key: ${{ secrets.CONCLAVES_BASTION_KEY }}    
+    
+    - name: Remove Rules From SG
+      if: ${{ always() }}
+      run: aws ec2 revoke-security-group-ingress --group-id ${{ env.SG_ID }} --protocol tcp --port 22 --cidr ${{ env.ipv4 }}/32

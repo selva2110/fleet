@@ -737,8 +737,7 @@ function RecentPlans({
                         {t('planner.opendispatch')}
                       </Button>
                     )
-                  ) : (event &&
-                    TripsUtils.canShowReplan(event))? (
+                  ) : (g.trips.some((t) => t.status === "PLANNED" || t.status === "VEHICLE_ASSIGNED" || t.status === "DRIVER_ASSIGNED")) ? (
                     <Button
                       size="sm"
                       disabled={busyId === g.eventId}
@@ -757,7 +756,7 @@ function RecentPlans({
                   ) : (
                     <div className="flex items-center gap-2 rounded-md border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger">
                       <span className="font-medium">{t('planner.replandeadlinelabel')}</span>
-                      <span>{t('planner.replandeadlinevalue')}</span>
+                      <span>Can Replan only before Trip Starts</span>
                     </div>
                   )}
                 </div>
@@ -769,7 +768,7 @@ function RecentPlans({
                 {event?.tripCreationFailedReason ? (
                   <FailureReasons
                     reason={event.tripCreationFailedReason}
-                    canReplan={false}
+                    canReplan={g.trips.some((t) => t.status === "PLANNED" || t.status === "VEHICLE_ASSIGNED" || t.status === "DRIVER_ASSIGNED")}
                     busy={busyId === g.eventId}
                     onReplan={async () => {
                       setBusyId(g.eventId)
@@ -854,7 +853,7 @@ function RecentPlans({
                                 {failed ? (
                                   <FailureReasons
                                     reason={failed}
-                                    canReplan={Boolean(failed)}
+                                    canReplan={trip.status === "PLANNED" || trip.status === "VEHICLE_ASSIGNED" || trip.status === "DRIVER_ASSIGNED"}
                                     busy={busyId === trip.id}
                                     onReplan={async () => {
                                       setBusyId(trip.id)

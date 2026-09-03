@@ -624,7 +624,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   )
 }
 
-function DetailPill({ label, value }: { label: string; value: string }) {
+export function DetailPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>

@@ -7,15 +7,41 @@ import {
   deleteParticipant as deleteParticipantAction,
 } from "@/app/actions/crud";
 import { useFleetSession } from "@/components/context/fleet-session-provider";
-import { Participant, ParticipantInput } from "./types";
+import {
+  Participant,
+  ParticipantInput,
+  ParticipantListResponse,
+  ParticipantQueryParams,
+} from "./types";
 
 export const PARTICIPANTS_KEY = "participants";
 
 const EMPTY_PARTICIPANTS: Participant[] = [];
 
-export function useParticipants() {
-  const { data, isLoading, mutate } = useSWR<Participant[]>(PARTICIPANTS_KEY, getParticipants);
-  return { participants: data ?? EMPTY_PARTICIPANTS, isLoading, mutate };
+export function useParticipants(params: ParticipantQueryParams = {}) {
+  const key: [string, ParticipantQueryParams?] = [PARTICIPANTS_KEY, params];
+  const { data, isLoading, mutate } = useSWR<ParticipantListResponse, Error>(
+    key,
+    async ([, queryParams]: [string, ParticipantQueryParams?]) =>
+      (await getParticipants(queryParams ?? {})) as ParticipantListResponse,
+  );
+  return {
+    participants: data?.data ?? EMPTY_PARTICIPANTS,
+    pagination: data
+      ? {
+          page: data.metadata?.pageNumber ?? 0,
+          limit: data.metadata?.pageSize ?? 0,
+          total: data.metadata?.totalElements ?? 0,
+          totalPages: data.metadata?.totalPages ?? 0,
+        }
+      : undefined,
+    isLoading,
+    mutate,
+  };
+}
+
+function isParticipantKey(key: unknown) {
+  return Array.isArray(key) && key[0] === PARTICIPANTS_KEY;
 }
 
 export function useParticipantMutations() {
@@ -24,12 +50,12 @@ export function useParticipantMutations() {
 
   async function saveParticipant(input: ParticipantInput & { id?: string }) {
     await saveParticipantAction(input, role);
-    await mutate(PARTICIPANTS_KEY);
+    await mutate(isParticipantKey);
   }
 
   async function deleteParticipant(id: string, name: string) {
     await deleteParticipantAction(id, name, role);
-    await mutate(PARTICIPANTS_KEY);
+    await mutate(isParticipantKey);
   }
 
   return { saveParticipant, deleteParticipant };

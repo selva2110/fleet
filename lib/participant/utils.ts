@@ -5,6 +5,7 @@ export class ParticipantUtils {
     return {
       name: "",
       phone: "",
+      dialCode: "",
       address: "",
       location: null,
       relation: "",
@@ -15,6 +16,7 @@ export class ParticipantUtils {
     return {
       name: "",
       phone: "",
+      dialCode: "",
       bloodGroup: "",
       emergencyContactDetails: ParticipantUtils.personalDetails(),
       companionNeeded: false,

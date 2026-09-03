@@ -5,16 +5,13 @@
 // the domain it needs instead of one shared full-app snapshot.
 
 import { listParticipants } from "@/lib/api/participants";
-import { listVehicles } from "@/lib/api/vehicles";
+import { getVehicleStatistics, listVehicles } from "@/lib/api/vehicles";
 import {
   listDrivers,
   listDriverAvailability,
   listDriverPto,
 } from "@/lib/api/drivers";
-import {
-  DriverAvailabilityRange,
-  DriverPtoList,
-} from "@/lib/driver/types";
+import { DriverAvailabilityRange, DriverPtoList } from "@/lib/driver/types";
 import {
   listEvents,
   getEventLog,
@@ -27,6 +24,8 @@ import { DomainEvent, FleetEvent } from "@/lib/events/types";
 import { listCareItems, listCareItemTypes } from "@/lib/api/catalog";
 import { listUsers } from "@/lib/api/users";
 import { listRoles } from "@/lib/api/auth";
+import { VehicleQueryParams } from "@/lib/vehicles/types";
+import { emptyObjectResponse, emptyResponse } from "@/lib/utils";
 
 export async function getCenters() {
   return listCenters().catch(() => []);
@@ -36,8 +35,19 @@ export async function getParticipants() {
   return listParticipants().catch(() => []);
 }
 
-export async function getVehicles() {
-  return listVehicles().catch(() => []);
+export async function getVehicles(params: VehicleQueryParams = {}) {
+  return listVehicles(params).catch(() => emptyResponse());
+}
+
+export async function getVehicleStats() {
+  return getVehicleStatistics().catch(() =>
+    emptyObjectResponse({
+      totalVehicles: 0,
+      availableNow: 0,
+      wheelchairCapable: 0,
+      needService: 0,
+    }),
+  );
 }
 
 export async function getDrivers() {
@@ -92,6 +102,6 @@ export async function getSmsNotifications(events: FleetEvent[]) {
   return getAllParticipantResponses(events).catch(() => []);
 }
 
-export async function getRoles(){
+export async function getRoles() {
   return listRoles();
 }

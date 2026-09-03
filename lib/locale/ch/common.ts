@@ -269,6 +269,8 @@ export const chTranslations = {
   "driver.shstart": "班次开始",
   "driver.whassist": "轮椅协助",
   "driver.medtrans": "医疗运输",
+  "driver.cprcert": "CPR 认证",
+  "driver.nemcert": "NEMTAC 认证",
   "driver.vhassign": "已分配车辆",
   "driver.vhnotassign": "未分配车辆",
   "driver.delete": "删除司机",
@@ -389,6 +391,10 @@ export const chTranslations = {
   "vehicle.oxygenequipment": "供氧设备",
   "vehicle.bariatriccapable": "支持肥胖患者",
   "vehicle.stretchercapable": "支持担架 / 平车",
+  "vehicle.insuranceexpiry": "保险到期日期",
+  "vehicle.lastinspection": "最近检验日期",
+  "vehicle.insuranceExpDate": "保险到期日期",
+  "vehicle.lastinspectiondate": "最近检查日期",
 
   "trip.desc": "每趟已计划、进行中和已完成的运输行程。",
   "trip.clearall": "清除所有行程",
@@ -888,6 +894,7 @@ export const chTranslations = {
   "val.capacityWhole": "容量必须是整数",
   "val.capacityMin": "座位容量必须至少为 1",
   "val.wheelchairCapacityMin": "轮椅容量不能为负数",
+  "val.dialCodeRequired": "需要国际区号",
 
   "vehicles.descriptions.sedan":
     "适用于 1-3 名行动自如乘客的紧凑型轿车。短途路线快速且省油。",

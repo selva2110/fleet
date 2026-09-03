@@ -27,6 +27,8 @@ export class VehicleUtils {
       fuelType: "Gas",
       maintenanceStatus: "good",
       imageUrl: null,
+      insuranceExpirationDate: null,
+      lastInspectionDate: null,
     };
   }
 }

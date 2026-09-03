@@ -26,7 +26,9 @@ export function actorDisplayName(role?: string): string {
     case "system":
       return "common.actorsystem";
     default:
-      return role ? role.charAt(0).toUpperCase() + role.slice(1) : "common.actorsystem";
+      return role
+        ? role.charAt(0).toUpperCase() + role.slice(1)
+        : "common.actorsystem";
   }
 }
 
@@ -51,6 +53,7 @@ const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** Format working-day indices (0=Sun..6=Sat) as "Mon–Fri" style text. */
 export function formatShiftDays(days: number[]): string {
+  if (!days) return 'No Shift Available For Driver';
   if (days.length === 7) return "driver.everyday";
   if (days.length === 0) return "driver.nodaysset";
   const sorted = [...days].sort();

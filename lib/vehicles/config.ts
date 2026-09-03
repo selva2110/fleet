@@ -29,10 +29,9 @@ export class VehiclesConfig {
     { key: "name", label: "vehicles.sort.name" },
     { key: "type", label: "vehicles.sort.type" },
     { key: "capacity", label: "vehicles.sort.capacity" },
-    { key: "wheelchairCapacity", label: "vehicles.sort.wheelchairCapacity" },
     { key: "status", label: "vehicles.sort.status" },
     { key: "maintenanceStatus", label: "vehicles.sort.maintenanceStatus" },
-    { key: "fuelType", label: "vehicles.sort.fuelType" },
+    { key: "fuel", label: "vehicles.sort.fuelType" },
   ];
 
   static readonly vehicleStatusMeta: Record<
@@ -129,6 +128,14 @@ export class VehiclesConfig {
     }),
   );
 
+  static readonly ADDRESS_TYPES: {
+    value: "independent" | "center";
+    label: string;
+  }[] = [
+    { value: "independent", label: "independent" },
+    { value: "center", label: "Center-Based" },
+  ];
+
   static readonly MAINT_OPTIONS: {
     value: "good" | "due-soon" | "service-required";
     label: string;
@@ -143,18 +150,9 @@ export class VehiclesConfig {
 
   static readonly CAPABILITY_OPTIONS = [
     { value: "liftAvailable", label: "vehicles.capabilities.liftAvailable" },
-    { value: "wheelchair", label: "vehicles.capabilities.wheelchair" },
     {
       value: "oxygenEquipment",
       label: "vehicles.capabilities.oxygenEquipment",
-    },
-    {
-      value: "bariatricCapable",
-      label: "vehicles.capabilities.bariatricCapable",
-    },
-    {
-      value: "stretcherCapable",
-      label: "vehicles.capabilities.stretcherCapable",
     },
   ];
 

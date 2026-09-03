@@ -259,7 +259,7 @@ export function AuroraCalendars() {
       const dayOfWeek = date.getDay();
 
       for (const driver of drivers) {
-        if (!driver.shiftDays.includes(dayOfWeek)) {
+        if (!driver.shiftDays?.includes(dayOfWeek)) {
           continue;
         }
         const dateKey = formatDateKey(date);
@@ -934,7 +934,7 @@ function MealDetail({ meal }: { meal: MealDelivery }) {
   const meta = MealsConfig.mealStatusMeta[meal.status];
 
   const driverMeta = driver
-    ? DriversConfig.driverStatusMeta[driver.status]
+    ? DriversConfig.getDriverStatusMeta(driver.status)
     : null;
 
   const stops = Array.isArray(meal.stops) ? meal.stops : [];
@@ -1037,7 +1037,7 @@ function DriverDetail({ driver }: { driver: Driver }) {
     ? findById(vehicles, driver.assignedVehicleId)
     : undefined;
 
-  const meta = DriversConfig.driverStatusMeta[driver.status];
+  const meta = DriversConfig.getDriverStatusMeta(driver.status);
 
   return (
     <>

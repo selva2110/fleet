@@ -33,6 +33,8 @@ function toDriver(r: DriverResponse): Driver {
     certifications: r.certifications ?? {
       wheelchairAssist: { enabled: false, certificateNo: '' },
       medicalTransport: { enabled: false, certificateNo: '' },
+      cprCert: { enabled: false, certificateNo: '' },
+      nemCert: { enabled: false, certificateNo: '' },
     },
     assignedVehicleId: r.assigned_vehicle_id ?? null,
     status: r.fleet_status ?? 'offline',

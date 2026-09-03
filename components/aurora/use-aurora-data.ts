@@ -214,7 +214,7 @@ export function useAuroraData() {
     // Driver coverage per weekday: how many drivers work that day (shiftDays).
     const driverCalendar = dayNames.map((_, i) => ({
       dow: i,
-      count: drivers.filter((d) => d.shiftDays.includes(i)).length,
+      count: drivers.filter((d) => d.shiftDays?.includes(i)).length,
     }))
     // Vehicle availability per weekday: fleet minus vehicles needing service
     // (service days approximated from maintenance status spread across week).

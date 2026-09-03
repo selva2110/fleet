@@ -21,6 +21,14 @@ export interface Driver {
       enabled: boolean;
       certificateNo: string;
     };
+    cprCert: {
+      enabled: boolean;
+      certificateNo: string;
+    };
+    nemCert: {
+      enabled: boolean;
+      certificateNo: string;
+    };
   };
   assignedVehicleId: string | null;
   status: DriverStatus;
@@ -54,6 +62,8 @@ export interface DriverResponse {
   certifications?: {
     wheelchairAssist: { enabled: boolean; certificateNo: string };
     medicalTransport: { enabled: boolean; certificateNo: string };
+    cprCert: { enabled: boolean; certificateNo: string };
+    nemCert: { enabled: boolean; certificateNo: string };
   };
   assigned_vehicle_id?: string | null;
   fleet_status?: DriverStatus;

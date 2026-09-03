@@ -9,6 +9,7 @@ const ContactDetailsSchema = z.object({
   name: z.string().trim(),
   phone: z.string().trim(),
   address: z.string().trim(),
+  dialCode: z.string().trim(),
   location: LocationSchema.nullable(),
   relation: z.string().trim(),
 });
@@ -21,6 +22,7 @@ export const createParticipantFormSchema = (t: (key: string) => string) =>
         .trim()
         .min(2, t("val.nameMin"))
         .max(100, t("val.nameMax")),
+      dialCode: z.string().trim().min(1, t("val.dialCodeRequired")),
       phone: z
         .string()
         .trim()
@@ -32,9 +34,8 @@ export const createParticipantFormSchema = (t: (key: string) => string) =>
       location: LocationSchema,
       pickupWindow: z.string().optional(),
       medicalNotes: z.string().max(500, t("val.medicalNotesMax")),
-      constraints:z.looseObject({}),
+      constraints: z.looseObject({}),
       maxTravelMinutes: z.number().int().optional(),
-      eventId: z.string().nullable(),
       companionNeeded: z.boolean(),
       companionDetails: ContactDetailsSchema,
       emergencyContactDetails: ContactDetailsSchema,
@@ -57,7 +58,7 @@ export const createParticipantFormSchema = (t: (key: string) => string) =>
         "emergencyContactDetails",
         "Emergency contact",
         ctx,
-        t
+        t,
       );
 
       if (data.companionNeeded) {
@@ -66,7 +67,7 @@ export const createParticipantFormSchema = (t: (key: string) => string) =>
           "companionDetails",
           "Companion",
           ctx,
-          t
+          t,
         );
       }
     });
@@ -76,7 +77,7 @@ function requireContactDetails(
   prefix: string,
   label: string,
   ctx: z.RefinementCtx,
-  t: (key: string) => string
+  t: (key: string) => string,
 ) {
   if (!details.name.trim()) {
     ctx.addIssue({

@@ -29,4 +29,6 @@ export const createVehicleFormSchema = (t: (key: string) => string) =>
       VehiclesConfig.MAINT.map((item) => item.value) as [string, ...string[]],
     ),
     imageUrl: z.string().nullable(),
-  });``
+    insuranceExpirationDate: z.string().nullable(),
+    lastInspectionDate: z.string().nullable(),
+  });

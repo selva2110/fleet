@@ -14,6 +14,16 @@ export class DriversConfig {
     },
     offline: { label: "e.offline", cls: "bg-muted text-muted-foreground" },
   };
+  static readonly DEFAULT_DRIVER_STATUS_META = {
+    label: "e.offline",
+    cls: "bg-muted text-muted-foreground",
+  };
+  static getDriverStatusMeta(status: DriverStatus | undefined | null) {
+    return (
+      (status && this.driverStatusMeta[status]) ||
+      this.DEFAULT_DRIVER_STATUS_META
+    );
+  }
   static readonly STATUS_OPTIONS = Object.entries(this.driverStatusMeta).map(
     ([value, m]) => ({
       value,
@@ -23,6 +33,8 @@ export class DriversConfig {
   static readonly CERT_OPTIONS = [
     { value: "wheelchairAssist", label: "driver.whassist" },
     { value: "medicalTransport", label: "driver.medtrans" },
+    { value: "cprCert", label: "driver.cprcert" },
+    { value: "nemCert", label: "driver.nemcert" },
   ];
   static readonly ASSIGNMENT_OPTIONS = [
     { value: "assigned", label: "driver.vhassign" },

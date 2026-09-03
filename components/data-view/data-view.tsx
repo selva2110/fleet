@@ -110,9 +110,9 @@ export function useDataView(defaultSortKey: string, defaultView: ViewMode = 'gri
 }
 
 // -------------------------------------------------------------------------
-// Pagination: page-size selector (20 / 50 / 100) + prev/next controls.
+// Pagination: page-size selector (10 / 20 / 50 / 100) + prev/next controls.
 // -------------------------------------------------------------------------
-export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
 export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number]
 
 /**
@@ -152,6 +152,31 @@ export function usePagination<T>(items: T[], defaultSize: PageSize = 20) {
     rangeEnd: Math.min(start + pageSize, total),
   }
 }
+
+export function useApiPagination(total: number, defaultSize: PageSize = 20) {
+  const [pageSize, setPageSize] = useState<PageSize>(defaultSize);
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const setPageSizeReset = useCallback((size: PageSize) => {
+    setPageSize(size);
+    setPage(1);
+  }, []);
+  const rangeStart = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, total);
+
+  return {
+    page: currentPage,
+    setPage,
+    pageSize,
+    setPageSize: setPageSizeReset,
+    pageCount,
+    total,
+    rangeStart,
+    rangeEnd,
+  };
+}
+
 
 export function Pagination({
   page,
@@ -207,7 +232,7 @@ export function Pagination({
             size="icon"
             className="size-8"
             onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
+            disabled={page === 0}
             aria-label={t('common.previouspage')}
           >
             <ChevronLeft className="size-4" />
@@ -220,7 +245,7 @@ export function Pagination({
             size="icon"
             className="size-8"
             onClick={() => onPageChange(page + 1)}
-            disabled={page >= pageCount}
+            disabled={page === pageCount}
             aria-label={t('common.nextpage')}
           >
             <ChevronRight className="size-4" />
@@ -596,6 +621,16 @@ export function EmptyState({ message }: { message: string }) {
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   )
+}
+
+export function LoadingState() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border py-16 text-center">
+      <Loader2 className="size-6 animate-spin text-muted-foreground/50" />
+      <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+    </div>
+  );
 }
 
 /** Convenience: count how many filter values are non-default. */

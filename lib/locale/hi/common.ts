@@ -282,6 +282,8 @@ export const hiTranslations = {
   "driver.shstart": "शिफ्ट प्रारंभ",
   "driver.whassist": "व्हीलचेयर सहायता",
   "driver.medtrans": "चिकित्सा परिवहन",
+  "driver.cprcert": "सीपीआर प्रमाणित",
+  "driver.nemcert": "NEMTAC प्रमाणित",
   "driver.vhassign": "वाहन आवंटित",
   "driver.vhnotassign": "वाहन अनआवंटित",
   "driver.delete": "ड्राइवर हटाएं",
@@ -410,6 +412,10 @@ export const hiTranslations = {
   "vehicle.oxygenequipment": "ऑक्सीजन उपकरण",
   "vehicle.bariatriccapable": "बेरियाट्रिक सक्षम",
   "vehicle.stretchercapable": "स्ट्रेचर क्षमता",
+  "vehicle.insuranceexpiry": "बीमा समाप्ति तिथि",
+  "vehicle.lastinspection": "अंतिम निरीक्षण तिथि",
+  "vehicle.insuranceExpDate": "बीमा समाप्ति तिथि",
+  "vehicle.lastinspectiondate": "अंतिम निरीक्षण तिथि",
 
   "trip.desc": "प्रत्येक नियोजित, सक्रिय और पूर्ण परिवहन रन।",
   "trip.clearall": "सभी यात्राएं साफ़ करें",
@@ -940,6 +946,7 @@ export const hiTranslations = {
   "val.capacityWhole": "क्षमता एक पूर्ण संख्या होनी चाहिए",
   "val.capacityMin": "सीट क्षमता कम से कम 1 होनी चाहिए",
   "val.wheelchairCapacityMin": "व्हीलचेयर क्षमता नकारात्मक नहीं हो सकती",
+  "val.dialCodeRequired": "डायल कोड आवश्यक है",
 
   "vehicles.descriptions.sedan":
     "1-3 पैदल चलने में सक्षम यात्रियों के लिए कॉम्पैक्ट कार। छोटे मार्गों के लिए तेज़ और ईंधन-कुशल।",

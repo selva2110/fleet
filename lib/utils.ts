@@ -38,3 +38,20 @@ export function findById<T extends { id: string }>(
 ): T | undefined {
   return id == null ? undefined : items.find((item) => item.id === id);
 }
+
+export function emptyResponse() {
+  return {
+    success: false,
+    message: "No data available",
+    data: [],
+    metaData: {},
+  };
+}
+
+export function emptyObjectResponse<T extends Object>(response: T) {
+  return {
+    success: false,
+    message: "No data available",
+    data: response,
+  };
+}

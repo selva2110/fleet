@@ -280,6 +280,8 @@ export const viTranslations = {
   "driver.shstart": "Bắt đầu ca",
   "driver.whassist": "Hỗ trợ xe lăn",
   "driver.medtrans": "Vận chuyển y tế",
+  "driver.cprcert": "Chứng nhận CPR",
+  "driver.nemcert": "Chứng nhận NEMTAC",
   "driver.vhassign": "Đã phân xe",
   "driver.vhnotassign": "Chưa phân xe",
   "driver.delete": "Xóa tài xế",
@@ -407,6 +409,10 @@ export const viTranslations = {
   "vehicle.oxygenequipment": "Thiết bị oxy",
   "vehicle.bariatriccapable": "Hỗ trợ người béo phì",
   "vehicle.stretchercapable": "Hỗ trợ cáng / băng ca",
+  "vehicle.insuranceexpiry": "Ngày hết hạn bảo hiểm",
+  "vehicle.lastinspection": "Ngày kiểm định gần nhất",
+  "vehicle.insuranceExpDate": "Ngày hết hạn bảo hiểm",
+  "vehicle.lastinspectiondate": "Ngày kiểm tra gần nhất",
 
   "trip.desc":
     "Mọi chuyến vận chuyển đã lên lịch, đang hoạt động và hoàn thành.",
@@ -937,6 +943,7 @@ export const viTranslations = {
   "val.capacityWhole": "Sức chứa phải là số nguyên",
   "val.capacityMin": "Số chỗ ngồi phải ít nhất là 1",
   "val.wheelchairCapacityMin": "Sức chứa xe lăn không được là số âm",
+  "val.dialCodeRequired": "Mã quốc gia là bắt buộc",
 
   "vehicles.descriptions.sedan":
     "Xe nhỏ gọn cho 1–3 hành khách có thể đi lại. Nhanh chóng và tiết kiệm nhiên liệu cho các tuyến đường ngắn.",

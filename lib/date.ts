@@ -40,6 +40,14 @@ export function localToUtcIso(date?: string | null, time?: string | null): strin
   return inIst.isValid() ? inIst.utc().toISOString() : null
 }
 
+// Converts a UTC ISO datetime (as returned by the backend for a *time.Time
+// field) into the IST calendar date the UI displays and edits.
+export function utcIsoToLocalDate(iso?: string | null): string | null {
+  if (!iso) return null
+  const asUtc = dayjs.utc(iso)
+  return asUtc.isValid() ? asUtc.tz(IST_TIMEZONE).format(DATE_FORMAT) : null
+}
+
 export function todayLocalDate(): string {
   return dayjs().tz(IST_TIMEZONE).format(DATE_FORMAT)
 }

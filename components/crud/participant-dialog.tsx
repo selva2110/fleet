@@ -1,5 +1,5 @@
-'use client'
-import { useEffect, useMemo, useState } from 'react'
+"use client";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -8,11 +8,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AddressField,
   Field,
@@ -20,36 +20,38 @@ import {
   SelectField,
   SwitchField,
   TextField,
-} from './form-fields'
-import { useParticipantMutations } from '@/lib/participant/hooks'
-import { createParticipantFormSchema } from '../validation/participant';
-import { validateSchema } from '../validation/zod-validation';
-import { ParticipantConfig } from '@/lib/participant/config';
-import { Participant, ParticipantForm } from '@/lib/participant/types';
-import { ParticipantUtils } from '@/lib/participant/utils';
-import { useTranslation } from '../context/language-provider';
-import { createFieldSetter } from '../common';
-import { useNotifications } from '../context/notification-provider';
+} from "./form-fields";
+import { useParticipantMutations } from "@/lib/participant/hooks";
+import { createParticipantFormSchema } from "../validation/participant";
+import { validateSchema } from "../validation/zod-validation";
+import { ParticipantConfig } from "@/lib/participant/config";
+import { Participant, ParticipantForm } from "@/lib/participant/types";
+import { ParticipantUtils } from "@/lib/participant/utils";
+import { useTranslation } from "../context/language-provider";
+import { createFieldSetter } from "../common";
+import { useNotifications } from "../context/notification-provider";
 
 export function ParticipantDialog({
   open,
   onOpenChange,
   editing,
 }: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  editing: Participant | null
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  editing: Participant | null;
 }) {
-  const { saveParticipant } = useParticipantMutations()
-  const {t} = useTranslation();
+  const { saveParticipant } = useParticipantMutations();
+  const { t } = useTranslation();
   const { addToast } = useNotifications();
   const ParticipantFormSchema = useMemo(
     () => createParticipantFormSchema(t),
     [t],
   );
-  const [form, setForm] = useState<ParticipantForm>(ParticipantUtils.participantBlank())
-  const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [form, setForm] = useState<ParticipantForm>(
+    ParticipantUtils.participantBlank(),
+  );
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const set = createFieldSetter(setForm, setErrors);
 
   // companionDetails/emergencyContactDetails hold both `address` and
@@ -69,9 +71,9 @@ export function ParticipantDialog({
 
   useEffect(() => {
     if (editing) {
-      const { id, location, status, ...rest } = editing
-      void id
-      void status
+      const { id, location, status, ...rest } = editing;
+      void id;
+      void status;
       setForm({
         ...rest,
         location,
@@ -79,48 +81,48 @@ export function ParticipantDialog({
           rest.emergencyContactDetails ?? ParticipantUtils.personalDetails(),
         companionDetails:
           rest.companionDetails ?? ParticipantUtils.personalDetails(),
-      })
+      });
     } else {
-      setForm(ParticipantUtils.participantBlank())
+      setForm(ParticipantUtils.participantBlank());
     }
-    setErrors({})
-  }, [editing, open])
+    setErrors({});
+  }, [editing, open]);
 
   function validate() {
     const isValid = validateSchema(ParticipantFormSchema, form, setErrors);
     if (!isValid) {
       addToast({
-        title: t('common.validationfailed'),
-        message: t('common.fixhighlightedfields'),
-        kind: 'danger',
+        title: t("common.validationfailed"),
+        message: t("common.fixhighlightedfields"),
+        kind: "danger",
       });
     }
     return isValid;
   }
 
   async function submit() {
-    if (!validate()) return
-    setSaving(true)
+    if (!validate()) return;
+    setSaving(true);
     try {
       await saveParticipant({
         ...form,
         id: editing?.id,
         location: form.location ?? undefined,
-      })
+      });
       addToast({
-        title: t('common.success'),
-        message: editing ? t('part.updatedsuccess') : t('part.addedsuccess'),
-        kind: 'success',
-      })
-      onOpenChange(false)
+        title: t("common.success"),
+        message: editing ? t("part.updatedsuccess") : t("part.addedsuccess"),
+        kind: "success",
+      });
+      onOpenChange(false);
     } catch {
       addToast({
-        title: t('common.savefailed'),
-        message: t('common.savefailedmessage'),
-        kind: 'danger',
-      })
+        title: t("common.savefailed"),
+        message: t("common.savefailedmessage"),
+        kind: "danger",
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
@@ -144,13 +146,22 @@ export function ParticipantDialog({
                 required
                 error={errors.name}
               />
-              <TextField
-                label={t("common.phone")}
-                value={form.phone}
-                onChange={(v) => set("phone", v)}
-                required
-                error={errors.phone}
-              />
+              <div className="flex items-center gap-2 justify-center">
+                <TextField
+                  label={t("common.code")}
+                  className="w-10"
+                  value={form.dialCode}
+                  required
+                  onChange={(v) => set("dialCode", v)}
+                />
+                <TextField
+                  label={t("common.phone")}
+                  value={form.phone}
+                  onChange={(v) => set("phone", v)}
+                  required
+                  error={errors.phone}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <NumberField
@@ -160,7 +171,7 @@ export function ParticipantDialog({
                 error={errors.maxTravelMinutes}
               />
               <TextField
-                label={t('part.bloodgroup')}
+                label={t("part.bloodgroup")}
                 value={form.bloodGroup}
                 onChange={(v) => set("bloodGroup", v)}
                 required
@@ -180,7 +191,7 @@ export function ParticipantDialog({
 
             <div className="rounded-md">
               <SwitchField
-                label={t('part.companionrequired')}
+                label={t("part.companionrequired")}
                 checked={form.companionNeeded}
                 onChange={(v) => set("companionNeeded", v)}
               />
@@ -193,20 +204,35 @@ export function ParticipantDialog({
                     required={form.companionNeeded}
                     error={errors["companionDetails.name"]}
                   />
-
-                  <TextField
-                    label={t("common.phone")}
-                    value={form.companionDetails.phone}
-                    onChange={(v) => setNested("companionDetails", { phone: v })}
-                    required={form.companionNeeded}
-                    error={errors["companionDetails.phone"]}
-                  />
+                  <div className="flex items-center gap-2 justify-center">
+                    <TextField
+                      label={t("common.code")}
+                      className="w-10"
+                      value={form.companionDetails.dialCode}
+                      onChange={(v) =>
+                        setNested("companionDetails", { dialCode: v })
+                      }
+                      required={form.companionNeeded}
+                      error={errors["companionDetails.dialCode"]}
+                    />
+                    <TextField
+                      label={t("common.phone")}
+                      value={form.companionDetails.phone}
+                      onChange={(v) =>
+                        setNested("companionDetails", { phone: v })
+                      }
+                      required={form.companionNeeded}
+                      error={errors["companionDetails.phone"]}
+                    />
+                  </div>
                 </div>
 
                 <AddressField
                   label={t("common.address")}
                   value={form.companionDetails.address}
-                  onChange={(v) => setNested("companionDetails", { address: v })}
+                  onChange={(v) =>
+                    setNested("companionDetails", { address: v })
+                  }
                   location={form.companionDetails.location}
                   onLocationChange={(v) =>
                     setNested("companionDetails", { location: v })
@@ -219,9 +245,11 @@ export function ParticipantDialog({
                 />
 
                 <TextField
-                  label={t('part.relation')}
+                  label={t("part.relation")}
                   value={form.companionDetails.relation}
-                  onChange={(v) => setNested("companionDetails", { relation: v })}
+                  onChange={(v) =>
+                    setNested("companionDetails", { relation: v })
+                  }
                   required={form.companionNeeded}
                   error={errors["companionDetails.relation"]}
                 />
@@ -229,28 +257,43 @@ export function ParticipantDialog({
             </div>
 
             <div className="flex gap-2 flex-col rounded-md border border-border">
-              <span className=" px-3 py-2">{t('part.emergencycontactdetails')}</span>
+              <span className=" px-3 py-2">
+                {t("part.emergencycontactdetails")}
+              </span>
               <div className="px-3 py-2 flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-3">
-                <TextField
-                  label={t("common.fullname")}
-                  value={form.emergencyContactDetails.name}
-                  onChange={(v) =>
-                    setNested("emergencyContactDetails", { name: v })
-                  }
-                  required
-                  error={errors["emergencyContactDetails.name"]}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField
+                    label={t("common.fullname")}
+                    value={form.emergencyContactDetails.name}
+                    onChange={(v) =>
+                      setNested("emergencyContactDetails", { name: v })
+                    }
+                    required
+                    error={errors["emergencyContactDetails.name"]}
+                  />
 
-                <TextField
-                  label={t("common.phone")}
-                  value={form.emergencyContactDetails.phone}
-                  onChange={(v) =>
-                    setNested("emergencyContactDetails", { phone: v })
-                  }
-                  required
-                  error={errors["emergencyContactDetails.phone"]}
-                />
+                  <div className="flex items-center gap-2 justify-center">
+                    <TextField
+                      label={t("common.code")}
+                      className="w-10"
+                      value={form.emergencyContactDetails.dialCode}
+                      onChange={(v) =>
+                        setNested("emergencyContactDetails", { dialCode: v })
+                      }
+                      required
+                      error={errors["emergencyContactDetails.dialCode"]}
+                    />
+                    <TextField
+                      label={t("common.phone")}
+                      value={form.emergencyContactDetails.phone}
+                      onChange={(v) =>
+                        setNested("emergencyContactDetails", { phone: v })
+                      }
+                      required
+                      error={errors["emergencyContactDetails.phone"]}
+                    />
+                  </div>
+                </div>
               </div>
               <AddressField
                 label={t("common.address")}
@@ -277,53 +320,52 @@ export function ParticipantDialog({
                 required
                 error={errors["emergencyContactDetails.relation"]}
               />
-              </div>
             </div>
+          </div>
 
-            <Field label={t("part.medicalNotes")}>
-              <Textarea
-                rows={2}
-                value={form.medicalNotes}
-                className="resize-none"
-                maxLength={500}
-                onChange={(e) => set("medicalNotes", e.target.value)}
-              />
-              {form.medicalNotes && (
-                <div className="flex items-center justify-end text-xs mx-2 mt-1">
-                  {form.medicalNotes.length}/500
-                </div>
-              )}
-            </Field>
-            <Field label={t('part.routenotes')}>
-              <Textarea
-                rows={2}
-                value={form.routeNotes}
-                className="resize-none"
-                maxLength={500}
-                onChange={(e) => set("routeNotes", e.target.value)}
-              />
-              {form.routeNotes && (
-                <div className="flex items-center justify-end text-xs mx-2 mt-1">
-                  {form.routeNotes.length}/500
-                </div>
-              )}
-            </Field>
-            <div>
-              <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("part.transportreq")}
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                {ParticipantConfig.CONSTRAINT_KEYS.map((c) => (
-                  <SwitchField
-                    key={c.key}
-                    label={t(c.label)}
-                    checked={!!form.constraints[c.key]}
-                    onChange={(v) =>
-                      set("constraints", { ...form.constraints, [c.key]: v })
-                    }
-                  />
-                ))}
+          <Field label={t("part.medicalNotes")}>
+            <Textarea
+              rows={2}
+              value={form.medicalNotes}
+              className="resize-none"
+              maxLength={500}
+              onChange={(e) => set("medicalNotes", e.target.value)}
+            />
+            {form.medicalNotes && (
+              <div className="flex items-center justify-end text-xs mx-2 mt-1">
+                {form.medicalNotes.length}/500
               </div>
+            )}
+          </Field>
+          <Field label={t("part.routenotes")}>
+            <Textarea
+              rows={2}
+              value={form.routeNotes}
+              className="resize-none"
+              maxLength={500}
+              onChange={(e) => set("routeNotes", e.target.value)}
+            />
+            {form.routeNotes && (
+              <div className="flex items-center justify-end text-xs mx-2 mt-1">
+                {form.routeNotes.length}/500
+              </div>
+            )}
+          </Field>
+          <div>
+            <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              {t("part.transportreq")}
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {ParticipantConfig.CONSTRAINT_KEYS.map((c) => (
+                <SwitchField
+                  key={c.key}
+                  label={t(c.label)}
+                  checked={!!form.constraints[c.key]}
+                  onChange={(v) =>
+                    set("constraints", { ...form.constraints, [c.key]: v })
+                  }
+                />
+              ))}
             </div>
           </div>
         </ScrollArea>

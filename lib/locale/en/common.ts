@@ -278,6 +278,8 @@ export const enTranslations = {
   "driver.shstart": "Shift start",
   "driver.whassist": "Wheelchair assist",
   "driver.medtrans": "Medical transport",
+  "driver.cprcert": "CPR Certified",
+  "driver.nemcert": "NEMTAC Certified",
   "driver.vhassign": "Vehicle Assigned",
   "driver.vhnotassign": "Vehicle Not Assigned",
   "driver.delete": "Delete driver",
@@ -402,6 +404,10 @@ export const enTranslations = {
   "vehicle.oxygenequipment": "Oxygen equipment",
   "vehicle.bariatriccapable": "Bariatric capable",
   "vehicle.stretchercapable": "Stretcher / gurney capable",
+  "vehicle.insuranceexpiry": "Insurance expiration date",
+  "vehicle.lastinspection": "Last inspection date",
+  "vehicle.insuranceExpDate": "Insurance expiration date",
+  "vehicle.lastinspectiondate": "Last inspection date",
 
   "trip.desc": "Every planned, active, and completed transport run.",
   "trip.clearall": "Clear all trips",
@@ -925,6 +931,7 @@ export const enTranslations = {
   "val.capacityWhole": "Capacity must be a whole number",
   "val.capacityMin": "Seat capacity must be at least 1",
   "val.wheelchairCapacityMin": "Wheelchair capacity cannot be negative",
+  "val.dialCodeRequired": "Dial code is required",
 
   "vehicles.descriptions.sedan":
     "Compact car for 1–3 ambulatory riders. Fast and fuel-efficient for short routes.",

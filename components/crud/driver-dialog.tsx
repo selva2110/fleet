@@ -80,6 +80,7 @@ export function DriverDialog({
         });
         return;
       }
+      console.log('Saving driver:', form,editing?.id, form.location ?? undefined);
       await saveDriver({
         ...form,
         id: editing?.id,
@@ -162,7 +163,7 @@ export function DriverDialog({
               value={form.blood_group}
               onChange={(v) => set('blood_group', v)}
               required
-              error={errors.license_number}
+              error={errors.blood_group}
             />
             <NumberField label={t('driver.rating')} value={form.rating} onChange={(v) => set('rating', v)} min={0} />
           </div>
@@ -195,7 +196,7 @@ export function DriverDialog({
           </div>
           <DaysOfWeekField
             label={t('driver.workingdays')}
-            value={form.shiftDays}
+            value={form.shiftDays ?? []}
             onChange={(v) => set('shiftDays', v)}
             error={errors.shiftDays}
           />
@@ -242,6 +243,50 @@ export function DriverDialog({
                     set('certifications', {
                       ...form.certifications,
                       medicalTransport: { ...form.certifications.medicalTransport, certificateNo: v },
+                    })
+                  }
+                />
+              )}
+              <SwitchField
+                label={t('driver.cprcert')}
+                checked={form.certifications.cprCert.enabled}
+                onChange={(v) =>
+                  set('certifications', {
+                    ...form.certifications,
+                    cprCert: { ...form.certifications.cprCert, enabled: v },
+                  })
+                }
+              />
+              {form.certifications.cprCert.enabled && (
+                <TextField
+                  label={`${t('driver.cprcert')} #`}
+                  value={form.certifications.cprCert.certificateNo}
+                  onChange={(v) =>
+                    set('certifications', {
+                      ...form.certifications,
+                      cprCert: { ...form.certifications.cprCert, certificateNo: v },
+                    })
+                  }
+                />
+              )}
+              <SwitchField
+                label={t('driver.nemcert')}
+                checked={form.certifications.nemCert.enabled}
+                onChange={(v) =>
+                  set('certifications', {
+                    ...form.certifications,
+                    nemCert: { ...form.certifications.nemCert, enabled: v },
+                  })
+                }
+              />
+          {form.certifications.nemCert.enabled && (
+                <TextField
+                  label={`${t('driver.nemcert')} #`}
+                  value={form.certifications.nemCert.certificateNo}
+                  onChange={(v) =>
+                    set('certifications', {
+                      ...form.certifications,
+                      nemCert: { ...form.certifications.nemCert, certificateNo: v },
                     })
                   }
                 />

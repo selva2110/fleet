@@ -17,3 +17,24 @@ export interface SelectOptions {
   label: string;
   value: string;
 }
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export interface ListQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface metaData {
+  pageNumber: number;
+  totalPages: number;
+  totalElements: number;
+  pageSize: number;
+}
