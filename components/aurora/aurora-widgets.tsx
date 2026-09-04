@@ -69,7 +69,7 @@ export function TodaysOverview() {
     .filter((t) => todayEventIds.has(t.eventId))
     .sort((a, b) => a.etaCenter.localeCompare(b.etaCenter))
   const todayMeals = mealDeliveries
-    .filter((m) => m.date === todayKey && m.status !== 'cancelled')
+    .filter((m) => m.fromDate <= todayKey && todayKey <= m.toDate && m.status === 'ACTIVE')
     .sort((a, b) => a.departTime.localeCompare(b.departTime))
 
   const handleTripNavigate = (tripId: string) => {
@@ -204,10 +204,6 @@ export function TodaysOverview() {
           {todayMeals.map((m) => {
             const meta = MealsConfig.mealStatusMeta[m.status];
             const center = findById(centers, m.centerId);
-            const stops = Array.isArray(m.stops) ? m.stops : [];
-            const delivered = stops.filter(
-              (s) => s.status === "delivered",
-            ).length;
             return (
               <li
                 key={m.id}
@@ -215,7 +211,7 @@ export function TodaysOverview() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-xs font-medium text-foreground">
-                    {m.runNumber} · {m.mealType}
+                    {m.name}
                   </p>
                   <span
                     className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
@@ -234,7 +230,7 @@ export function TodaysOverview() {
                     </span>
                   ) : null}
                   <span>
-                    {delivered}/{stops.length} {t('common.delivered').toLowerCase()}
+                    {m.participants.length} {t('meal.deliveries').toLowerCase()}
                   </span>
                 </div>
               </li>

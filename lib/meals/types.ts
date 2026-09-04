@@ -1,79 +1,64 @@
-// --- Meal delivery -------------------------------------------------------
-// A meal-delivery run: the fleet collects prepared meals from a center/kitchen
-// and drops them off at participants' homes. Modeled separately from Trips
-// because there is no "return to center with riders" leg — it is a one-way
+// --- Meal runs -------------------------------------------------------------
+// Scheduling records returned by the catalog service's meal-delivery listing
+// (catalog-deliveries): the fleet collects prepared meals from a center/
+// kitchen and drops them off at participants' homes over a date range.
 
-import { LatLng } from "../types";
+import { number } from "zod";
 
-// outbound distribution route.
-export type MealType = "Breakfast" | "Lunch" | "Dinner";
+export type MealRunStatus = "ACTIVE" | "INACTIVE";
 
-export type MealDeliveryStatus =
-  | "scheduled"
-  | "preparing"
-  | "loaded"
-  | "en-route"
-  | "delivering"
-  | "completed"
-  | "cancelled";
-
-export interface MealStop {
+export interface MealRunParticipant {
+  id: number;
+  catalogId: number;
   participantId: string;
-  location: LatLng;
-  order: number;
-  etaMinutes: number;
-  mealCount: number;
-  status: "pending" | "approaching" | "delivered" | "skipped";
+  participantName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface MealDelivery {
-  id: string;
-  runNumber: string;
+export interface MealRun {
+  id: number;
+  name: string;
   centerId: string; // kitchen the meals are picked up from
   vehicleId: string | null;
+  vehicleName: string | null;
   driverId: string | null;
-  date: string;
+  driverName: string | null;
+  typeId: number;
+  fromDate: string;
+  toDate: string;
   departTime: string;
-  mealType: MealType;
-  totalMeals: number;
-  stops: MealStop[];
-  status: MealDeliveryStatus;
-  distanceKm: number;
-  durationMinutes: number;
-  progress: number; // 0..1 along the route
-  currentLocation: LatLng | null; // vehicle's current location along the
-  routePath: LatLng[];
-  startedAt: string | null;
+  status: MealRunStatus;
+  participants: MealRunParticipant[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface MealDeliveryInput {
-  centerId: string;
-  vehicleId: string | null;
-  driverId: string | null;
-  date: string;
-  departTime: string;
-  mealType: MealDelivery["mealType"];
-  participantIds: string[];
-  mealsPerStop?: Record<string, number>;
-}
-
-export interface MealDeliveryCreateInput {
-  centerId: string;
-  vehicleId: string | null;
-  driverId: string | null;
-  date: string;
-  departTime: string;
-  mealType: MealDelivery["mealType"];
-  participantIds: string[];
-  mealsPerStop?: Record<string, number>;
+export interface MealRunListResponse {
+  success: boolean;
+  message: string;
+  data: {
+    content: MealRun[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+  };
 }
 
 export type MealRunForm = {
+  id?: number;
+  name: string;
   centerId: string;
   vehicleId: string | null;
   driverId: string | null;
-  mealType: MealType;
-  date: string;
+  typeId: number;
+  fromdate: string;
+  todate: string;
   departTime: string;
   participantIds: string[];
+};
+
+export type mealsQueryParams = {
+  typeId?: number;
 };

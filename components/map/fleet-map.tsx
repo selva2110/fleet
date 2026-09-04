@@ -36,9 +36,9 @@ import { useTranslation } from "@/components/context/language-provider";
 import { useTripSockets } from "../context/tripsocket-provider";
 import { useDrivers } from "@/lib/driver/hooks";
 import { findById } from "@/lib/utils";
-import { MealsConfig } from "@/lib/meals/config";
-import { MealDelivery, MealStop } from "@/lib/meals/types";
+import { MealRun } from "@/lib/meals/types";
 import { MealsUtils } from "@/lib/meals/utils";
+import { Participant } from "@/lib/participant/types";
 function LiveTraffic({ routes, onResult }: LiveTrafficProps) {
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +135,7 @@ export default function FleetMap({
   const { t } = useTranslation();
   const { vehicleLocations } = useTripSockets();
   const { drivers } = useDrivers();
-  const activeMeals = mealDeliveries.filter((m) => m.status !== "cancelled");
+  const activeMeals = mealDeliveries.filter((m) => m.status === "ACTIVE");
   const activeTrips = trips.filter((m) => m.status !== "CANCELLED");
   const [traffic, setTraffic] = useState<TrafficResult | null>(null);
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
@@ -588,112 +588,78 @@ export default function FleetMap({
               );
             })}
 
-          {activeMeals.map((m: MealDelivery) => {
-            const highlighted = m.id === highlightMealId;
-            const color = MealsConfig.mealStatusMeta[m.status].map;
-            const coordinates = FleetmapUtils.toLineCoordinates(m.routePath);
+          {activeMeals.map((m: MealRun) => {
+            const highlighted = String(m.id) === highlightMealId;
+            const center = findById(centers, m.centerId);
+            const centerPoint = center
+              ? FleetmapUtils.toLngLat(center.location)
+              : null;
             return (
               <Fragment key={`meal-${m.id}`}>
-                {coordinates.length >= 2 ? (
-                  <>
-                    <Source
-                      id={`meal-route-${m.id}`}
-                      type="geojson"
-                      data={{
-                        type: "FeatureCollection",
-                        features: [
-                          {
-                            type: "Feature",
-                            geometry: {
-                              type: "LineString",
-                              coordinates,
-                            },
-                            properties: {},
-                          },
-                        ],
-                      }}
-                    />
-                    <Layer
-                      id={`meal-route-layer-${m.id}`}
-                      type="line"
-                      source={`meal-route-${m.id}`}
-                      paint={{
-                        "line-color": color,
-                        "line-width": highlighted ? 5 : 3,
-                        "line-opacity":
-                          highlightMealId && !highlighted ? 0.2 : 0.75,
-                      }}
-                      layout={{ "line-cap": "round", "line-join": "round" }}
-                    />
-                  </>
-                ) : null}
-                {m.stops
-                  .filter((s) => FleetmapUtils.isValidLatLng(s.location))
-                  .map((s: MealStop) => {
-                    const point = FleetmapUtils.toLngLat(s.location);
+                {m.participants
+                  .map((mp) =>
+                    participants.find((p) => p.id === mp.participantId),
+                  )
+                  .filter(
+                    (p): p is Participant =>
+                      p != null && FleetmapUtils.isValidLatLng(p.location),
+                  )
+                  .map((p) => {
+                    const point = FleetmapUtils.toLngLat(p.location);
                     if (!point) return null;
                     return (
                       <Marker
-                        key={`meal-stop-${m.id}-${s.participantId}`}
+                        key={`meal-stop-${m.id}-${p.id}`}
                         longitude={point[0]}
                         latitude={point[1]}
                         anchor="center"
                       >
                         <div
                           className="pointer-events-auto"
-                          onMouseEnter={() => {
-                            const participant = participants.find(
-                              (p) => p.id === s.participantId,
-                            );
+                          onMouseEnter={() =>
                             setTooltip({
                               longitude: point[0],
                               latitude: point[1],
-                              title: participant?.name ?? t("map.deliverystop"),
-                              subtitle: `${s.mealCount} ${t("board.mealword")}${s.mealCount === 1 ? "" : "s"} · ${participant?.address ?? t("map.deliverylocation")}`,
-                            });
-                          }}
+                              title: p.name,
+                              subtitle: p.address || t("map.deliverylocation"),
+                            })
+                          }
                           onMouseLeave={() => setTooltip(null)}
-                          onClick={() => onSelectMeal?.(m.id)}
+                          onClick={() => onSelectMeal?.(String(m.id))}
                           dangerouslySetInnerHTML={{
-                            __html: MealsUtils.mealStopIconMarkup(
-                              s.status === "delivered",
-                            ),
+                            __html: MealsUtils.mealStopIconMarkup(),
                           }}
                         />
                       </Marker>
                     );
                   })}
-                {(() => {
-                  const point = FleetmapUtils.toLngLat(m.currentLocation);
-                  if (!point) return null;
-                  return (
-                    <Marker
-                      longitude={point[0]}
-                      latitude={point[1]}
-                      anchor="center"
-                    >
-                      <div
-                        className="pointer-events-auto"
-                        onMouseEnter={() =>
-                          setTooltip({
-                            longitude: point[0],
-                            latitude: point[1],
-                            title: m.runNumber,
-                            subtitle: t("map.mealdeliveryvehicle"),
-                          })
-                        }
-                        onMouseLeave={() => setTooltip(null)}
-                        onClick={() => onSelectMeal?.(m.id)}
-                        dangerouslySetInnerHTML={{
-                          __html: MealsUtils.mealVehicleIconMarkup(
-                            m,
-                            highlighted,
-                          ),
-                        }}
-                      />
-                    </Marker>
-                  );
-                })()}
+                {centerPoint ? (
+                  <Marker
+                    longitude={centerPoint[0]}
+                    latitude={centerPoint[1]}
+                    anchor="center"
+                  >
+                    <div
+                      className="pointer-events-auto"
+                      onMouseEnter={() =>
+                        setTooltip({
+                          longitude: centerPoint[0],
+                          latitude: centerPoint[1],
+                          title: m.name,
+                          subtitle: t("map.mealdeliveryvehicle"),
+                        })
+                      }
+                      onMouseLeave={() => setTooltip(null)}
+                      onClick={() => onSelectMeal?.(String(m.id))}
+                      dangerouslySetInnerHTML={{
+                        __html: MealsUtils.mealVehicleIconMarkup(
+                          m,
+                          highlighted,
+                        ),
+                      }}
+                    />
+                  </Marker>
+                ) : null}
               </Fragment>
             );
           })}

@@ -4,7 +4,7 @@
 // the per-domain SWR hooks in lib/<domain>/hooks.ts. Every hook fetches only
 // the domain it needs instead of one shared full-app snapshot.
 
-import { listParticipants } from "@/lib/api/participants";
+import { getMealMedicineReports, listParticipants } from "@/lib/api/participants";
 import { getVehicleStatistics, listVehicles } from "@/lib/api/vehicles";
 import {
   listDrivers,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/events";
 import { listTrips } from "@/lib/api/trips";
 import { listMealDeliveries } from "@/lib/api/meals";
+import { mealsQueryParams } from "@/lib/meals/types";
 import { DomainEvent, FleetEvent } from "@/lib/events/types";
 import { listCareItems, listCareItemTypes } from "@/lib/api/catalog";
 import { listUsers } from "@/lib/api/users";
@@ -32,7 +33,11 @@ export async function getCenters() {
 }
 
 export async function getParticipants() {
-  return listParticipants().catch(() => []);
+  return listParticipants().catch(() => emptyResponse());
+}
+
+export async function getParticipantsReports() {
+  return getMealMedicineReports().catch(() => []);
 }
 
 export async function getVehicles(params: VehicleQueryParams = {}) {
@@ -78,8 +83,10 @@ export async function getTrips() {
   return listTrips().catch(() => []);
 }
 
-export async function getMealDeliveries() {
-  return listMealDeliveries().catch(() => []);
+export async function getMealDeliveries(
+  params: mealsQueryParams = { typeId: 1 },
+) {
+  return listMealDeliveries(params).catch(() => []);
 }
 
 export async function getCareItems() {

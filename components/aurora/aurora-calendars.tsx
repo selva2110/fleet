@@ -41,7 +41,7 @@ import { useDrivers } from "@/lib/driver/hooks";
 import { useVehicles } from "@/lib/vehicles/hooks";
 import { useTrips } from "@/lib/trips/hooks";
 import { useCenters } from "@/lib/events/hooks";
-import { formatMiles, formatShiftDays } from "@/lib/labels";
+import { formatShiftDays } from "@/lib/labels";
 import { formatTimeOfDay } from "@/lib/date";
 import { cn, findById } from "@/lib/utils";
 import { EventsConfig } from "@/lib/events/config";
@@ -56,7 +56,7 @@ import {
 } from "@/lib/aurora/types";
 import { AuroraConfig } from "@/lib/aurora/config";
 import { useTranslation } from "../context/language-provider";
-import { MealDelivery } from "@/lib/meals/types";
+import { MealRun } from "@/lib/meals/types";
 import { MealsConfig } from "@/lib/meals/config";
 
 /*
@@ -223,18 +223,13 @@ export function AuroraCalendars() {
 
   const mealCalendarData = useMemo<CalendarRecord[]>(() => {
     return mealDeliveries
-      .filter((meal) => meal.status !== "cancelled")
+      .filter((meal) => meal.status === "ACTIVE")
       .map((meal) => {
-        const start = combineDateAndTime(meal.date, meal.departTime);
-        const durationMinutes = Math.max(
-          Number(meal.durationMinutes || 30),
-          30,
-        );
-
-        const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+        const start = combineDateAndTime(meal.fromDate, meal.departTime);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
         return {
           id: `meal-${meal.id}`,
-          title: `${meal.runNumber} · ${meal.mealType}`,
+          title: meal.name,
           start,
           end,
           allDay: false,
@@ -346,14 +341,13 @@ export function AuroraCalendars() {
      * Meal vehicles
      */
     for (const meal of mealDeliveries) {
-      if (meal.status === "cancelled" || !meal.vehicleId) {
+      if (meal.status !== "ACTIVE" || !meal.vehicleId) {
         continue;
       }
 
       const vehicle = findById(vehicles, meal.vehicleId);
-      const start = combineDateAndTime(meal.date, meal.departTime);
-      const durationMinutes = Math.max(Number(meal.durationMinutes || 30), 30);
-      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+      const start = combineDateAndTime(meal.fromDate, meal.departTime);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
       result.push({
         id: `vehicle-meal-${meal.id}`,
         title: vehicle?.name ?? t("common.vehicle"),
@@ -438,7 +432,7 @@ export function AuroraCalendars() {
     }
 
     if (event.Kind === "meal") {
-      setSelected({ kind: "meal", data: event.Data as MealDelivery });
+      setSelected({ kind: "meal", data: event.Data as MealRun });
       return;
     }
 
@@ -705,7 +699,7 @@ export function AuroraCalendars() {
           ) : null}
 
           {selected?.kind === "meal" ? (
-            <MealDetail meal={selected.data as MealDelivery} />
+            <MealDetail meal={selected.data as MealRun} />
           ) : null}
 
           {selected?.kind === "driver" ? (
@@ -769,7 +763,7 @@ export function AuroraCalendars() {
  * ========================================================================== */
 
 function isFleetEvent(
-  value: FleetEvent | MealDelivery | Driver,
+  value: FleetEvent | MealRun | Driver,
 ): value is FleetEvent {
   return (
     typeof value === "object" &&
@@ -781,14 +775,14 @@ function isFleetEvent(
 }
 
 function isMealDelivery(
-  value: FleetEvent | MealDelivery | Driver,
-): value is MealDelivery {
+  value: FleetEvent | MealRun | Driver,
+): value is MealRun {
   return (
     typeof value === "object" &&
     value !== null &&
-    "runNumber" in value &&
+    "participants" in value &&
     "departTime" in value &&
-    "mealType" in value
+    "fromDate" in value
   );
 }
 
@@ -916,7 +910,7 @@ function EventDetail({ event }: { event: FleetEvent }) {
  * MEAL DETAIL
  * ========================================================================== */
 
-function MealDetail({ meal }: { meal: MealDelivery }) {
+function MealDetail({ meal }: { meal: MealRun }) {
   const { centers } = useCenters();
   const { vehicles } = useVehicles();
   const { drivers } = useDrivers();
@@ -937,16 +931,12 @@ function MealDetail({ meal }: { meal: MealDelivery }) {
     ? DriversConfig.getDriverStatusMeta(driver.status)
     : null;
 
-  const stops = Array.isArray(meal.stops) ? meal.stops : [];
-
-  const delivered = stops.filter((stop) => stop.status === "delivered").length;
-
   return (
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <UtensilsCrossed className="size-4 text-primary" />
-          {meal.runNumber} · {meal.mealType}
+          {meal.name}
         </DialogTitle>
 
         <DialogDescription>{t("aurora.mealrunscheduledesc")}</DialogDescription>
@@ -981,14 +971,8 @@ function MealDetail({ meal }: { meal: MealDelivery }) {
 
         <DetailRow>
           <span>
-            {meal.totalMeals} {t("meal.meals").toLowerCase()}
+            {meal.participants.length} {t("meal.deliveries").toLowerCase()}
           </span>
-
-          <span>
-            {delivered}/{stops.length} {t("common.delivered").toLowerCase()}
-          </span>
-
-          <span>{formatMiles(meal.distanceKm)}</span>
         </DetailRow>
 
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px]">

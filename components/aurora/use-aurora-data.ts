@@ -33,16 +33,8 @@ export function useAuroraData() {
     const onboard = trips.filter((t) => t.status === 'ONBOARD').length
 
     // ---- Meal delivery ----
-    const activeMeals = mealDeliveries.filter((m) => m.status !== 'cancelled' && m.status !== 'completed')
-    const mealsOut = mealDeliveries
-      .filter((m) => m.status !== 'cancelled')
-      .reduce((s, m) => s + m.totalMeals, 0)
-    const mealStopsTotal = mealDeliveries
-      .filter((m) => m.status !== 'cancelled')
-      .reduce((s, m) => s + (Array.isArray(m.stops) ? m.stops.length : 0), 0)
-    const mealStopsDelivered = mealDeliveries
-      .filter((m) => m.status !== 'cancelled')
-      .reduce((s, m) => s + (Array.isArray(m.stops) ? m.stops.filter((x) => x.status === 'delivered').length : 0), 0)
+    const activeMeals = mealDeliveries.filter((m) => m.status === 'ACTIVE')
+    const mealsOut = activeMeals.reduce((s, m) => s + m.participants.length, 0)
 
     const tripStatusCounts = {
       live: liveTrips.length,
@@ -168,9 +160,9 @@ export function useAuroraData() {
         bucket.riders += Array.isArray(t.stops) ? t.stops.length : 0
       }
     }
-    for (const m of mealDeliveries.filter((x) => x.status !== 'cancelled')) {
+    for (const m of mealDeliveries.filter((x) => x.status === 'ACTIVE')) {
       const bucket = centerLoad[m.centerId]
-      if (bucket) bucket.meals += m.totalMeals
+      if (bucket) bucket.meals += m.participants.length
     }
     const centerSeries = Object.values(centerLoad).filter((c) => c.trips + c.riders + c.meals > 0)
 
@@ -198,8 +190,8 @@ export function useAuroraData() {
       weekBuckets[i].events += 1
       weekBuckets[i].riders += Array.isArray(ev.participantIds) ? ev.participantIds.length : 0
     }
-    for (const m of mealDeliveries.filter((x) => x.status !== 'cancelled')) {
-      weekBuckets[dow(m.date)].meals += m.totalMeals
+    for (const m of mealDeliveries.filter((x) => x.status === 'ACTIVE')) {
+      weekBuckets[dow(m.fromDate)].meals += m.participants.length
     }
     // Reorder Mon-first for a conventional work-week reading.
     const weeklySeries = [1, 2, 3, 4, 5, 6, 0].map((i) => weekBuckets[i])
@@ -360,9 +352,7 @@ export function useAuroraData() {
       // meal delivery
       activeMeals,
       mealsOut,
-      mealStopsTotal,
-      mealStopsDelivered,
-      allMeals: mealDeliveries.filter((m) => m.status !== 'cancelled'),
+      allMeals: activeMeals,
       // real analytics series (axis charts)
       centerSeries,
       vehicleStatusSeries,
@@ -377,7 +367,7 @@ export function useAuroraData() {
         drivers: drivers.length,
         events: events.length,
         participants: participants.length,
-        meals: mealDeliveries.filter((m) => m.status !== 'cancelled').length,
+        meals: activeMeals.length,
       },
     }
   }, [trips, vehicles, drivers, centers, events, participants, mealDeliveries, smsNotifications, eventLog, t])

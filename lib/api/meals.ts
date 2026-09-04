@@ -1,31 +1,51 @@
-import 'server-only'
-import { apiGet, apiPost, SERVICE_URLS } from './http'
-import { MealDelivery, MealDeliveryCreateInput } from '../meals/types';
-import { localToUtcParts, utcToLocalParts } from '../date';
+import "server-only";
+import { apiDelete, apiGet, apiPost, apiPut, SERVICE_URLS } from "./http";
+import {
+  MealRun,
+  MealRunForm,
+  MealRunListResponse,
+  mealsQueryParams,
+} from "../meals/types";
 
-const base = () => `${SERVICE_URLS.trip()}/api/v1/meal-deliveries`
+const base = () => `${SERVICE_URLS.trip()}/api/v1/meal-deliveries`;
+const catalogBase = () => `${SERVICE_URLS.catalog()}/api/v1/catalog-deliveries`;
 
-// Backend stores date/departTime as UTC; the UI works in local time.
-function toLocalMealDelivery(m: MealDelivery): MealDelivery {
-  const { date, time: departTime } = utcToLocalParts(m.date, m.departTime)
-  return { ...m, date, departTime }
+export async function listMealDeliveries(
+  params: mealsQueryParams,
+): Promise<MealRun[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("typeId", String(params.typeId));
+  const res = await apiGet<MealRunListResponse>(
+    `${catalogBase()}?${searchParams.toString()}`,
+  );
+  return res.data.content;
 }
 
-export async function listMealDeliveries(): Promise<MealDelivery[]> {
-  const res = await apiGet<{ data: MealDelivery[] }>(`${base()}?limit=500`)
-  return res.data.map(toLocalMealDelivery)
-}
-
-export async function createMealDelivery(input: MealDeliveryCreateInput): Promise<MealDelivery> {
-  const { date, time: departTime } = localToUtcParts(input.date, input.departTime)
-  const created = await apiPost<MealDelivery>(base(), { ...input, date, departTime })
-  return toLocalMealDelivery(created)
-}
-
-export async function startMealDelivery(id: string): Promise<void> {
-  await apiPost(`${base()}/${id}/start`)
+export async function createMealDelivery(input: MealRunForm): Promise<MealRun> {
+  const payload = {
+    ...input,
+    typeId: Number(input.typeId),
+  };
+  const res = await apiPost<{ data: MealRun }>(catalogBase(), payload);
+  return res.data;
 }
 
 export async function cancelMealDelivery(id: string): Promise<void> {
-  await apiPost(`${base()}/${id}/cancel`)
+  await apiPost(`${base()}/${id}/cancel`);
+}
+
+export async function updateMealDelivery(input: MealRunForm): Promise<MealRun> {
+  const payload = {
+    ...input,
+    typeId: Number(input.typeId),
+  };
+  const res = await apiPut<{ data: MealRun }>(
+    `${catalogBase()}/${input.id}`,
+    payload,
+  );
+  return res.data;
+}
+
+export async function deleteMealDeliveryMock(inputId: number): Promise<void> {
+  await apiDelete(`${catalogBase()}/${inputId}`);
 }

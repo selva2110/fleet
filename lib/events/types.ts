@@ -139,6 +139,8 @@ export type DomainEventType =
   | "participant.created"
   | "participant.updated"
   | "participant.deleted"
+  | "participant.medReport.created"
+  | "participant.medreport.updated"
   | "vehicle.created"
   | "vehicle.updated"
   | "vehicle.deleted"

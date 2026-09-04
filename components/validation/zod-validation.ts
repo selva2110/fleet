@@ -17,7 +17,7 @@ export function validateSchema<T>(
         fieldErrors[field] = issue.message;
       }
     });
-
+    console.log(fieldErrors)
     setErrors(fieldErrors);
     return false;
   }

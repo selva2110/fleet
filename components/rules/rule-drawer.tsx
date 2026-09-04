@@ -90,11 +90,11 @@ export function RuleDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="right"
-        className="top-0 h-dvh w-full max-w-full gap-0 border-l border-border p-0 sm:max-w-5xl"
-      >
+  side="right"
+  className="!top-0 !h-dvh !w-screen !max-w-none gap-0 border-l border-border p-0"
+>
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 pr-16">
           <div className="min-w-0">
             <SheetTitle className="text-lg">
               {editing ? 'Edit rule' : 'Create rule'}
@@ -114,9 +114,9 @@ export function RuleDrawer({
         </div>
 
         {/* Body: two columns — builder (left) / preview+test (right) */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem] overflow-hidden">
           {/* Left: settings + builder */}
-          <div className="thin-scrollbar min-h-0 overflow-y-auto border-b border-border p-5 lg:border-r lg:border-b-0">
+          <div className="thin-scrollbar min-h-0 overflow-y-auto border-r border-border p-5">
             <div className="flex flex-col gap-5">
               {/* Identity */}
               <div className="flex flex-col gap-3">
@@ -274,9 +274,9 @@ export function RuleDrawer({
                 </TabsList>
               </div>
               <TabsContent
-                value="preview"
-                className="thin-scrollbar min-h-0 flex-1 overflow-hidden p-4"
-              >
+  value="preview"
+  className="thin-scrollbar min-h-0 flex-1 overflow-y-auto p-4"
+>
                 <RuleJsonPreview rule={draft} />
               </TabsContent>
               <TabsContent

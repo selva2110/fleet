@@ -12,7 +12,7 @@ import * as catalogApi from '@/lib/api/catalog'
 import * as usersApi from '@/lib/api/users'
 import { emit } from '@/lib/api/events'
 import { COIMBATORE_MAP_CENTER } from '@/lib/geo'
-import { ParticipantInput } from '@/lib/participant/types';
+import { ParticipantInput, ParticipantMedMealReport } from '@/lib/participant/types';
 import { EventInput, FleetEvent } from '@/lib/events/types';
 import { VehicleInput } from '@/lib/vehicles/types';
 import { DriverInput } from '@/lib/driver/types';
@@ -273,4 +273,17 @@ export async function deleteUser(id: string, name: string, actorRole = 'admin') 
     actorRole,
     summary: `Removed user ${name}`,
   })
+}
+
+export async function saveParticipantMedReport(input: ParticipantMedMealReport, actorRole = 'admin') {
+  const participant = await participantsApi.updateParticipantMedReport(input)
+  await emit({
+    eventType: 'participant.medreport.updated',
+    aggregateType: 'participant',
+    aggregateId: input.id,
+    actorRole,
+    summary: `Updated participant ${input.name}`,
+    payload: { participantDetails: participant },
+  })
+  return input.id
 }

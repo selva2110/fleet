@@ -177,14 +177,6 @@ export class EventsConfig {
   // Runs that are still being planned (not yet dispatched onto the road).
   static readonly PLANNING_STATUSES = ["scheduled", "preparing", "loaded"];
 
-  static readonly MEAL_SORT_OPTIONS: SortOption[] = [
-    { key: "date", label: "common.date" },
-    { key: "runNumber", label: "meal.run" },
-    { key: "mealType", label: "meal.type" },
-    { key: "totalMeals", label: "meal.meals" },
-    { key: "status", label: "common.status" },
-  ];
-
   static readonly TONE_DOT: Record<string, string> = {
     info: "bg-primary",
     success: "bg-success",

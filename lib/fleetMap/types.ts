@@ -1,5 +1,5 @@
 import { Center } from "../events/types";
-import { MealDelivery } from "../meals/types";
+import { MealRun } from "../meals/types";
 import { Participant } from "../participant/types";
 import { Stop, Trip } from "../trips/types";
 import { LatLng } from "../types";
@@ -23,7 +23,7 @@ export interface FleetMapProps {
   centers: Center[];
   vehicles: Vehicle[];
   trips: Trip[];
-  mealDeliveries?: MealDelivery[];
+  mealDeliveries?: MealRun[];
   participants?: Participant[];
   highlightTripId?: string | null;
   highlightTripIds?: string[];

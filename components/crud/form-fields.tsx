@@ -457,6 +457,7 @@ export function SelectField<T extends string>({
   required,
   error,
   placeholder,
+  disabled,
 }: {
   label: string;
   value: T;
@@ -465,6 +466,7 @@ export function SelectField<T extends string>({
   required?: boolean;
   error?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const {t} = useTranslation()
   const selectedOption = options.find((o) => o.value === value);
@@ -477,6 +479,7 @@ export function SelectField<T extends string>({
             onChange(v as T);
           }
         }}
+        disabled={disabled}
       >
         <SelectTrigger
           className={error ? "w-full border-destructive" : "w-full"}

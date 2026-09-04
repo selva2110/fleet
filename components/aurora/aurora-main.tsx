@@ -105,16 +105,16 @@ export function AuroraMain() {
       {selectedMealId ? (
         <div className="pointer-events-none absolute left-3 top-16 z-500 max-w-70 rounded-xl border border-white/10 bg-slate-950/80 p-3 text-sm text-white shadow-lg backdrop-blur-xl">
           {(() => {
-            const meal = data.activeMeals.find((item) => item.id === selectedMealId)
+            const meal = data.activeMeals.find((item) => String(item.id) === selectedMealId)
             if (!meal) return null
             const center = findById(centers, meal.centerId)
             const vehicle = findById(vehicles, meal.vehicleId)
             return (
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t('aurora.selectedmealrun')}</p>
-                <p className="font-semibold">{meal.runNumber}</p>
+                <p className="font-semibold">{meal.name}</p>
                 <p className="text-xs text-slate-300">{t('aurora.centerlabel')} {center?.name ?? t('common.unknown')}</p>
-                <p className="text-xs text-slate-300">{t('aurora.vehiclelabel')} {vehicle?.name ?? t('common.unassigned')} · {meal.totalMeals} {t('meal.meals').toLowerCase()}</p>
+                <p className="text-xs text-slate-300">{t('aurora.vehiclelabel')} {vehicle?.name ?? t('common.unassigned')} · {meal.participants.length} {t('meal.deliveries').toLowerCase()}</p>
               </div>
             )
           })()}

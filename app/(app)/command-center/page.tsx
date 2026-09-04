@@ -170,9 +170,7 @@ export default function DispatchPage() {
 
   const activeVehicleIds = new Set(liveTrips.map((t) => t.vehicleId))
   const mapVehicles = vehicles.filter((v) => activeVehicleIds.has(v.id))
-  const mealRunCount = mealDeliveries.filter(
-    (m) => m.status !== 'cancelled' && m.status !== 'completed',
-  ).length
+  const mealRunCount = mealDeliveries.filter((m) => m.status === 'ACTIVE').length
 
   // KPI calculations
   const onboardCount = liveTrips.filter((t) => t.status === 'ONBOARD').length

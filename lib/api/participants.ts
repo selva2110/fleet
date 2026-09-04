@@ -11,12 +11,14 @@ import {
   Participant,
   ParticipantCreateInput,
   ParticipantListResponse,
+  ParticipantMedMealReport,
+  ParticipantMedMealReportItem,
   ParticipantQueryParams,
-  ParticipantResponse,
   ParticipantStatus,
 } from "../participant/types";
 
-const base = () => `${SERVICE_URLS.participant()}/api/v1`;
+const base = () => `${SERVICE_URLS.participant()}/api/v1/participants`;
+const catalogBase = () => `${SERVICE_URLS.catalog()}/api/v1`;
 
 export async function listParticipants(
   params: ParticipantQueryParams = {},
@@ -40,9 +42,8 @@ export async function listParticipants(
   if (params.specialNeeds) {
     searchParams.set("specialNeeds", params.specialNeeds.join(","));
   }
-  console.log(`${base()}/participants?${searchParams.toString()}`)
   const res = await apiGet<ParticipantListResponse>(
-    `${base()}/participants?${searchParams.toString()}`,
+    `${base()}?${searchParams.toString()}`,
   );
   return res;
 }
@@ -53,26 +54,44 @@ export async function getParticipantsByIds(
 ): Promise<Participant[]> {
   if (ids.length === 0) return [];
   const res = await apiGet<Participant[]>(
-    `${base()}/participants/by-ids?ids=${encodeURIComponent(ids.join(","))}`,
+    `${base()}/by-ids?ids=${encodeURIComponent(ids.join(","))}`,
   );
   return res;
+}
+
+export async function getMealMedicineReports(): Promise<
+  ParticipantMedMealReportItem[]
+> {
+  const res = await apiGet<{
+    data: { content: ParticipantMedMealReportItem[] };
+  }>(`${catalogBase()}/participants`);
+  return res.data.content;
+}
+
+export async function updateParticipantMedReport(
+  input: ParticipantMedMealReport,
+) {
+  return await apiPut<ParticipantMedMealReport>(
+    `${catalogBase()}/participants/${input.id}`,
+    input,
+  );
 }
 
 export async function createParticipant(
   input: ParticipantCreateInput,
 ): Promise<Participant> {
-  return await apiPost<Participant>(`${base()}/participants`, input);
+  return await apiPost<Participant>(`${base()}`, input);
 }
 
 export async function updateParticipant(
   id: string,
   input: Partial<Omit<Participant, "id">>,
 ): Promise<Participant> {
-  return await apiPut<Participant>(`${base()}/participants/${id}`, input);
+  return await apiPut<Participant>(`${base()}/${id}`, input);
 }
 
 export async function deleteParticipant(id: string): Promise<void> {
-  await apiDelete(`${base()}/participants/${id}`);
+  await apiDelete(`${base()}/${id}`);
 }
 
 //Not used Anywhere
@@ -80,7 +99,7 @@ export async function updateParticipantStatus(
   id: string,
   status: ParticipantStatus,
 ): Promise<Participant> {
-  return await apiPatch<Participant>(`${base()}/participants/${id}/status`, {
+  return await apiPatch<Participant>(`${base()}/${id}/status`, {
     status,
   });
 }
@@ -90,7 +109,7 @@ export async function assignParticipantToEvent(
   eventId: string | null,
   status?: ParticipantStatus,
 ): Promise<Participant> {
-  return await apiPatch<Participant>(`${base()}/participants/${id}/event`, {
+  return await apiPatch<Participant>(`${base()}/${id}/event`, {
     eventId,
     status,
   });

@@ -1,23 +1,25 @@
 import { todayLocalDate } from "../date";
 import { MealsConfig } from "./config";
-import { MealDelivery, MealRunForm } from "./types";
+import { MealRun, MealRunForm } from "./types";
 
 export class MealsUtils {
-  static blankMealRun(centerId: string): MealRunForm {
+  static blankMealRun(centerId: string, typeId: number): MealRunForm {
     return {
-      centerId,
+      name: "",
+      centerId: centerId,
       vehicleId: null,
       driverId: null,
-      mealType: "Lunch",
-      date: todayLocalDate(),
+      typeId: typeId,
+      fromdate: todayLocalDate(),
+      todate: todayLocalDate(),
       departTime: "11:30",
       participantIds: [],
     };
   }
 
-  static mealVehicleIconMarkup(m: MealDelivery, highlighted: boolean) {
+  static mealVehicleIconMarkup(m: MealRun, highlighted: boolean) {
     const color = MealsConfig.mealStatusMeta[m.status].map;
-    const pulse = m.status === "en-route" || m.status === "delivering";
+    const pulse = m.status === "ACTIVE";
     const size = highlighted ? 36 : 30;
     return `
     <div class="map-marker ${pulse ? "map-marker-pulse" : ""}" style="--pulse-color:${color}66;width:${size}px;height:${size}px;background:${color};${highlighted ? "outline:3px solid rgba(217,119,6,.4);" : ""}">
@@ -30,12 +32,11 @@ export class MealsUtils {
     </div>`;
   }
 
-  static mealStopIconMarkup(delivered: boolean) {
-    const color = delivered ? "#059669" : "#d97706";
+  static mealStopIconMarkup() {
     return `
-    <div class="map-marker" style="width:16px;height:16px;background:${color};border-width:2px;border-radius:4px;">
+    <div class="map-marker" style="width:16px;height:16px;background:#d97706;border-width:2px;border-radius:4px;">
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        ${delivered ? '<path d="M5 13l4 4L19 7" />' : '<path d="M4 8h16v11H4zM4 8l2-3h12l2 3" />'}
+        <path d="M4 8h16v11H4zM4 8l2-3h12l2 3" />
       </svg>
     </div>`;
   }

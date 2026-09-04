@@ -82,9 +82,36 @@ export type ParticipantForm = Omit<
 export type ParticipantCreateInput = Omit<Participant, "id"> & { id?: string };
 
 export type ParticipantQueryParams = {
-  specialNeeds?:string[];
+  specialNeeds?: string[];
 } & ListQueryParams;
 
 export type ParticipantListResponse = ApiResponse<Participant[]> & {
   metadata: metaData;
 };
+
+export interface ParticipantMedMealReport {
+  id: string;
+  name: string;
+  phone: string;
+  dietPlan: string;
+  medicalNotes: string;
+  mealNotes: string;
+}
+
+export interface ParticipantDeliveryDetail {
+  typeId: number;
+  typeCode: string;
+  typeName: string;
+  lastDeliveryDate: string;
+}
+
+export interface ParticipantMedMealReportItem {
+  participantId: string;
+  name: string;
+  phone: string;
+  address: string;
+  dietPlan: string;
+  mealNotes: string;
+  medicalNotes: string;
+  deliveryDetails: ParticipantDeliveryDetail[];
+}

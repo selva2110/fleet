@@ -52,3 +52,11 @@ export interface CareItem {
   status: CareStatus;
   type: Omit<CareItemType, "description" | "status">;
 }
+
+export type CatalogParticipantColumnKey =
+  | "select"
+  | "participant"
+  | "dietPlan"
+  | "mealNotes"
+  | "medicalNotes"
+  | "lastDeliveryDate";

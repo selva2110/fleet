@@ -3,13 +3,13 @@ import { Driver } from "../driver/types";
 import { FleetEvent } from "../events/types";
 import { AuroraConfig } from "./config";
 import { enTranslations } from "../locale/en/common";
-import { MealDelivery } from "../meals/types";
+import { MealRun } from "../meals/types";
 
 export type LayerKey = "event" | "driver" | "vehicle" | "meal";
 
 export type SelectedItem =
   | { kind: "event"; data: FleetEvent }
-  | { kind: "meal"; data: MealDelivery }
+  | { kind: "meal"; data: MealRun }
   | { kind: "driver"; data: Driver }
   | null;
 
@@ -74,7 +74,7 @@ export type CalendarRecord = {
   backgroundColor?: string;
   color?: string;
   Kind: CalendarEventKind;
-  Data: FleetEvent | MealDelivery | Driver;
+  Data: FleetEvent | MealRun | Driver;
   resourceId?: string;
 };
 
