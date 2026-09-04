@@ -7,6 +7,7 @@ import {
   Bell,
   Calendar,
   CalendarDays,
+  CalendarClock,
   ChevronDown,
   ClipboardList,
   LayoutDashboard,
@@ -88,6 +89,9 @@ function MobileNavLinks({ onNavigate }: { onNavigate?: () => void }) {
       { href: "/drivers", label: "common.drivers", icon: UserRound, children: [
         { href: "/drivers/availability", label: "driver.availability", icon: Calendar },
         { href: "/drivers/pto", label: "driver.ptotitle", icon: ClipboardList },
+      ]},
+      { href: "/driver-shifts", label: "Driver Shifts", icon: CalendarClock, children: [
+        { href: "/driver-shifts/unassigned", label: "Unassigned", icon: Users },
       ]},
     ]},
     { title: "nav.configuration", items: [

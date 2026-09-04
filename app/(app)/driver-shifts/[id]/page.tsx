@@ -81,15 +81,16 @@ export default function ShiftDetailsPage({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2">
-          <Link href="/driver-shifts">
-            <ArrowLeft className="size-4" />
-            Back to shifts
-          </Link>
-        </Button>
+        <Link
+          href="/driver-shifts"
+          className="mb-2 -ml-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Back to shifts
+        </Link>
         <PageHeader
           title={shift.name}
-          subtitle={describeRecurrence(shift.recurrence, shift.startDate, shift.endDate)}
+          description={describeRecurrence(shift.recurrence, shift.startDate, shift.endDate)}
           actions={<ShiftStatusBadge status={shift.status} />}
         />
       </div>

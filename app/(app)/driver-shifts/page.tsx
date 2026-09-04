@@ -133,19 +133,17 @@ export default function DriverShiftsPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Driver Shifts"
-        subtitle="Create, schedule and staff recurring driver shifts, then map participants onto each run."
+        description="Create, schedule and staff recurring driver shifts, then map participants onto each run."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/driver-shifts/unassigned">
-                <UserPlus className="size-4" />
-                Unassigned
-                {stats.unassigned > 0 ? (
-                  <span className="ml-1 rounded-full bg-warning/20 px-1.5 text-xs font-semibold text-warning-foreground">
-                    {stats.unassigned}
-                  </span>
-                ) : null}
-              </Link>
+            <Button variant="outline" render={<Link href="/driver-shifts/unassigned" />}>
+              <UserPlus className="size-4" />
+              Unassigned
+              {stats.unassigned > 0 ? (
+                <span className="ml-1 rounded-full bg-warning/20 px-1.5 text-xs font-semibold text-warning-foreground">
+                  {stats.unassigned}
+                </span>
+              ) : null}
             </Button>
             <Button onClick={openCreate}>
               <Plus className="size-4" />
@@ -183,7 +181,7 @@ export default function DriverShiftsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={driverFilter} onValueChange={setDriverFilter}>
+          <Select value={driverFilter} onValueChange={(v) => setDriverFilter(v ?? "all")}>
             <SelectTrigger className="h-9 w-40">
               <SelectValue />
             </SelectTrigger>
@@ -196,7 +194,7 @@ export default function DriverShiftsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
+          <Select value={vehicleFilter} onValueChange={(v) => setVehicleFilter(v ?? "all")}>
             <SelectTrigger className="h-9 w-40">
               <SelectValue />
             </SelectTrigger>
