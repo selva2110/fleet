@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { apiDelete, apiGet, apiPost, apiPut, SERVICE_URLS } from "@/lib/api/http";
 import { LoginForm, LoginResponse, TokenCookies } from "../auth/types";
 import { Role as RoleOptions } from "../auth/types";
@@ -11,6 +12,18 @@ function getAuthBaseUrl() {
 
 function getAuthBase() {
   return `${SERVICE_URLS.auth()}/api/v1`;
+}
+
+
+export async function startMicrosoftLogin(): Promise<never> {
+  let target: string;
+  try {
+    target = `${SERVICE_URLS.auth()}/oauth2/authorization/azure`;
+  } catch (error) {
+    console.error("Microsoft SSO is not configured:", error);
+    redirect("/login?error=sso_unavailable");
+  }
+  redirect(target);
 }
 
 export async function loginUser(data: LoginForm) {
@@ -45,6 +58,62 @@ export async function loginUser(data: LoginForm) {
   return {
     success: true,
   };
+}
+
+/**
+ * Finishes the Microsoft SSO flow. Unlike `/api/auth/login`, the auth
+ * service hands SSO tokens back via a URL fragment (see
+ * app/(auth)/auth/callback/page.tsx) with no JSON body — no
+ * `roles`/`roleId`/`username` fields, just the JWTs. We decode the access
+ * token's own claims (`sub`, `roles` — see the auth service's JwtService)
+ * to recover what we can, and simply omit `roleId`/`name` when we can't;
+ * `setAuthCookies` already treats those as optional.
+ */
+export async function completeMicrosoftLogin({
+  accessToken,
+  refreshToken,
+}: {
+  accessToken: string;
+  refreshToken?: string;
+}) {
+  if (!accessToken) {
+    return { success: false, error: "Missing access token from Microsoft sign-in." };
+  }
+
+  try {
+    const claims = decodeJwtClaims(accessToken);
+    await setAuthCookies({
+      accessToken,
+      refreshToken,
+      role: claims?.roles?.[0],
+      name: claims?.sub,
+      // SSO carries no "remember me" choice from the user, so persist the
+      // session the same way a remembered password login would — being
+      // bounced back to Microsoft every browser restart is poor UX for SSO.
+      rememberToken: true,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to complete Microsoft login:", error);
+    return {
+      success: false,
+      error: "Unable to complete Microsoft sign-in. Please try again.",
+    };
+  }
+}
+
+function decodeJwtClaims(
+  token: string,
+): { sub?: string; roles?: string[] } | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = Buffer.from(base64, "base64").toString("utf-8");
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
 }
 
 export async function registerAction(data: any) {

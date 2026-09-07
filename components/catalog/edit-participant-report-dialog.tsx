@@ -75,7 +75,7 @@ export function EditParticipantReportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <NotebookText className="size-4 text-primary" />{" "}
-            {type === 1 ? "Eit Meal Details" : "Edit Medical Details"}
+            {type === 1 ? "Edit Meal Details" : "Edit Medical Details"}
           </DialogTitle>
           <DialogDescription>{t("part.editreportdesc")}</DialogDescription>
         </DialogHeader>

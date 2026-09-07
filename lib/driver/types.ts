@@ -5,7 +5,6 @@ export type DriverStatus = "available" | "on-trip" | "break" | "offline";
 export interface Driver {
   id: string;
   name: string;
-  phone: string;
   mobile_number: string;
   address: string;
   blood_group: string;
@@ -53,7 +52,6 @@ export interface DriverResponse {
   first_name: string;
   last_name: string;
   mobile_number: string;
-  phone: string;
   dial_code: string;
   blood_group: string;
   address?: string;

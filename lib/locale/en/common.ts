@@ -1111,6 +1111,22 @@ export const enTranslations = {
   "auth.verifyAccountDesc":
     "We sent a {{length}}-digit code to {{identifier}} to confirm it's you.",
   "auth.accountVerified": "Account verified. Redirecting to sign in…",
+  "auth.orContinueWith": "Or continue with",
+  "auth.signInWithMicrosoft": "Sign in with Microsoft",
+  "auth.ssoCallbackProcessing": "Completing sign-in…",
+  "auth.ssoErrorTitle": "Sign-in failed",
+  "auth.ssoErrorGeneric": "We couldn't sign you in with Microsoft. Please try again.",
+  "auth.ssoErrorCancelled": "Microsoft sign-in was cancelled.",
+  "auth.ssoErrorNoEmail":
+    "Your Microsoft account didn't share an email address. Contact your administrator.",
+  "auth.ssoErrorNoAccount":
+    "No account was found for this Microsoft email. Contact your administrator to get access.",
+  "auth.ssoErrorAccountDisabled": "This account has been disabled. Contact your administrator.",
+  "auth.ssoErrorWrongMethod":
+    "This account already signs in a different way. Try signing in with your email and password instead.",
+  "auth.ssoUnavailable": "Microsoft sign-in isn't available right now. Please try again later.",
+  "auth.ssoTryAgain": "Try again",
+  "auth.ssoBackToLogin": "Back to sign in",
 
   "val.emailRequired": "Email is required",
   "val.emailInvalid": "Enter a valid email address",
@@ -1238,4 +1254,9 @@ export const enTranslations = {
   "role.updatesuccess": "Role updated successfully",
   "role.createsuccess": "Role created successfully",
   "role.savechanges": "Save changes",
+  "role.permissions": "Permissions",
+  "role.page": "Page",
+  "common.create": "Create",
+  "common.read": "Read",
+  "common.update": "Update",
 };

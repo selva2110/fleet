@@ -31,8 +31,8 @@ export class DriversConfig {
     }),
   );
   static readonly CERT_OPTIONS = [
-    { value: "wheelchairAssist", label: "driver.whassist" },
-    { value: "medicalTransport", label: "driver.medtrans" },
+    // { value: "wheelchairAssist", label: "driver.whassist" },
+    // { value: "medicalTransport", label: "driver.medtrans" },
     { value: "cprCert", label: "driver.cprcert" },
     { value: "nemCert", label: "driver.nemcert" },
   ];

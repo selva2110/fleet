@@ -19,7 +19,7 @@ export const createUserFormSchema = (t: (key: string) => string, isEditing: bool
       roleIds: z.array(z.number()).min(1, t("val.roleRequired")),
       status: z.boolean(),
       phone: z.string().trim().optional(),
-      bloodGroup: z.string().trim().optional(),
+      // bloodGroup: z.string().trim().optional(),
       emergencyContactName: z.string().trim().optional(),
       emergencyContactPhone: z.string().trim().optional(),
       centerId: z.string().trim().optional(),

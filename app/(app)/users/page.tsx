@@ -36,8 +36,8 @@ import {
   useDataView,
   usePagination,
 } from "@/components/data-view/data-view";
-import { getRoles, getUsers } from "@/app/actions/data";
-import { deleteRole, deleteUser } from "@/app/actions/crud";
+import { getUsers } from "@/app/actions/data";
+import { deleteUser } from "@/app/actions/crud";
 import { tableHeaderRow } from "@/components/aurora/aurora-ui";
 import { UsersConfig } from "@/lib/user/config";
 import { User } from "@/lib/user/types";
@@ -48,6 +48,7 @@ import { TabsContent, TabsList, Tabs } from "@/components/ui/tabs";
 import { TabsTrigger } from "@/components/ui/tabs";
 import { Role } from "@/lib/auth/types";
 import type { ComponentType } from "react";
+import { useRoleMutations, useRoles } from "@/lib/auth/hooks";
 
 type TabKey = "users" | "roles";
 
@@ -63,16 +64,20 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("users");
   const dv = useDataView("name");
   const [users, setUsers] = useState<User[]>([]);
-  const [rolesData, setRolesData] = useState<Role[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [roleOption, setRoleOption] = useState<string[]>([]);
 
-  const [roles, setRoles] = useState<string[]>([]);
+  const { roles: rolesData, isLoading: loadingRoles } = useRoles();
+  const { deleteRole: removeRole } = useRoleMutations();
+  const roleOptions = rolesData.map((item) => ({
+    label: item.name,
+    value: item.id.toString(),
+  }));
   const [statuses, setStatuses] = useState<string[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingRoles, setLoadingRoles] = useState(true);
 
   const refreshUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -83,20 +88,9 @@ export default function UsersPage() {
     }
   }, []);
 
-  const refreshRoles = useCallback(async () => {
-    setLoadingRoles(true);
-    try {
-      setRolesData(await getRoles());
-    } finally {
-      setLoadingRoles(false);
-    }
-  }, []);
-
-  // Load all three once on mount
   useEffect(() => {
     void refreshUsers();
-    void refreshRoles();
-  }, [refreshUsers, refreshRoles]);
+  }, [refreshUsers]);
 
   const activeCount = users.filter((u) => u.status).length;
   const activeRoleCount = rolesData.filter((u) => u.status).length;
@@ -106,10 +100,11 @@ export default function UsersPage() {
     u.roles.some((r) => r.name === "ADMIN"),
   ).length;
 
-  const activeFilterCount = (roles.length ? 1 : 0) + (statuses.length ? 1 : 0);
+  const activeFilterCount =
+    (roleOption.length ? 1 : 0) + (statuses.length ? 1 : 0);
 
   function resetFilters() {
-    setRoles([]);
+    setRoleOption([]);
     setStatuses([]);
   }
 
@@ -132,7 +127,8 @@ export default function UsersPage() {
         u.email.toLowerCase().includes(q) ||
         u.address.toLowerCase().includes(q);
       const matchRole =
-        roles.length === 0 || u.roles.some((r) => roles.includes(r.name));
+        roleOption.length === 0 ||
+        u.roles.some((r) => roleOption.includes(r.id.toString()));
       const matchStatus =
         statuses.length === 0 ||
         statuses.includes(u.status ? "active" : "inactive");
@@ -145,7 +141,7 @@ export default function UsersPage() {
     return list.sort((a, b) =>
       compareValues(sortValue(a), sortValue(b), dv.sortDir),
     );
-  }, [users, dv.query, dv.sortKey, dv.sortDir, roles, statuses]);
+  }, [users, dv.query, dv.sortKey, dv.sortDir, roleOption, statuses]);
 
   const filteredRoles = useMemo(() => {
     const q = dv.query.trim().toLowerCase();
@@ -294,13 +290,15 @@ export default function UsersPage() {
                   activeCount={activeFilterCount}
                   onReset={resetFilters}
                 >
-                  <FilterSection title={t("user.role")}>
-                    <CheckboxGroupFilter
-                      options={UsersConfig.ROLE_OPTIONS}
-                      selected={roles}
-                      onChange={setRoles}
-                    />
-                  </FilterSection>
+                  {roleOptions.length > 0 && (
+                    <FilterSection title={t("user.role")}>
+                      <CheckboxGroupFilter
+                        options={roleOptions}
+                        selected={roleOption}
+                        onChange={setRoleOption}
+                      />
+                    </FilterSection>
+                  )}
                   <FilterSection title={t("common.status")}>
                     <CheckboxGroupFilter
                       options={UsersConfig.STATUS_OPTIONS}
@@ -332,7 +330,6 @@ export default function UsersPage() {
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {pgUsers.pageItems.map((u) => {
                       const roleMeta = roleMetaFor(u);
-                      console.log(roleMeta)
                       const statusMeta =
                         UsersConfig.statusMeta[
                           u.status ? "active" : "inactive"
@@ -527,8 +524,7 @@ export default function UsersPage() {
                                   variant="menu"
                                   onEdit={() => openEditRole(u)}
                                   onDelete={async () => {
-                                    await deleteRole(u.id, u.name);
-                                    await refreshRoles();
+                                    await removeRole(u.id, u.name);
                                   }}
                                   deleteTitle="Delete Row"
                                   deleteMessage={t(
@@ -585,8 +581,7 @@ export default function UsersPage() {
                                 <RowActions
                                   onEdit={() => openEditRole(r)}
                                   onDelete={async () => {
-                                    await deleteRole(r.id, r.name);
-                                    await refreshRoles();
+                                    await removeRole(r.id, r.name);
                                   }}
                                   deleteTitle="Delete role"
                                   deleteMessage={`Are you sure you want to delete "${r.name}"?`}
@@ -628,7 +623,6 @@ export default function UsersPage() {
       <RoleDialog
         open={roleDialogOpen}
         onOpenChange={setRoleDialogOpen}
-        onSaved={refreshRoles}
         editing={editingRole}
       />
     </div>

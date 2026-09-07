@@ -58,15 +58,10 @@ export function emptyObjectResponse<T extends Object>(response: T) {
 }
 
 const ccodes = countryCodes.all();
-const seenCallingCodes = new Set<string>();
 export const COUNTRY_CODE_OPTIONS = ccodes
-  .filter((item) => {
-    if (seenCallingCodes.has(item.countryCallingCode)) return false;
-    seenCallingCodes.add(item.countryCallingCode);
-    return true;
-  })
   .sort((a, b) => a.countryNameEn.localeCompare(b.countryNameEn))
   .map((item) => ({
+    id: item.countryCode,
     label: `${item.countryNameEn} (+${item.countryCallingCode})`,
     value: item.countryCallingCode,
   }));

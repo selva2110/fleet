@@ -47,16 +47,22 @@ export function UserDialog({
     () => createUserFormSchema(t, Boolean(editing)),
     [t, editing],
   );
-  const roleOptions = roles.map((item) => ({
-    label: item.name,
-    value: item.id.toString(),
-  }));
+  const roleOptions = roles
+    .filter((item) => item.name !== "Super Admin")
+    .map((item) => ({
+      label: item.name,
+      value: item.id.toString(),
+    }));
+
   const centerOptions = centers.map((center) => ({
     label: center.name,
     value: center.id,
   }));
   const [form, setForm] = useState<UserForm>(
-    UserUtils.blankUser(roleOptions[0]?.value ?? "", centerOptions[0]?.value ?? ""),
+    UserUtils.blankUser(
+      roleOptions[0]?.value ?? "",
+      centerOptions[0]?.value ?? "",
+    ),
   );
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -76,7 +82,10 @@ export function UserDialog({
       });
     } else {
       setForm(
-        UserUtils.blankUser(roleOptions[0]?.value ?? "", centerOptions[0]?.value ?? ""),
+        UserUtils.blankUser(
+          roleOptions[0]?.value ?? "",
+          centerOptions[0]?.value ?? "",
+        ),
       );
     }
     setErrors({});
@@ -153,12 +162,6 @@ export function UserDialog({
                 value={form.phone}
                 onChange={(v) => set("phone", v)}
                 error={errors.phone}
-              />
-              <TextField
-                label={t("part.bloodgroup")}
-                value={form.bloodGroup}
-                onChange={(v) => set("bloodGroup", v)}
-                error={errors.bloodGroup}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

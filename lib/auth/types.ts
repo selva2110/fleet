@@ -11,7 +11,7 @@ export interface LoginResponse {
   tokenType: string;
   expiresIn: 0;
   username: string;
-  roleIds: number[]
+  roleIds: number[];
 }
 
 export interface ForgotPasswordRequestForm {
@@ -44,3 +44,16 @@ export interface Role {
   status: boolean;
   updatedAt: string;
 }
+
+export type CrudAction = "create" | "read" | "update" | "delete";
+
+export type PagePermission = Record<CrudAction, boolean>;
+
+export type RolePermissions = Record<string, PagePermission>;
+
+export type RoleForm = {
+  name: string;
+  description: string;
+  status: boolean;
+  permissions: RolePermissions;
+};

@@ -3,6 +3,10 @@ import { String } from "three/examples/jsm/transpiler/AST.js";
 
 export class UsersConfig {
   static readonly roleMeta: Record<string, { label: string; cls: string }> = {
+    "Super Admin": {
+      label: "Super Admin",
+      cls: "bg-destructive/15 text-destructive",
+    },
     ADMIN: {
       label: "Admin",
       cls: "bg-primary/15 text-primary",
@@ -27,18 +31,12 @@ export class UsersConfig {
       label: "Care Team",
       cls: "bg-purple/15 text-purple",
     },
-
     "Nutrition Planner": {
       label: "Nutrition Planner",
       cls: "bg-orange/15 text-orange",
     },
-
-    "Super Admin": {
-      label: "Super Admin",
-      cls: "bg-destructive/15 text-destructive",
-    },
   };
-
+  
   static readonly ROLE_OPTIONS = Object.entries(this.roleMeta).map(
     ([value, m]) => ({
       value: value as string,

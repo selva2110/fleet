@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MICROSOFT_LOGIN_CALLBACK_PATH } from "@/lib/auth/microsoft-sso";
 
-const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
+const AUTH_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  MICROSOFT_LOGIN_CALLBACK_PATH,
+];
 const DEFAULT_AUTHENTICATED_ROUTE = "/dashboard";
 
 export function proxy(request: NextRequest) {

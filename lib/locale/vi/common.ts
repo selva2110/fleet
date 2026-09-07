@@ -1125,6 +1125,25 @@ export const viTranslations = {
     "Chúng tôi đã gửi mã {{length}} chữ số đến {{identifier}} để xác nhận đó là bạn.",
   "auth.accountVerified":
     "Tài khoản đã được xác minh. Đang chuyển hướng đến đăng nhập…",
+  "auth.orContinueWith": "Hoặc tiếp tục với",
+  "auth.signInWithMicrosoft": "Đăng nhập bằng Microsoft",
+  "auth.ssoCallbackProcessing": "Đang hoàn tất đăng nhập…",
+  "auth.ssoErrorTitle": "Đăng nhập thất bại",
+  "auth.ssoErrorGeneric":
+    "Chúng tôi không thể đăng nhập bạn bằng Microsoft. Vui lòng thử lại.",
+  "auth.ssoErrorCancelled": "Đăng nhập Microsoft đã bị hủy.",
+  "auth.ssoErrorNoEmail":
+    "Tài khoản Microsoft của bạn không chia sẻ địa chỉ email. Vui lòng liên hệ quản trị viên.",
+  "auth.ssoErrorNoAccount":
+    "Không tìm thấy tài khoản nào cho email Microsoft này. Liên hệ quản trị viên để được cấp quyền truy cập.",
+  "auth.ssoErrorAccountDisabled":
+    "Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+  "auth.ssoErrorWrongMethod":
+    "Tài khoản này đã đăng nhập bằng phương thức khác. Hãy thử đăng nhập bằng email và mật khẩu.",
+  "auth.ssoUnavailable":
+    "Đăng nhập Microsoft hiện không khả dụng. Vui lòng thử lại sau.",
+  "auth.ssoTryAgain": "Thử lại",
+  "auth.ssoBackToLogin": "Quay lại đăng nhập",
 
   "val.emailRequired": "Email là bắt buộc",
   "val.emailInvalid": "Nhập địa chỉ email hợp lệ",
@@ -1252,5 +1271,10 @@ export const viTranslations = {
   "role.updatesuccess": "Cập nhật vai trò thành công",
   "role.createsuccess": "Tạo vai trò thành công",
   "role.savechanges": "Lưu thay đổi",
+  "role.permissions": "Quyền hạn",
+  "role.page": "Trang",
+  "common.create": "Tạo",
+  "common.read": "Xem",
+  "common.update": "Cập nhật",
 
 };

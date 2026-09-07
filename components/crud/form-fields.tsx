@@ -12,7 +12,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  Combobox,
+  ComboboxInputGroup,
+  ComboboxInput,
+  ComboboxClear,
+  ComboboxIcon,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from "@/components/ui/combobox";
 import type { LatLng } from "@/lib/types";
+import { COUNTRY_CODE_OPTIONS } from "@/lib/utils";
 import { useTranslation } from "../context/language-provider";
 
 const MapboxSimpleMap = dynamic(
@@ -71,6 +83,7 @@ interface NumberFieldProps {
   value: number;
   onChange: (v: number) => void;
   min?: number;
+  max?:number;
   required?: boolean;
   error?: string;
 }
@@ -440,6 +453,7 @@ export function NumberField({
   value,
   onChange,
   min = 0,
+  max = 5,
   required,
   error,
 }: NumberFieldProps) {
@@ -448,6 +462,7 @@ export function NumberField({
       <Input
         type="number"
         min={min}
+        max={max}
         value={Number.isFinite(value) ? value : 0}
         aria-invalid={error ? true : undefined}
         className={
@@ -515,6 +530,65 @@ export function SelectField<T extends string>({
           )}
         </SelectContent>
       </Select>
+    </Field>
+  );
+}
+
+type CountryCodeOption = (typeof COUNTRY_CODE_OPTIONS)[number];
+
+// Self-contained searchable dial-code picker: options come from COUNTRY_CODE_OPTIONS,
+// callers only need to wire up value/onChange like any other field.
+export function CountryCodeField({
+  label,
+  value,
+  onChange,
+  required,
+  error,
+  disabled,
+  placeholder,
+}: {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  error?: string;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const { t } = useTranslation();
+  const selected =
+    COUNTRY_CODE_OPTIONS.find((o) => o.value === value && o.id === "US") ??
+    COUNTRY_CODE_OPTIONS.find((o) => o.value === value) ??
+    null;
+
+  return (
+    <Field label={label} required={required} error={error}>
+      <Combobox
+        items={COUNTRY_CODE_OPTIONS}
+        value={selected}
+        onValueChange={(item: CountryCodeOption | null) =>
+          onChange(item ? item.value : "")
+        }
+        disabled={disabled}
+      >
+        <ComboboxInputGroup
+          className={error ? "border-destructive" : undefined}
+        >
+          <ComboboxInput placeholder={t(placeholder ?? "common.searchcode")} />
+          <ComboboxClear />
+          <ComboboxIcon />
+        </ComboboxInputGroup>
+        <ComboboxContent>
+          <ComboboxEmpty>{t("common.nooptions")}</ComboboxEmpty>
+          <ComboboxList>
+            {(item: CountryCodeOption) => (
+              <ComboboxItem key={item.id} value={item}>
+                {t(item.label)}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
     </Field>
   );
 }

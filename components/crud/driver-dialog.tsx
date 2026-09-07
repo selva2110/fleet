@@ -14,9 +14,9 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AddressField,
+  CountryCodeField,
   DaysOfWeekField,
   NumberField,
-  SelectField,
   SwitchField,
   TextField,
 } from "./form-fields";
@@ -28,7 +28,7 @@ import { DriverUtils } from "@/lib/driver/utils";
 import { useTranslation } from "../context/language-provider";
 import { createFieldSetter } from "../common";
 import { useNotifications } from "../context/notification-provider";
-import { COUNTRY_CODE_OPTIONS } from "@/lib/utils";
+import { error } from "three";
 
 export function DriverDialog({
   open,
@@ -135,12 +135,10 @@ export function DriverDialog({
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <SelectField
+              <CountryCodeField
                 label={t("common.code")}
                 value={form.dial_code}
                 onChange={(v) => set("dial_code", v)}
-                options={COUNTRY_CODE_OPTIONS}
-                required
                 error={errors.dial_code}
               />
               <TextField
@@ -166,12 +164,14 @@ export function DriverDialog({
                 required
                 error={errors.blood_group}
               />
-              <NumberField
+              {/* <NumberField
                 label={t("driver.rating")}
                 value={form.rating}
                 onChange={(v) => set("rating", v)}
                 min={0}
-              />
+                max={5}
+                error={errors.rating}
+              /> */}
             </div>
             {/* <TextField
             label={t('common.imageurl')}
@@ -184,8 +184,8 @@ export function DriverDialog({
             options={vehicleOptions}
             onChange={(v) => set('assignedVehicleId', v === '__none__' ? null : v)}
           /> */}
-            <div className="grid grid-cols-2 gap-3">
-              <TextField
+            {/* <div className="grid grid-cols-2 gap-3"> */}
+            {/* <TextField
                 label={t("driver.shstart")}
                 type="time"
                 value={form.shiftStart}
@@ -198,20 +198,20 @@ export function DriverDialog({
                 value={form.shiftEnd}
                 onChange={(v) => set("shiftEnd", v)}
                 error={errors.shiftEnd}
-              />
-            </div>
-            <DaysOfWeekField
+              /> */}
+            {/* </div> */}
+            {/* <DaysOfWeekField
               label={t("driver.workingdays")}
               value={form.shiftDays ?? []}
               onChange={(v) => set("shiftDays", v)}
               error={errors.shiftDays}
-            />
+            /> */}
             <div>
               <Label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                 {t("common.cert")}
               </Label>
               <div className="grid grid-cols-1 gap-2 mb-2">
-                <SwitchField
+                {/* <SwitchField
                   label={t("driver.whassist")}
                   checked={form.certifications.wheelchairAssist.enabled}
                   onChange={(v) =>
@@ -228,6 +228,8 @@ export function DriverDialog({
                   <TextField
                     label={`${t("driver.whassist")} #`}
                     value={form.certifications.wheelchairAssist.certificateNo}
+                    required={form.certifications.wheelchairAssist.enabled}
+                    error={errors["certifications.wheelchairAssist.certificateNo"]}
                     onChange={(v) =>
                       set("certifications", {
                         ...form.certifications,
@@ -256,6 +258,8 @@ export function DriverDialog({
                   <TextField
                     label={`${t("driver.medtrans")} #`}
                     value={form.certifications.medicalTransport.certificateNo}
+                    required={form.certifications.medicalTransport.enabled}
+                    error={errors["certifications.medicalTransport.certificateNo"]}
                     onChange={(v) =>
                       set("certifications", {
                         ...form.certifications,
@@ -266,9 +270,10 @@ export function DriverDialog({
                       })
                     }
                   />
-                )}
-                <SwitchField
-                  label={t("driver.cprcert")}
+                )} */}
+                {/* <SwitchField
+                  label={t("CPR + AED Certified")}
+                  onChange={()=>{}}
                   checked={form.certifications.cprCert.enabled}
                   onChange={(v) =>
                     set("certifications", {
@@ -276,47 +281,52 @@ export function DriverDialog({
                       cprCert: { ...form.certifications.cprCert, enabled: v },
                     })
                   }
+                /> */}
+                {/* {form.certifications.cprCert.enabled && ( */}
+                <TextField
+                  label={"CPR + AED Certificate Number"}
+                  value={form.certifications.cprCert.certificateNo}
+                  required
+                  error={errors["certifications.cprCert.certificateNo"]}
+                  onChange={(v) =>
+                    set("certifications", {
+                      ...form.certifications,
+                      cprCert: {
+                        ...form.certifications.cprCert,
+                        certificateNo: v,
+                      },
+                    })
+                  }
                 />
-                {form.certifications.cprCert.enabled && (
-                  <TextField
-                    label={`${t("driver.cprcert")} #`}
-                    value={form.certifications.cprCert.certificateNo}
-                    onChange={(v) =>
-                      set("certifications", {
-                        ...form.certifications,
-                        cprCert: {
-                          ...form.certifications.cprCert,
-                          certificateNo: v,
-                        },
-                      })
-                    }
-                  />
-                )}
-                <SwitchField
+                {/* )} */}
+                {/* <SwitchField
                   label={t("driver.nemcert")}
                   checked={form.certifications.nemCert.enabled}
+                  onChange={()=>{}}
                   onChange={(v) =>
                     set("certifications", {
                       ...form.certifications,
                       nemCert: { ...form.certifications.nemCert, enabled: v },
                     })
                   }
+                /> */}
+                {/* {form.certifications.nemCert.enabled && ( */}
+                <TextField
+                  label={"NEMTAC Certificate Number"}
+                  required
+                  value={form.certifications.nemCert.certificateNo}
+                  error={errors["certifications.nemCert.certificateNo"]}
+                  onChange={(v) =>
+                    set("certifications", {
+                      ...form.certifications,
+                      nemCert: {
+                        ...form.certifications.nemCert,
+                        certificateNo: v,
+                      },
+                    })
+                  }
                 />
-                {form.certifications.nemCert.enabled && (
-                  <TextField
-                    label={`${t("driver.nemcert")} #`}
-                    value={form.certifications.nemCert.certificateNo}
-                    onChange={(v) =>
-                      set("certifications", {
-                        ...form.certifications,
-                        nemCert: {
-                          ...form.certifications.nemCert,
-                          certificateNo: v,
-                        },
-                      })
-                    }
-                  />
-                )}
+                {/* )} */}
               </div>
               <AddressField
                 label={t("common.address")}

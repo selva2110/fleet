@@ -1128,6 +1128,25 @@ export const hiTranslations = {
     "यह पुष्टि करने के लिए कि यह आप हैं, हमने {{identifier}} पर एक {{length}}-अंकीय कोड भेजा है।",
   "auth.accountVerified":
     "खाता सत्यापित हो गया। साइन इन पर रीडायरेक्ट किया जा रहा है…",
+  "auth.orContinueWith": "या इसके साथ जारी रखें",
+  "auth.signInWithMicrosoft": "Microsoft से साइन इन करें",
+  "auth.ssoCallbackProcessing": "साइन-इन पूरा किया जा रहा है…",
+  "auth.ssoErrorTitle": "साइन-इन विफल",
+  "auth.ssoErrorGeneric":
+    "हम आपको Microsoft से साइन इन नहीं कर सके। कृपया पुनः प्रयास करें।",
+  "auth.ssoErrorCancelled": "Microsoft साइन-इन रद्द कर दिया गया।",
+  "auth.ssoErrorNoEmail":
+    "आपके Microsoft खाते ने ईमेल पता साझा नहीं किया। अपने व्यवस्थापक से संपर्क करें।",
+  "auth.ssoErrorNoAccount":
+    "इस Microsoft ईमेल के लिए कोई खाता नहीं मिला। पहुंच पाने के लिए अपने व्यवस्थापक से संपर्क करें।",
+  "auth.ssoErrorAccountDisabled":
+    "यह खाता अक्षम कर दिया गया है। अपने व्यवस्थापक से संपर्क करें।",
+  "auth.ssoErrorWrongMethod":
+    "यह खाता पहले से ही किसी अन्य तरीके से साइन इन होता है। इसके बजाय अपने ईमेल और पासवर्ड से साइन इन करने का प्रयास करें।",
+  "auth.ssoUnavailable":
+    "Microsoft साइन-इन अभी उपलब्ध नहीं है। कृपया बाद में पुनः प्रयास करें।",
+  "auth.ssoTryAgain": "पुनः प्रयास करें",
+  "auth.ssoBackToLogin": "साइन इन पर वापस जाएं",
 
   "val.emailRequired": "ईमेल आवश्यक है",
   "val.emailInvalid": "एक मान्य ईमेल पता दर्ज करें",
@@ -1258,5 +1277,10 @@ export const hiTranslations = {
   "role.updatesuccess": "भूमिका सफलतापूर्वक अपडेट की गई",
   "role.createsuccess": "भूमिका सफलतापूर्वक बनाई गई",
   "role.savechanges": "परिवर्तन सहेजें",
+  "role.permissions": "अनुमतियाँ",
+  "role.page": "पेज",
+  "common.create": "बनाएं",
+  "common.read": "देखें",
+  "common.update": "अपडेट करें",
 
 };

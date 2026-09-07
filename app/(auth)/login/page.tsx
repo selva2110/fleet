@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useMemo, useState, type FormEvent } from "react";
+import React, { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -14,15 +14,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { PasswordInput } from "@/components/ui/password-input";
 import { TextField } from "@/components/crud/form-fields";
 import { createLoginFormSchema } from "@/components/validation/auth";
 import { validateSchema } from "@/components/validation/zod-validation";
 import { useTranslation } from "@/components/context/language-provider";
 import { LoginForm } from "@/lib/auth/types";
-import { loginUser } from "@/lib/api/auth";
+import { loginUser, startMicrosoftLogin } from "@/lib/api/auth";
 import { useNotifications } from "@/components/context/notification-provider";
 import { createFieldSetter } from "@/components/common";
+import { MicrosoftLogo } from "@/components/auth/microsoft-logo";
+import { rememberPostLoginRedirect } from "@/lib/auth/microsoft-sso";
 
 export default function LoginPage() {
   return (
@@ -47,7 +50,27 @@ function LoginPageInner() {
   const set = createFieldSetter(setLoginForm, setErrors);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [ssoRedirecting, setSsoRedirecting] = useState(false);
   const { addToast } = useNotifications();
+
+  useEffect(() => {
+    if (searchParams.get("error") !== "sso_unavailable") return;
+    const message = t("auth.ssoUnavailable");
+    setFormError(message);
+    addToast({ title: t("auth.ssoErrorTitle"), message, kind: "danger" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleMicrosoftLogin() {
+    setFormError(null);
+    rememberPostLoginRedirect(callbackUrl);
+    setSsoRedirecting(true);
+    // next/navigation's redirect() (called inside startMicrosoftLogin) works
+    // by throwing a special signal Next.js's own runtime intercepts to
+    // perform the navigation — per Next's docs this must never be wrapped
+    // in try/catch, or the navigation itself gets swallowed as an error.
+    await startMicrosoftLogin();
+  }
 
   async function handleSubmit(event: React.SubmitEvent) {
     event.preventDefault();
@@ -136,12 +159,34 @@ function LoginPageInner() {
           <Button
             type="submit"
             className="mt-1 h-9 w-full"
-            disabled={submitting}
+            disabled={submitting || ssoRedirecting}
           >
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {t("auth.signIn")}
           </Button>
         </form>
+
+        <div className="relative my-5">
+          <Separator />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs uppercase text-muted-foreground">
+            {t("auth.orContinueWith")}
+          </span>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9 w-full gap-2"
+          onClick={handleMicrosoftLogin}
+          disabled={submitting || ssoRedirecting}
+        >
+          {ssoRedirecting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <MicrosoftLogo className="size-4" />
+          )}
+          {t("auth.signInWithMicrosoft")}
+        </Button>
 
         {/* <p className="mt-6 text-center text-sm text-muted-foreground">
           {t("auth.noAccount")}{" "}

@@ -119,7 +119,7 @@ export async function saveDriver(
         ...input,
         status: input.status ?? "available",
         location: input.location ?? FleetmapUtils.jitter(COIMBATORE_MAP_CENTER),
-        phone: input.mobile_number,
+        // phone: input.mobile_number,
       })
     : await driversApi.updateDriver(input.id!, input);
 
@@ -339,6 +339,21 @@ export async function saveParticipantMedReport(
   })
   return input.id
 }
+export async function createRole(
+  data: { name: string; description: string },
+  actorRole = 'admin',
+) {
+  const res = await rolesApi.postUserRole(data)
+  await emit({
+    eventType: 'role.created',
+    aggregateType: 'role',
+    aggregateId: data.name,
+    actorRole,
+    summary: `Created role ${data.name}`,
+  })
+  return res
+}
+
 export async function deleteRole(id: number, name: string, actorRole = 'admin') {
   await rolesApi.deleteRole(id)
   await emit({

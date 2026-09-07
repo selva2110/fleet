@@ -16,7 +16,7 @@ export class ParticipantUtils {
     return {
       name: "",
       phone: "",
-      dialCode: "91",
+      dialCode: "1",
       bloodGroup: "",
       emergencyContactDetails: ParticipantUtils.personalDetails(),
       companionNeeded: false,

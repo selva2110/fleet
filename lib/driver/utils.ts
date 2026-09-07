@@ -67,7 +67,6 @@ export class DriverUtils {
     return {
       name: "",
       mobile_number: "",
-      phone: "",
       address: "",
       blood_group: "",
       location: null,
@@ -76,8 +75,8 @@ export class DriverUtils {
       certifications: {
         wheelchairAssist: { enabled: false, certificateNo: "" },
         medicalTransport: { enabled: false, certificateNo: "" },
-        cprCert: { enabled: false, certificateNo: "" },
-        nemCert: { enabled: false, certificateNo: "" },
+        cprCert: { enabled: true, certificateNo: "" },
+        nemCert: { enabled: true, certificateNo: "" },
       },
       assignedVehicleId: null,
       rating: 4.5,

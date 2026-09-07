@@ -409,9 +409,9 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                 error={errors.centerId}
               />
               {center ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-1">
                   {/* <DetailPill label="Type" value={center.type} /> */}
-                  <DetailPill label={t('e.operatehrs')} value={center.operatingHours} />
+                  {/* <DetailPill label={t('e.operatehrs')} value={center.operatingHours} /> */}
                   <DetailPill label={t('common.capacity')} value={`${center.capacity} ${t('common.participants')}`} />
                 </div>
               ) : null}

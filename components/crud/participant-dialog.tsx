@@ -15,9 +15,9 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AddressField,
+  CountryCodeField,
   Field,
   NumberField,
-  SelectField,
   SwitchField,
   TextField,
 } from "./form-fields";
@@ -30,7 +30,6 @@ import { ParticipantUtils } from "@/lib/participant/utils";
 import { useTranslation } from "../context/language-provider";
 import { createFieldSetter } from "../common";
 import { useNotifications } from "../context/notification-provider";
-import { COUNTRY_CODE_OPTIONS } from "@/lib/utils";
 
 export function ParticipantDialog({
   open,
@@ -144,11 +143,10 @@ export function ParticipantDialog({
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <SelectField
+              <CountryCodeField
                 label={t("common.code")}
                 value={form.dialCode}
                 onChange={(v) => set("dialCode", v)}
-                options={COUNTRY_CODE_OPTIONS}
                 error={errors.dialCode}
                 required
               />
