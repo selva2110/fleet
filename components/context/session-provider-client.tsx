@@ -6,6 +6,7 @@ type SessionContextValue = {
   isAdmin: boolean;
   isDispatcher: boolean;
   userRole: string;
+  userName: string;
 };
 
 const SessionContext = React.createContext<SessionContextValue | null>(null);
@@ -14,15 +15,17 @@ export function SessionProviderClient({
   isAdmin,
   isDispatcher,
   userRole,
+  userName,
   children,
 }: {
   isAdmin: boolean;
   isDispatcher: boolean;
   children: React.ReactNode;
   userRole: string;
+  userName: string
 }) {
   return (
-    <SessionContext.Provider value={{ isAdmin, isDispatcher, userRole }}>
+    <SessionContext.Provider value={{ isAdmin, isDispatcher, userRole, userName }}>
       {children}
     </SessionContext.Provider>
   );

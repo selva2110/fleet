@@ -30,6 +30,7 @@ import { ParticipantUtils } from "@/lib/participant/utils";
 import { useTranslation } from "../context/language-provider";
 import { createFieldSetter } from "../common";
 import { useNotifications } from "../context/notification-provider";
+import { COUNTRY_CODE_OPTIONS } from "@/lib/utils";
 
 export function ParticipantDialog({
   open,
@@ -54,11 +55,6 @@ export function ParticipantDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = createFieldSetter(setForm, setErrors);
 
-  // companionDetails/emergencyContactDetails hold both `address` and
-  // `location`, which AddressField updates via two synchronous callbacks
-  // (onChange then onLocationChange) in the same event. set() builds its
-  // value from the outer `form` closure, so the second call would overwrite
-  // the first's change before either commits. Merging from `prev` avoids that.
   function setNested<K extends "companionDetails" | "emergencyContactDetails">(
     key: K,
     patch: Partial<ParticipantForm[K]>,
@@ -138,7 +134,7 @@ export function ParticipantDialog({
 
         <ScrollArea className="max-h-[60vh] px-1 w-full overflow-hidden">
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <TextField
                 label={t("common.fullname")}
                 value={form.name}
@@ -146,22 +142,23 @@ export function ParticipantDialog({
                 required
                 error={errors.name}
               />
-              <div className="flex items-center gap-2 justify-center">
-                <TextField
-                  label={t("common.code")}
-                  className="w-10"
-                  value={form.dialCode}
-                  required
-                  onChange={(v) => set("dialCode", v)}
-                />
-                <TextField
-                  label={t("common.phone")}
-                  value={form.phone}
-                  onChange={(v) => set("phone", v)}
-                  required
-                  error={errors.phone}
-                />
-              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField
+                label={t("common.code")}
+                value={form.dialCode}
+                onChange={(v) => set("dialCode", v)}
+                options={COUNTRY_CODE_OPTIONS}
+                error={errors.dialCode}
+                required
+              />
+              <TextField
+                label={t("common.phone")}
+                value={form.phone}
+                onChange={(v) => set("phone", v)}
+                required
+                error={errors.phone}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <NumberField
@@ -195,8 +192,9 @@ export function ParticipantDialog({
                 checked={form.companionNeeded}
                 onChange={(v) => set("companionNeeded", v)}
               />
-              <div className="rounded-md border border-border px-3 py-2 mt-2">
-                <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-md border border-border px-3 py-2 mt-2 flex-col flex gap-1">
+                <div className="pb-2">{t("Companion Details")}</div>
+                <div className="grid grid-cols-2 gap-2">
                   <TextField
                     label={t("common.fullname")}
                     value={form.companionDetails.name}
@@ -205,7 +203,7 @@ export function ParticipantDialog({
                     error={errors["companionDetails.name"]}
                   />
                   <div className="flex items-center gap-2 justify-center">
-                    <TextField
+                    {/* <TextField
                       label={t("common.code")}
                       className="w-10"
                       value={form.companionDetails.dialCode}
@@ -214,7 +212,7 @@ export function ParticipantDialog({
                       }
                       required={form.companionNeeded}
                       error={errors["companionDetails.dialCode"]}
-                    />
+                    /> */}
                     <TextField
                       label={t("common.phone")}
                       value={form.companionDetails.phone}
@@ -226,6 +224,15 @@ export function ParticipantDialog({
                     />
                   </div>
                 </div>
+                <TextField
+                  label={t("part.relation")}
+                  value={form.companionDetails.relation}
+                  onChange={(v) =>
+                    setNested("companionDetails", { relation: v })
+                  }
+                  required={form.companionNeeded}
+                  error={errors["companionDetails.relation"]}
+                />
 
                 <AddressField
                   label={t("common.address")}
@@ -243,23 +250,11 @@ export function ParticipantDialog({
                     errors["companionDetails.location"]
                   }
                 />
-
-                <TextField
-                  label={t("part.relation")}
-                  value={form.companionDetails.relation}
-                  onChange={(v) =>
-                    setNested("companionDetails", { relation: v })
-                  }
-                  required={form.companionNeeded}
-                  error={errors["companionDetails.relation"]}
-                />
               </div>
             </div>
 
-            <div className="flex gap-2 flex-col rounded-md border border-border">
-              <span className=" px-3 py-2">
-                {t("part.emergencycontactdetails")}
-              </span>
+            <div className="rounded-md border border-border">
+              <div className="p-2">{t("part.emergencycontactdetails")}</div>
               <div className="px-3 py-2 flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-3">
                   <TextField
@@ -273,7 +268,7 @@ export function ParticipantDialog({
                   />
 
                   <div className="flex items-center gap-2 justify-center">
-                    <TextField
+                    {/* <TextField
                       label={t("common.code")}
                       className="w-10"
                       value={form.emergencyContactDetails.dialCode}
@@ -282,7 +277,7 @@ export function ParticipantDialog({
                       }
                       required
                       error={errors["emergencyContactDetails.dialCode"]}
-                    />
+                    /> */}
                     <TextField
                       label={t("common.phone")}
                       value={form.emergencyContactDetails.phone}
@@ -295,31 +290,33 @@ export function ParticipantDialog({
                   </div>
                 </div>
               </div>
-              <AddressField
-                label={t("common.address")}
-                value={form.emergencyContactDetails.address}
-                onChange={(v) =>
-                  setNested("emergencyContactDetails", { address: v })
-                }
-                location={form.emergencyContactDetails.location}
-                onLocationChange={(v) =>
-                  setNested("emergencyContactDetails", { location: v })
-                }
-                required
-                error={
-                  errors["emergencyContactDetails.address"] ??
-                  errors["emergencyContactDetails.location"]
-                }
-              />
-              <TextField
-                label="Relation"
-                value={form.emergencyContactDetails.relation}
-                onChange={(v) =>
-                  setNested("emergencyContactDetails", { relation: v })
-                }
-                required
-                error={errors["emergencyContactDetails.relation"]}
-              />
+              <div className="px-2 pb-2 flex flex-col gap-2">
+                <TextField
+                  label="Relation"
+                  value={form.emergencyContactDetails.relation}
+                  onChange={(v) =>
+                    setNested("emergencyContactDetails", { relation: v })
+                  }
+                  required
+                  error={errors["emergencyContactDetails.relation"]}
+                />
+                <AddressField
+                  label={t("common.address")}
+                  value={form.emergencyContactDetails.address}
+                  onChange={(v) =>
+                    setNested("emergencyContactDetails", { address: v })
+                  }
+                  location={form.emergencyContactDetails.location}
+                  onLocationChange={(v) =>
+                    setNested("emergencyContactDetails", { location: v })
+                  }
+                  required
+                  error={
+                    errors["emergencyContactDetails.address"] ??
+                    errors["emergencyContactDetails.location"]
+                  }
+                />
+              </div>
             </div>
           </div>
 

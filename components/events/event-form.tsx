@@ -35,7 +35,7 @@ import { ParticipantUtils } from '@/lib/participant/utils';
 import { EventUtils } from '@/lib/events/utils';
 import { findById, uppperCaseInitials } from '@/lib/utils';
 import { useTranslation } from '../context/language-provider';
-import { createFieldSetter } from '../common';
+import { ConfirmDialog, createFieldSetter, PageHeader } from '../common';
 import { createEventSchema } from '../validation/event';
 
 function SectionCard({
@@ -99,6 +99,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
   const [saving, setSaving] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [addQuery, setAddQuery] = useState('')
+  const [removeParticipantTarget, setRemoveParticipantTarget] = useState<Participant | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = createFieldSetter(setForm, setErrors);
 
@@ -252,27 +253,24 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* Sticky action header */}
-      <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/95 px-6 py-4 backdrop-blur">
-        <div>
-          <h1 className="text-lg font-semibold text-balance">
-            {editing ? t('e.editEvent') : t('e.createevent')}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground text-pretty">
-            {t('e.newTrans')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => router.push('/events')} disabled={saving}>
-            {t('common.cancel')}
-          </Button>
-          <Button variant="outline" onClick={() => submit('draft')} disabled={saving}>
-            {t('e.saveasdraft')}
-          </Button>
-          <Button onClick={() => submit('scheduled')} disabled={saving}>
-            {saving ? t('common.saving') : editing ? t('common.savchanges') : t('e.publishev')}
-          </Button>
-        </div>
+      <div className="sticky top-0 z-20">
+        <PageHeader
+          title={editing ? t('e.editEvent') : t('e.createevent')}
+          description={t('e.newTrans')}
+          actions={
+            <>
+              <Button variant="ghost" onClick={() => router.push('/events')} disabled={saving}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="outline" onClick={() => submit('draft')} disabled={saving}>
+                {t('e.saveasdraft')}
+              </Button>
+              <Button onClick={() => submit('scheduled')} disabled={saving}>
+                {saving ? t('common.saving') : editing ? t('common.savchanges') : t('e.publishev')}
+              </Button>
+            </>
+          }
+        />
       </div>
 
       <div className="grid gap-6 p-6 lg:grid-cols-4">
@@ -508,7 +506,7 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => removeParticipant(p.id)}
+                          onClick={() => setRemoveParticipantTarget(p)}
                           aria-label={t('e.removeparticipant').replace('{{name}}', p.name)}
                         >
                           <Trash2 className="size-4 text-muted-foreground" />
@@ -620,6 +618,20 @@ export function EventForm({ editing }: { editing: FleetEvent | null }) {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={removeParticipantTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveParticipantTarget(null)
+        }}
+        title={t('e.removeparticipant').replace('{{name}}', removeParticipantTarget?.name ?? '')}
+        message={t('e.removeparticipantcnfrm').replace('{{name}}', removeParticipantTarget?.name ?? '')}
+        onConfirm={() => {
+          if (!removeParticipantTarget) return
+          removeParticipant(removeParticipantTarget.id)
+          setRemoveParticipantTarget(null)
+        }}
+      />
     </div>
   )
 }

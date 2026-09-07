@@ -1,3 +1,4 @@
+import { GroupForm } from "../catalog/groups";
 import {
   CareItem,
   CareItemForm,
@@ -8,12 +9,18 @@ import {
 import { apiDelete, apiGet, apiPost, apiPut, SERVICE_URLS } from "./http";
 
 const baseUrl = () => `${SERVICE_URLS.catalog()}/api/v1`;
+const catalogBaseUrl = () => `${SERVICE_URLS.catalog()}/api/v1/catalog-groups`;
+const catalogParticipantsBaseurl = () =>
+  `${SERVICE_URLS.catalog()}/api/v1/catalog-participants`;
 export async function listCareItemTypes(): Promise<CareItemType[]> {
+  // Rarely changes and is identical for every caller, so it's safe to
+  // let the Next Data Cache absorb repeat requests for a short window.
   const res = await apiGet<{ data: { content: CareItemType[] } }>(
     `${baseUrl()}/care-item-types`,
+    undefined,
+    60,
   );
   return res.data.content;
-  return [];
 }
 
 export async function saveCareItemType(
@@ -69,4 +76,33 @@ export async function updateCareItem(
 
 export async function deleteCareItem(id: string): Promise<void> {
   await apiDelete(`${baseUrl()}/care-items/${id}`);
+}
+
+export async function listParticipantsNotinList(params: {
+  groupIds?: string[];
+}): Promise<{ participantId: string; name: string }[]> {
+  const res = await apiPost<{
+    data: {
+      participants: { participantId: string; name: string }[];
+    };
+  }>(`${catalogParticipantsBaseurl()}/not-in-groups`, {
+    groupIds: params.groupIds ?? [],
+  });
+  return res.data.participants;
+}
+
+export async function listCatalogGroups(params: {
+  typeId?: number;
+} = {}): Promise<GroupForm[]> {
+  const searchParams = new URLSearchParams();
+  if (params.typeId != null) {
+    searchParams.set("typeId", String(params.typeId));
+  }
+  const query = searchParams.toString();
+  const res = await apiGet<{
+    data: {
+      content: GroupForm[];
+    };
+  }>(`${catalogBaseUrl()}${query ? `?${query}` : ""}`);
+  return res.data.content;
 }

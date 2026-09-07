@@ -214,6 +214,7 @@ export default function DriversPage() {
                             <div className="flex items-center gap-1">
                               <StatusBadge label={t(meta.label)} cls={meta.cls} />
                               <RowActions
+                                variant="menu"
                                 onEdit={() => openEdit(d)}
                                 onDelete={() =>
                                   deleteDriver(d.id, d.name)

@@ -1,5 +1,5 @@
 import { SortOption } from "@/components/data-view/data-view";
-import { MealRunStatus } from "./types";
+import { DateRangePreset, MealRunStatus } from "./types";
 
 export class MealsConfig {
   static readonly MEAL_RUN_SORT_OPTIONS: SortOption[] = [
@@ -7,6 +7,15 @@ export class MealsConfig {
     { key: "name", label: "meal.run" },
     { key: "departTime", label: "meal.departs" },
     { key: "status", label: "common.status" },
+  ];
+
+  static readonly DATE_RANGE_PRESETS: {
+    value: DateRangePreset;
+    label: string;
+  }[] = [
+    { value: "today", label: "Today" },
+    { value: "weekly", label: "Weekly" },
+    { value: "monthly", label: "Monthly" },
   ];
 
   static readonly mealStatusMeta: Record<

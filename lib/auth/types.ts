@@ -10,6 +10,8 @@ export interface LoginResponse {
   roles: string[];
   tokenType: string;
   expiresIn: 0;
+  username: string;
+  roleIds: number[]
 }
 
 export interface ForgotPasswordRequestForm {
@@ -30,6 +32,8 @@ export interface TokenCookies {
   refreshToken?: string;
   role?: string;
   rememberToken: boolean;
+  name?: string;
+  roleId?: number;
 }
 
 export interface Role {

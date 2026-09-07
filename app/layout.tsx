@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SWRConfig } from "swr";
 import { TooltipProvider } from "@/components/context/tooltip-provdier";
 import {
   ThemeProvider,
@@ -53,13 +54,20 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <LanguageProvider>
-          <ThemeProvider>
-            <NotificationProvider>
-              <TooltipProvider delay={200}>{children}</TooltipProvider>
-            </NotificationProvider>
-          </ThemeProvider>
-        </LanguageProvider>
+        <SWRConfig
+          value={{
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+          }}
+        >
+          <LanguageProvider>
+            <ThemeProvider>
+              <NotificationProvider>
+                <TooltipProvider delay={200}>{children}</TooltipProvider>
+              </NotificationProvider>
+            </ThemeProvider>
+          </LanguageProvider>
+        </SWRConfig>
       </body>
     </html>
   );

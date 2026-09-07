@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { apiGet, apiPost, SERVICE_URLS } from "@/lib/api/http";
+import { apiDelete, apiGet, apiPost, apiPut, SERVICE_URLS } from "@/lib/api/http";
 import { LoginForm, LoginResponse, TokenCookies } from "../auth/types";
 import { Role as RoleOptions } from "../auth/types";
 
@@ -24,7 +24,6 @@ export async function loginUser(data: LoginForm) {
     body: JSON.stringify(rest),
     cache: "no-store",
   });
-
   if (!response.ok) {
     return {
       success: false,
@@ -33,11 +32,14 @@ export async function loginUser(data: LoginForm) {
   }
 
   const result = (await response.json()) as LoginResponse;
+  console.log("result",result)
   await setAuthCookies({
     accessToken: result.accessToken,
     refreshToken: result.refreshToken,
     role: result.roles?.[0],
     rememberToken: rememberMe,
+    name: result.username,
+    roleId:result.roleIds?.[0]
   });
 
   return {
@@ -80,7 +82,7 @@ export async function refreshAccessToken(
     if (!data.accessToken) return null;
     await setAuthCookies({
       accessToken: data.accessToken,
-      rememberToken: true,
+      rememberToken: true
     });
     return data.accessToken;
   } catch {
@@ -93,6 +95,8 @@ export async function setAuthCookies({
   refreshToken,
   role,
   rememberToken,
+  name,
+  roleId
 }: TokenCookies) {
   const cookieStore = await cookies();
 
@@ -107,9 +111,30 @@ export async function setAuthCookies({
   cookieStore.set("access_token", accessToken, options);
   refreshToken && cookieStore.set("refresh_token", refreshToken, options);
   role && cookieStore.set("role_access", role, options);
+  name && cookieStore.set("user_name", name, options);
+  roleId && cookieStore.set("roleId", String(roleId), options);
 }
 
 export async function listRoles(): Promise<RoleOptions[]> {
-  const res = await apiGet<RoleOptions[]>(`${getAuthBase()}/roles`);
+  // Rarely changes and is identical for every caller, so it's safe to
+  // let the Next Data Cache absorb repeat requests for a short window.
+  const res = await apiGet<RoleOptions[]>(`${getAuthBase()}/roles`, undefined, 60);
+  return res;
+}
+
+export async function postUserRole(data:{name:string, description:string}): Promise<RoleOptions[]> {
+  const res = await apiPost<RoleOptions[]>(`${getAuthBase()}/roles`, data);
+  return res;
+} 
+export async function deleteRole(id: number): Promise<void> {
+  await apiDelete(`${getAuthBase()}/roles/${id}`);
+}
+
+export async function getRoleById(id: number): Promise<RoleOptions[]> {
+  const res = await apiGet<RoleOptions[]>(`${getAuthBase()}/roles/${id}`);
+  return res;
+}
+export async function editRoleById(id: number, data: {name:string, description:string}): Promise<RoleOptions[]> {
+  const res = await apiPut<RoleOptions[]>(`${getAuthBase()}/roles/${id}`, data);
   return res;
 }

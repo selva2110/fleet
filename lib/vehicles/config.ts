@@ -223,4 +223,12 @@ export class VehiclesConfig {
     value,
     label,
   }));
+
+  static readonly ACTIVE_VEHICLE_STATUSES: VehicleStatus[] = [
+    "assigned",
+    "heading-to-pickup",
+    "onboard",
+    "at-destination",
+    "returning",
+  ];
 }

@@ -21,8 +21,13 @@ export const VEHICLE_STATS_KEY = "vehicle-stats";
 
 const EMPTY_VEHICLES: Vehicle[] = [];
 
-export function useVehicles(params: VehicleQueryParams = {}) {
-  const key: [string, VehicleQueryParams?] = [VEHICLES_KEY, params];
+export function useVehicles(
+  params: VehicleQueryParams & { enabled?: boolean } = {},
+) {
+  const { enabled = true, ...queryParams } = params;
+  const key: [string, VehicleQueryParams?] | null = enabled
+    ? [VEHICLES_KEY, queryParams]
+    : null;
   const { data, isLoading, mutate } = useSWR<VehicleListResponse, Error>(
     key,
     async ([, queryParams]: [string, VehicleQueryParams?]) =>

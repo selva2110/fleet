@@ -10,11 +10,12 @@ export async function SessionManager({
 }) {
   const cookieStore = await cookies();
   const roleAccess = cookieStore.get("role_access")?.value;
+  const user = cookieStore.get("user_name")?.value;
   const isAdmin = roleAccess === "ADMIN";
   const isDispatcher = roleAccess === "DISPATCHER";
 
   return (
-    <SessionProviderClient isAdmin={isAdmin} isDispatcher={isDispatcher} userRole={roleAccess ?? 'No Assigned Role'}>
+    <SessionProviderClient isAdmin={isAdmin} isDispatcher={isDispatcher} userRole={roleAccess ?? 'No Assigned Role'} userName = {user ?? "Name not found"} >
       <TokenRefreshManager />
       {children}
     </SessionProviderClient>

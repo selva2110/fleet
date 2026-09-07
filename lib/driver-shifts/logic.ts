@@ -13,13 +13,12 @@ import type {
   MatchFactor,
   MatchResult,
   Recurrence,
-  ShiftDriver,
   ShiftParticipant,
   ShiftStop,
-  ShiftVehicle,
   Weekday,
 } from "./types";
-import { SHIFT_DRIVERS, SHIFT_VEHICLES } from "./mock-data";
+import type { Driver } from "@/lib/driver/types";
+import type { Vehicle } from "@/lib/vehicles/types";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -205,8 +204,8 @@ export function formatLongDate(date: string): string {
 export function matchParticipantToShift(
   participant: ShiftParticipant,
   shift: DriverShift,
-  vehicle: ShiftVehicle | null,
-  driver: ShiftDriver | null,
+  vehicle: Vehicle | null,
+  driver: Driver | null,
   occupiedSeats: number,
 ): MatchResult {
   const shiftStart = toMinutes(shift.startTime);
@@ -251,17 +250,8 @@ export function matchParticipantToShift(
     detail: driverOk ? undefined : driver ? "Driver is offline" : "No driver assigned",
   });
 
-  // Vehicle capacity.
-  const capacityOk = occupiedSeats < shift.capacity;
-  factors.push({
-    key: "capacity",
-    label: "Vehicle Capacity",
-    pass: capacityOk,
-    detail: capacityOk ? undefined : "Shift is at full capacity",
-  });
-
   // Route / vehicle compatibility (wheelchair need vs vehicle capability).
-  const routeOk = !participant.wheelchair || !!vehicle?.wheelchairAccessible;
+  const routeOk = !participant.wheelchair || (vehicle?.wheelchairCapacity ?? 0) > 0;
   factors.push({
     key: "route",
     label: "Route Compatibility",
@@ -269,10 +259,10 @@ export function matchParticipantToShift(
     detail: routeOk ? undefined : "Requires a wheelchair-accessible vehicle",
   });
 
-  // Blocking factors: schedule, time, capacity. Driver/route are soft-ish but
+  // Blocking factors: schedule, time, route. Driver is soft-ish but
   // route with a wheelchair mismatch also blocks.
   const blocking = factors.find(
-    (f) => !f.pass && (f.key === "schedule" || f.key === "time" || f.key === "capacity" || f.key === "route"),
+    (f) => !f.pass && (f.key === "schedule" || f.key === "time" || f.key === "route"),
   );
 
   const passCount = factors.filter((f) => f.pass).length;
@@ -314,39 +304,11 @@ export function detectShiftConflicts(shift: DriverShift, allShifts: DriverShift[
         conflicts.push({
           type: "shift-overlap",
           severity: "error",
-          message: `Driver already has "${other.name}" from ${to12h(other.startTime)} - ${to12h(other.endTime)} on overlapping days.`,
+          message: `Driver already has a shift from ${to12h(other.startTime)} - ${to12h(other.endTime)} on overlapping days.`,
         });
         break;
       }
     }
-  }
-
-  // Vehicle double-booking.
-  if (shift.vehicleId) {
-    for (const other of allShifts) {
-      if (other.id === shift.id || other.vehicleId !== shift.vehicleId) continue;
-      if (other.status === "cancelled") continue;
-      if (!sharesAnyDay(shift, other)) continue;
-      const oStart = toMinutes(other.startTime);
-      const oEnd = toMinutes(other.endTime);
-      if (overlapMinutes(start, end, oStart, oEnd) > 0) {
-        conflicts.push({
-          type: "vehicle-unavailable",
-          severity: "warning",
-          message: `Vehicle ${shift.vehicleId} is also booked on "${other.name}" during an overlapping window.`,
-        });
-        break;
-      }
-    }
-  }
-
-  // Capacity.
-  if (shift.stops.length > shift.capacity) {
-    conflicts.push({
-      type: "capacity-exceeded",
-      severity: "error",
-      message: `Assigned ${shift.stops.length} participants but capacity is ${shift.capacity}.`,
-    });
   }
 
   // Stops outside the shift window.
@@ -378,9 +340,6 @@ export function assignmentConflict(
   if (shift.stops.some((s) => s.participantId === participant.id)) {
     return { type: "participant-assigned", severity: "warning", message: `${participant.name} is already assigned to this shift.` };
   }
-  if (shift.stops.length >= shift.capacity) {
-    return { type: "capacity-exceeded", severity: "error", message: `Shift is at full capacity (${shift.capacity}).` };
-  }
   const start = toMinutes(shift.startTime);
   const end = toMinutes(shift.endTime);
   if (toMinutes(participant.pickupTime) < start) {
@@ -397,40 +356,38 @@ export function assignmentConflict(
 export function recommendDrivers(
   participant: ShiftParticipant,
   shifts: DriverShift[],
+  drivers: Driver[],
+  vehicles: Vehicle[],
 ): DriverRecommendation[] {
-  return SHIFT_DRIVERS.map((driver) => {
+  return drivers.map((driver) => {
     // Find the driver's shift that best fits, else evaluate against a synthetic
     // window from the driver's own availability.
     const driverShift = shifts.find((s) => s.driverId === driver.id && s.status !== "cancelled");
-    const vehicle = SHIFT_VEHICLES.find((v) => v.id === (driverShift?.vehicleId ?? driver.homeVehicleId)) ?? null;
+    const vehicle = vehicles.find((v) => v.id === driver.assignedVehicleId) ?? null;
     const syntheticShift: DriverShift =
       driverShift ??
       ({
         id: `virtual-${driver.id}`,
-        name: "Availability",
         driverId: driver.id,
-        vehicleId: driver.homeVehicleId,
         startDate: isoDate(new Date()),
         endDate: null,
         startTime: driver.shiftStart,
         endTime: driver.shiftEnd,
         timezone: "America/Chicago",
-        capacity: vehicle?.capacity ?? 4,
-        recurrence: { type: "weekly", interval: 1, weekdays: driver.availableDays, monthDay: 1, monthlyMode: "day-of-month", nthWeek: 1, nthWeekday: 1 },
+        recurrence: { type: "weekly", interval: 1, weekdays: driver.shiftDays as Weekday[], monthDay: 1, monthlyMode: "day-of-month", nthWeek: 1, nthWeekday: 1 },
         stops: [],
         status: "active",
       } as DriverShift);
 
     const occupied = driverShift ? driverShift.stops.length : 0;
     const match = matchParticipantToShift(participant, syntheticShift, vehicle, driver, occupied);
-    const seatsAvailable = (vehicle?.capacity ?? syntheticShift.capacity) - occupied;
+    const seatsAvailable = (vehicle?.capacity ?? 4) - occupied;
 
-    return { driver, match, seatsAvailable, distanceMiles: driver.distanceMiles };
+    return { driver, match, seatsAvailable };
   })
     .sort((a, b) => {
       if (a.match.eligible !== b.match.eligible) return a.match.eligible ? -1 : 1;
-      if (b.match.score !== a.match.score) return b.match.score - a.match.score;
-      return a.distanceMiles - b.distanceMiles;
+      return b.match.score - a.match.score;
     });
 }
 
@@ -452,6 +409,5 @@ export function deriveStatus(shift: DriverShift, allShifts: DriverShift[]): Driv
   const conflicts = detectShiftConflicts(shift, allShifts);
   if (conflicts.some((c) => c.severity === "error")) return "conflict";
   if (shift.stops.length === 0) return "active";
-  if (shift.stops.length >= shift.capacity) return "full";
   return "partial";
 }

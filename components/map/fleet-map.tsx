@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -115,7 +116,7 @@ function RouteSnapper({
   return null;
 }
 
-export default function FleetMap({
+function FleetMap({
   centers,
   vehicles,
   trips,
@@ -802,3 +803,5 @@ function vehicleIconMarkup(vehicle: Vehicle3D, highlighted: boolean) {
     </div>
   `;
 }
+
+export default memo(FleetMap);

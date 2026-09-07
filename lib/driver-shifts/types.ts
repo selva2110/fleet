@@ -1,11 +1,14 @@
 // -----------------------------------------------------------------------------
 // Driver Shifts — domain model
 //
-// This module is a self-contained prototype domain. All data is mock/local
-// (see mock-data.ts) and all business logic (recurrence, participant matching,
-// conflict detection) lives in logic.ts, deliberately isolated from the UI so
-// it can later be swapped for real API calls without touching components.
+// Drivers and vehicles are wired to the real fleet APIs (lib/driver, lib/
+// vehicles). Participants and shifts have no backend yet (see hooks.ts and
+// store.tsx) so they start empty. All business logic (recurrence, participant
+// matching, conflict detection) lives in logic.ts, deliberately isolated from
+// the UI so it can be swapped for real API calls without touching components.
 // -----------------------------------------------------------------------------
+
+import type { Driver } from "@/lib/driver/types";
 
 export type CalendarView = "daily" | "weekly" | "monthly";
 
@@ -55,19 +58,17 @@ export interface ShiftStop {
 
 export interface DriverShift {
   id: string;
-  name: string;
+  // name: string;
   driverId: string | null;
-  vehicleId: string | null;
-  /** IST calendar dates, "YYYY-MM-DD". endDate bounds the recurrence. */
+  // vehicleId: string | null;
   startDate: string;
   endDate: string | null;
   /** 24h "HH:mm". */
   startTime: string;
   endTime: string;
   timezone: string;
-  capacity: number;
+  // capacity: number;
   recurrence: Recurrence;
-  /** Ordered participant stops assigned to this shift. */
   stops: ShiftStop[];
   status: ShiftStatus;
   notes?: string;
@@ -79,38 +80,19 @@ export type DriverShiftInput = Omit<DriverShift, "id" | "status" | "stops"> & {
   stops?: ShiftStop[];
 };
 
-// --- Mock reference entities (isolated; mirror the app's real shapes loosely) --
-
-export interface ShiftDriver {
-  id: string;
-  name: string;
-  phone: string;
-  status: "available" | "on-trip" | "break" | "offline";
-  rating: number;
-  /** 24h "HH:mm" availability window. */
-  shiftStart: string;
-  shiftEnd: string;
-  /** Weekdays the driver is generally available (getDay index). */
-  availableDays: Weekday[];
-  /** Miles from a notional depot, used for recommendation distance. */
-  distanceMiles: number;
-  homeVehicleId: string | null;
-}
+// --- Reference entities ------------------------------------------------------
+//
+// Drivers and vehicles come from the real fleet APIs (see lib/driver, lib/
+// vehicles). ShiftParticipant is defined below because the real participant
+// service has no shift-scheduling fields (pickup/dropoff time, destination,
+// recurring schedule days) yet — see hooks.ts, which resolves it empty until
+// that service exists.
 
 export type ShiftVehicleType =
   | "Van"
   | "Wheelchair Van"
   | "Sedan"
   | "Medical Transport";
-
-export interface ShiftVehicle {
-  id: string;
-  name: string;
-  type: ShiftVehicleType;
-  capacity: number;
-  wheelchairAccessible: boolean;
-  status: "available" | "assigned" | "maintenance";
-}
 
 export interface ShiftParticipant {
   id: string;
@@ -162,10 +144,9 @@ export interface Conflict {
 }
 
 export interface DriverRecommendation {
-  driver: ShiftDriver;
+  driver: Driver;
   match: MatchResult;
   seatsAvailable: number;
-  distanceMiles: number;
 }
 
 /** Scope selector used when editing/cancelling a recurring shift. */

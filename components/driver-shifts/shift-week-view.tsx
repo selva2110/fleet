@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { addDays, parseISO, shiftOccursOnDate, startOfWeek, to12h } from "@/lib/driver-shifts/logic";
-import { findDriver, findVehicle } from "@/lib/driver-shifts/mock-data";
 import { SHIFT_STATUS_META } from "@/lib/driver-shifts/config";
+import { useDrivers } from "@/lib/driver/hooks";
 import type { DriverShift } from "@/lib/driver-shifts/types";
 
 const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -17,6 +17,7 @@ export function ShiftWeekView({
   shifts: DriverShift[];
   onSelectShift: (shift: DriverShift) => void;
 }) {
+  const { drivers } = useDrivers();
   const weekStart = startOfWeek(anchorDate);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = new Date();
@@ -26,7 +27,7 @@ export function ShiftWeekView({
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[720px]">
+      <div className="min-w-180">
         {/* Header row */}
         <div className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-border bg-muted/40">
           <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -61,8 +62,7 @@ export function ShiftWeekView({
           </div>
         ) : (
           visibleShifts.map((shift) => {
-            const driver = findDriver(shift.driverId);
-            const vehicle = findVehicle(shift.vehicleId);
+            const driver = drivers.find((d) => d.id === shift.driverId) ?? null;
             return (
               <div
                 key={shift.id}
@@ -70,14 +70,11 @@ export function ShiftWeekView({
               >
                 <div className="flex flex-col justify-center px-3 py-2">
                   <span className="truncate text-sm font-medium text-foreground">
-                    {driver?.name ?? shift.name}
+                    {driver?.name ?? "No Driver Name"}
                   </span>
                   <span className="text-[11px] tabular-nums text-muted-foreground">
                     {to12h(shift.startTime)} - {to12h(shift.endTime)}
                   </span>
-                  {vehicle ? (
-                    <span className="text-[11px] text-muted-foreground">{vehicle.name}</span>
-                  ) : null}
                 </div>
                 {days.map((d) => {
                   const occurs = shiftOccursOnDate(shift, d);
@@ -100,7 +97,7 @@ export function ShiftWeekView({
                           <span className="flex items-center gap-1">
                             <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
                             <span className="truncate text-[11px] font-semibold text-foreground">
-                              {shift.stops.length}/{shift.capacity}
+                              {shift.stops.length}
                             </span>
                           </span>
                           <span className="truncate text-[10px] text-muted-foreground">

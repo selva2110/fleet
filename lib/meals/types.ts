@@ -4,14 +4,21 @@
 // kitchen and drops them off at participants' homes over a date range.
 
 import { number } from "zod";
+import { ParticipantMealForm } from "../catalog/groups";
 
 export type MealRunStatus = "ACTIVE" | "INACTIVE";
+export type MealParticipantSourceType = "INDIVIDUAL" | "GROUP";
 
 export interface MealRunParticipant {
   id: number;
-  catalogId: number;
+  deliveryId: number;
   participantId: string;
-  participantName: string;
+  groupId: string | null;
+  sourceType: MealParticipantSourceType;
+  mealOption: string;
+  dietPlan: string;
+  mealNotes: string;
+  medicalNotes: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +36,7 @@ export interface MealRun {
   toDate: string;
   departTime: string;
   status: MealRunStatus;
+  groups: unknown[];
   participants: MealRunParticipant[];
   createdAt: string;
   updatedAt: string;
@@ -56,9 +64,12 @@ export type MealRunForm = {
   fromdate: string;
   todate: string;
   departTime: string;
-  participantIds: string[];
+  groupIds: string[];
+  participants: ParticipantMealForm[];
 };
 
 export type mealsQueryParams = {
   typeId?: number;
 };
+
+export type DateRangePreset = "today" | "weekly" | "monthly";

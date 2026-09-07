@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Pencil, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
+import {
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UtensilsCrossed,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,97 +21,143 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { SelectField, TextField } from "@/components/crud/form-fields";
+import { Field, SelectField, TextField } from "@/components/crud/form-fields";
 import {
   EmptyState,
-  compareValues,
+  LoadingState,
   useDataView,
 } from "@/components/data-view/data-view";
 import { useCenters } from "@/lib/events/hooks";
 import { useMealMutations } from "@/lib/meals/hooks";
 import { useVehicles } from "@/lib/vehicles/hooks";
 import { useDrivers } from "@/lib/driver/hooks";
-import { useParticipantReports } from "@/lib/participant/hooks";
+import { useParticipants } from "@/lib/participant/hooks";
 import { validateSchema } from "../validation/zod-validation";
 import { createMealRunSchema } from "../validation/meal-run";
-import { ParticipantMedMealReportItem } from "@/lib/participant/types";
 import { useTranslation } from "../context/language-provider";
 import { useNotifications } from "../context/notification-provider";
-import { MealRun, MealRunForm } from "@/lib/meals/types";
+import { DateRangePreset, MealRun, MealRunForm } from "@/lib/meals/types";
 import { MealsUtils } from "@/lib/meals/utils";
-import { useCareItemTypes } from "@/lib/catalog/hooks";
-import { createFieldSetter } from "../common";
-import { findById } from "@/lib/utils";
+import { ConfirmDialog, createFieldSetter } from "../common";
 import { todayLocalDate } from "@/lib/date";
-import { CatalogConfig } from "@/lib/catalog/config";
-import { CatalogParticipantColumnKey } from "@/lib/catalog/types";
 import { EditParticipantReportDialog } from "../catalog/edit-participant-report-dialog";
-
-type DateRangePreset = "today" | "weekly" | "monthly";
-
-const DATE_RANGE_PRESETS: { value: DateRangePreset; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-];
+import {
+  DIET_KEY_VALUE,
+  GroupForm,
+  MEAL_KEY_VALUE,
+  ParticipantMealForm,
+} from "@/lib/catalog/groups";
+import {
+  useCatalogGroups,
+  useParticipantGroupMutations,
+  // useParticipantsNotInGroups,
+} from "@/lib/catalog/groups-hooks";
+import { GroupFormDialog } from "../catalog/group-form-dialog";
+import { MealsConfig } from "@/lib/meals/config";
 
 export function NewMealRunDialog({
   open,
   onOpenChange,
   initialParticipantIds,
   type = 1,
-  columns = CatalogConfig.DEFAULT_COLUMNS,
   editingRun = null,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initialParticipantIds?: string[];
   type?: number;
-  columns?: CatalogParticipantColumnKey[];
   editingRun?: MealRun | null;
 }) {
-  const visibleColumns = useMemo(() => new Set(columns), [columns]);
-  const showColumn = (key: CatalogParticipantColumnKey) =>
-    visibleColumns.has(key);
   const { centers } = useCenters();
-  const { vehicles } = useVehicles();
-  const { careItemTypes } = useCareItemTypes();
-  const { drivers } = useDrivers();
-  const { reports } = useParticipantReports();
-  const { createMealDelivery, updateMealDelivery, deleteMealDelivery } =
-    useMealMutations();
-  const { t } = useTranslation();
-  const { addToast } = useNotifications();
-  const MealRunSchema = useMemo(() => createMealRunSchema(t), [t]);
   const [form, setForm] = useState<MealRunForm>(() =>
     MealsUtils.blankMealRun(centers[0]?.id ?? "", type),
   );
   const pdv = useDataView("name", "list");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteRunConfirmOpen, setDeleteRunConfirmOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [editingReport, setEditingReport] =
-    useState<ParticipantMedMealReportItem | null>(null);
+  const [editingReport, setEditingReport] = useState<{
+    participantId: string;
+    name: string;
+  } | null>(null);
+
+  const { vehicles } = useVehicles({ enabled: open });
+  // const { participants, isLoading } = useParticipantsNotInGroups({
+  //   groupIds: form.groupIds,
+  //   enabled: open,
+  // });
+  const { participants: allParticipants, isLoading } = useParticipants({
+    enabled: open,
+  });
+  const { drivers } = useDrivers({ enabled: open });
+  const { saveGroups, deleteGroup: deleteGroupMutation } =
+    useParticipantGroupMutations();
+  const { createMealDelivery, updateMealDelivery, deleteMealDelivery } =
+    useMealMutations();
+  const { catalogGroups, isLoading: groupsLoading } = useCatalogGroups({
+    typeId: type,
+    enabled: open,
+  });
+  const participants = useMemo(() => {
+    const selectedGroupMemberIds = new Set(
+      catalogGroups
+        .filter((g) => form.groupIds.includes(g.id))
+        .flatMap((g) => g.memberIds),
+    );
+    return allParticipants
+      .filter((p) => !selectedGroupMemberIds.has(p.id))
+      .map((p) => ({ participantId: p.id, name: p.name }));
+  }, [allParticipants, catalogGroups, form.groupIds]);
+  const { t } = useTranslation();
+  const { addToast } = useNotifications();
+  const MealRunSchema = useMemo(() => createMealRunSchema(t), [t]);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const set = createFieldSetter(setForm, setErrors);
-  const mealTypes = careItemTypes.map((item) => {
-    return {
-      label: item.name,
-      value: String(item.id),
-    };
-  });
+
+  const [groupFormOpen, setGroupFormOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<GroupForm | null>(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<GroupForm | null>(
+    null,
+  );
+  const [groupQuery, setGroupQuery] = useState("");
+  const [forms, setForms] = useState<ParticipantMealForm[]>([]);
+
+  const filteredParticipants = useMemo(() => {
+    const query = pdv.query.trim().toLowerCase();
+    if (!query) return participants;
+    return participants.filter((p) => p.name.toLowerCase().includes(query));
+  }, [participants, pdv.query]);
+  const filteredGroups = useMemo(() => {
+    const query = groupQuery.trim().toLowerCase();
+    if (!query) return catalogGroups;
+    return catalogGroups.filter((g) => g.name.toLowerCase().includes(query));
+  }, [catalogGroups, groupQuery]);
+
   useEffect(() => {
     if (!open) return;
+
     if (editingRun) {
+      const individualParticipants = editingRun.participants
+        .filter((p) => p.sourceType !== "GROUP")
+        .map((p) => ({
+          participantId: p.participantId,
+          mealOption: p.mealOption,
+          dietPlan: p.dietPlan,
+          mealNotes: p.mealNotes,
+          medicalNotes: p.medicalNotes,
+        }));
+      const groupIds = Array.from(
+        new Set(
+          editingRun.participants
+            .filter((p) => p.sourceType === "GROUP" && p.groupId)
+            .map((p) => p.groupId as string),
+        ),
+      );
+
       setForm({
         id: editingRun.id,
         name: editingRun.name,
@@ -115,19 +168,37 @@ export function NewMealRunDialog({
         fromdate: editingRun.fromDate,
         todate: editingRun.toDate,
         departTime: editingRun.departTime,
-        participantIds: editingRun.participants.map((p) => p.participantId),
+        groupIds,
+        participants: individualParticipants,
       });
+      setForms(individualParticipants);
+
       return;
     }
+
     if (initialParticipantIds?.length) {
       setForm((f) => ({
         ...f,
-        participantIds: Array.from(
-          new Set([...f.participantIds, ...initialParticipantIds]),
-        ),
+
+        participants: [
+          ...f.participants,
+          ...initialParticipantIds.map((participantId) => ({
+            participantId,
+            mealOption: "",
+            dietPlan: "",
+            mealNotes: "",
+            medicalNotes: "",
+          })),
+        ],
       }));
     }
-  }, [open, editingRun]);
+  }, [open, editingRun, initialParticipantIds]);
+
+  useEffect(() => {
+    if (!open || isLoading) return;
+    const validIds = new Set(participants.map((p) => p.participantId));
+    setForms((current) => current.filter((f) => validIds.has(f.participantId)));
+  }, [open, isLoading, participants]);
 
   const centerOptions = [
     { value: "", label: "meal.selectkitchen" },
@@ -145,45 +216,82 @@ export function NewMealRunDialog({
     ...drivers.map((d) => ({ value: d.id, label: d.name })),
   ];
 
-  const filteredParticipants = useMemo(() => {
-    const q = pdv.query.trim().toLowerCase();
-    const list = reports.filter(
-      (p) =>
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.address?.toLowerCase().includes(q) ?? false) ||
-        (p.phone?.toLowerCase().includes(q) ?? false),
-    );
-    list.sort((a, b) =>
-      compareValues(
-        a[pdv.sortKey as keyof ParticipantMedMealReportItem],
-        b[pdv.sortKey as keyof ParticipantMedMealReportItem],
-        pdv.sortDir,
-      ),
-    );
-    return list;
-  }, [reports, pdv.query, pdv.sortKey, pdv.sortDir]);
+  function toggle(id: string, p: { participantId: string; name: string }) {
+    const exists = forms.some((x) => x.participantId === id);
 
-  const selected = useMemo(
-    () =>
-      form.participantIds
-        .map((id) => reports.find((r) => r.participantId === id))
-        .filter((p): p is ParticipantMedMealReportItem => Boolean(p)),
-    [form.participantIds, reports],
-  );
+    if (exists) setForms((f) => f.filter((x) => x.participantId !== id));
+    else {
+      setEditingReport(p);
+      setReportDialogOpen(true);
+    }
+  }
 
-  function toggle(id: string) {
+  function toggleGroup(groupId: string, checked: boolean) {
     setForm((f) => ({
       ...f,
-      participantIds: f.participantIds.includes(id)
-        ? f.participantIds.filter((x) => x !== id)
-        : [...f.participantIds, id],
+      groupIds: checked
+        ? [...f.groupIds.filter((id) => id !== groupId), groupId]
+        : f.groupIds.filter((id) => id !== groupId),
     }));
+  }
+
+  function openCreateGroupForm() {
+    setEditingGroup(null);
+    setGroupFormOpen(true);
+  }
+
+  function openEditGroupForm(group: GroupForm) {
+    setEditingGroup(group);
+    setGroupFormOpen(true);
+  }
+
+  async function saveGroup(input: GroupForm) {
+    try {
+      await saveGroups(input);
+      addToast({
+        title: t("common.success"),
+        message: t("part.groupsaved"),
+        kind: "success",
+      });
+      setGroupFormOpen(false);
+      setEditingGroup(null);
+    } catch {
+      addToast({
+        title: t("common.savefailed"),
+        message: t("common.savefailedmessage"),
+        kind: "danger",
+      });
+    }
+  }
+
+  async function confirmDeleteGroup() {
+    if (!deleteGroupTarget) return;
+    try {
+      await deleteGroupMutation(deleteGroupTarget.id);
+      addToast({
+        title: t("common.success"),
+        message: t("part.groupdeleted"),
+        kind: "success",
+      });
+      setDeleteGroupTarget(null);
+    } catch {
+      addToast({
+        title: t("common.savefailed"),
+        message: t("common.savefailedmessage"),
+        kind: "danger",
+      });
+    }
   }
 
   function reset() {
     setForm(MealsUtils.blankMealRun(centers[0]?.id ?? "", type));
+    setForms([]);
     pdv.setQuery("");
+    setGroupQuery("");
+    setGroupFormOpen(false);
+    setEditingGroup(null);
+    setDeleteGroupTarget(null);
+    setDeleteRunConfirmOpen(false);
   }
 
   function applyDateRangePreset(preset: DateRangePreset) {
@@ -198,8 +306,8 @@ export function NewMealRunDialog({
     setErrors((e) => ({ ...e, fromdate: "", todate: "" }));
   }
 
-  function validate() {
-    const isValid = validateSchema(MealRunSchema, form, setErrors);
+  function validate(data: MealRunForm) {
+    const isValid = validateSchema(MealRunSchema, data, setErrors);
     if (!isValid) {
       addToast({
         title: t("common.validationfailed"),
@@ -211,18 +319,19 @@ export function NewMealRunDialog({
   }
 
   async function submit() {
-    if (!validate()) return;
+    const updatedForm = { ...form, participants: forms };
+    if (!validate(updatedForm)) return;
     setSaving(true);
     try {
       if (editingRun) {
-        await updateMealDelivery(form);
+        await updateMealDelivery(updatedForm);
         addToast({
           title: t("common.success"),
           message: t("meal.updatedsuccess"),
           kind: "success",
         });
       } else {
-        await createMealDelivery(form);
+        await createMealDelivery(updatedForm);
         addToast({
           title: t("common.success"),
           message: t("meal.createdsuccess"),
@@ -252,6 +361,7 @@ export function NewMealRunDialog({
         message: t("meal.deletedsuccess"),
         kind: "success",
       });
+      setDeleteRunConfirmOpen(false);
       reset();
       onOpenChange(false);
     } catch {
@@ -273,18 +383,32 @@ export function NewMealRunDialog({
         reset();
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UtensilsCrossed className="size-4 text-primary" />{" "}
-            {editingRun ? t("meal.editrun") : t("meal.newrun")}
+            {type === 1
+              ? editingRun
+                ? t("meal.editrun")
+                : t("meal.newrun")
+              : editingRun
+                ? t("Edit Medical Delivery")
+                : t("New Medical Delivery")}
           </DialogTitle>
           <DialogDescription>
-            {editingRun ? t("meal.editrundesc") : t("meal.newrundesc")}
+            {type === 1
+              ? editingRun
+                ? t("meal.editrundesc")
+                : t("meal.newrundesc")
+              : editingRun
+                ? t(
+                    "Update the schedule, assignment, or participants for this medical delivery.",
+                  )
+                : t("Schedule a new medical delivery run.")}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] px-1 w-full overflow-hidden">
-          <div className="grid gap-4 sm:grid-cols-2 pr-4 px-2">
+        <ScrollArea className="max-h-[60vh] overflow-hidden">
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label={t("meal.runname")}
               value={form.name}
@@ -298,17 +422,165 @@ export function NewMealRunDialog({
               onChange={(value) => set("centerId", value)}
               error={errors.centerId}
             />
-            <SelectField
-              label={"Type"}
-              value={String(form.typeId)}
-              options={mealTypes}
-              onChange={() => {}}
-              error={errors.mealType}
-              disabled
-            />
+
+            <Field label={"Groups"} className="sm:col-span-2">
+              <div className="flex flex-col gap-2 rounded-lg border border-border p-2">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Manage Groups
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={openCreateGroupForm}
+                  >
+                    <Plus className="size-3.5" /> {t("Add Groups")}
+                  </Button>
+                </div>
+                {catalogGroups.length > 0 ? (
+                  <div className="relative px-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={groupQuery}
+                      onChange={(e) => setGroupQuery(e.target.value)}
+                      placeholder={t("meal.searchgroups")}
+                      className="pl-8"
+                    />
+                  </div>
+                ) : null}
+                {groupsLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {t("common.loading")}
+                  </div>
+                ) : filteredGroups.length === 0 ? (
+                  <p className="px-1 py-2 text-xs text-muted-foreground">
+                    {t("meal.nogroupsmatch")}
+                  </p>
+                ) : (
+                  <div className="flex flex-col divide-y divide-border max-h-32 overflow-auto">
+                    {filteredGroups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="flex cursor-pointer flex-wrap items-center gap-2.5 px-2 py-2 text-sm hover:bg-muted"
+                      >
+                        <Checkbox
+                          checked={form.groupIds.includes(group.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onCheckedChange={(v) =>
+                            toggleGroup(group.id, v === true)
+                          }
+                          aria-label={group.name}
+                        />
+                        <span className="flex-1 font-medium">{group.name}</span>
+                        <Badge variant="outline">
+                          {group.mealOption &&
+                            MEAL_KEY_VALUE[
+                              group.mealOption as keyof typeof MEAL_KEY_VALUE
+                            ]}
+                        </Badge>
+                        <Badge variant="outline">
+                          {group.dietPlan &&
+                            DIET_KEY_VALUE[
+                              group.dietPlan as keyof typeof DIET_KEY_VALUE
+                            ]}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {group.memberIds.length} {t("members")}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t("common.edit")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditGroupForm(group);
+                          }}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t("common.delete")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteGroupTarget(group);
+                          }}
+                        >
+                          <Trash2 className="size-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Field>
+            <div className="rounded-lg border border-border mt-3 sm:col-span-2">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("Individual Participants Selected")} ({forms.length})
+                </span>
+              </div>
+              <div className="p-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={pdv.query}
+                    onChange={(e) => pdv.setQuery(e.target.value)}
+                    placeholder={t("e.searchparticipants")}
+                    className="pl-8"
+                  />
+                </div>
+
+                <div className="mt-3 max-h-60 overflow-y-auto rounded-md border border-border">
+                  {isLoading ? (
+                    <LoadingState />
+                  ) : filteredParticipants.length === 0 ? (
+                    <EmptyState message={t("part.none")} />
+                  ) : (
+                    <Table>
+                      <TableBody>
+                        {filteredParticipants.map((p, idx) => {
+                          const on = forms.some(
+                            (item) => item.participantId === p.participantId,
+                          );
+                          return (
+                            <TableRow
+                              key={idx}
+                              onClick={() => toggle(p.participantId, p)}
+                              data-on={on}
+                              className="cursor-pointer data-[on=true]:bg-accent/50"
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={on}
+                                  onCheckedChange={() =>
+                                    toggle(p.participantId, p)
+                                  }
+                                  aria-label={p.participantId}
+                                />
+                              </TableCell>
+                              <TableCell className="w-full">
+                                <p className="text-sm font-medium">
+                                  {p.name.trim() || "No Participant Name"}
+                                </p>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <div className="flex items-center gap-2 sm:col-span-2">
-              {DATE_RANGE_PRESETS.map((preset) => (
+              {MealsConfig.DATE_RANGE_PRESETS.map((preset) => (
                 <Button
                   key={preset.value}
                   type="button"
@@ -320,27 +592,29 @@ export function NewMealRunDialog({
                 </Button>
               ))}
             </div>
-            <TextField
-              label="From Date"
-              type="date"
-              value={form.fromdate}
-              onChange={(value) => set("fromdate", value)}
-              error={errors.fromdate}
-            />
-            <TextField
-              label="To Date"
-              type="date"
-              value={form.todate}
-              onChange={(value) => set("todate", value)}
-              error={errors.todate}
-            />
-            <TextField
-              label={t("meal.departuretime")}
-              type="time"
-              value={form.departTime}
-              onChange={(value) => set("departTime", value)}
-              error={errors.departTime}
-            />
+            <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-3">
+              <TextField
+                label="From Date"
+                type="date"
+                value={form.fromdate}
+                onChange={(value) => set("fromdate", value)}
+                error={errors.fromdate}
+              />
+              <TextField
+                label="To Date"
+                type="date"
+                value={form.todate}
+                onChange={(value) => set("todate", value)}
+                error={errors.todate}
+              />
+              <TextField
+                label={t("meal.departuretime")}
+                type="time"
+                value={form.departTime}
+                onChange={(value) => set("departTime", value)}
+                error={errors.departTime}
+              />
+            </div>
             <SelectField
               label={t("common.vehicle")}
               value={form.vehicleId ?? ""}
@@ -356,123 +630,11 @@ export function NewMealRunDialog({
               error={errors.driverId}
             />
           </div>
-          {errors.participantIds ? (
+          {errors.participants ? (
             <p className="mt-2 text-sm text-destructive pr-4">
-              {errors.participantIds}
+              {errors.participants}
             </p>
           ) : null}
-          <div className="rounded-lg border border-border mt-3 pr-4">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("meal.deliverystops")} ({selected.length})
-              </span>
-            </div>
-            <div className="p-3">
-              {selected.length > 0 ? (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {selected.map((p) => (
-                    <span
-                      key={p.participantId}
-                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                    >
-                      {p.name}
-                      <button
-                        type="button"
-                        onClick={() => toggle(p.participantId)}
-                        aria-label={t("e.removeparticipant").replace(
-                          "{{name}}",
-                          p.name,
-                        )}
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={pdv.query}
-                  onChange={(e) => pdv.setQuery(e.target.value)}
-                  placeholder={t("e.searchparticipants")}
-                  className="pl-8"
-                />
-              </div>
-
-              <div className="mt-3 max-h-72 overflow-y-auto rounded-md border border-border">
-                {filteredParticipants.length === 0 ? (
-                  <EmptyState message={t("part.none")} />
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10" />
-                        <TableHead>{t("common.participant")}</TableHead>
-                        {showColumn("mealNotes") && showColumn("dietPlan") && (
-                          <>
-                            <TableHead>{t("part.dietplan")}</TableHead>
-                            <TableHead>{t("part.mealnotes")}</TableHead>
-                          </>
-                        )}
-                        {showColumn("medicalNotes") && (
-                          <>
-                            <TableHead>{t("part.medicalNotes")}</TableHead>
-                          </>
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredParticipants.map((p) => {
-                        const on = form.participantIds.includes(
-                          p.participantId,
-                        );
-                        return (
-                          <TableRow
-                            key={p.participantId}
-                            onClick={() => toggle(p.participantId)}
-                            data-on={on}
-                            className="cursor-pointer data-[on=true]:bg-accent/50"
-                          >
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={on}
-                                onCheckedChange={() => toggle(p.participantId)}
-                                aria-label={p.name}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <p className="text-sm font-medium">{p.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {p.address}
-                              </p>
-                            </TableCell>
-                            {showColumn("mealNotes") &&
-                              showColumn("dietPlan") && (
-                                <>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {p.dietPlan || "—"}
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {p.mealNotes || "—"}
-                                  </TableCell>
-                                </>
-                              )}
-                            {showColumn("medicalNotes") && (
-                              <TableCell className="text-sm text-muted-foreground">
-                                {p.medicalNotes || "—"}
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-            </div>
-          </div>
         </ScrollArea>
 
         <DialogFooter>
@@ -480,7 +642,7 @@ export function NewMealRunDialog({
             <Button
               variant="destructive"
               className="mr-auto"
-              onClick={handleDelete}
+              onClick={() => setDeleteRunConfirmOpen(true)}
               disabled={saving || deleting}
             >
               <Trash2 className="size-4" />
@@ -490,14 +652,22 @@ export function NewMealRunDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={saving || deleting}>
+          <Button
+            onClick={submit}
+            disabled={
+              saving ||
+              deleting ||
+              isLoading ||
+              (!forms.length && !form.groupIds.length)
+            }
+          >
             {editingRun
               ? saving
                 ? t("common.saving")
                 : t("common.savchanges")
               : saving
                 ? t("meal.creating")
-                : `${t("meal.createrun")} (${form.participantIds.length})`}
+                : `${t("meal.createrun")} (${forms.length + form.groupIds.length || 0} )`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -509,7 +679,51 @@ export function NewMealRunDialog({
           if (!v) setEditingReport(null);
         }}
         report={editingReport}
-        columns={columns}
+        type={type}
+        onSave={(newForm) => {
+          setForms((current) => [
+            ...current.filter(
+              (form) => form.participantId !== newForm.participantId,
+            ),
+            newForm,
+          ]);
+
+          setReportDialogOpen(false);
+          setEditingReport(null);
+        }}
+      />
+      <GroupFormDialog
+        open={groupFormOpen}
+        onOpenChange={(open) => {
+          setGroupFormOpen(open);
+          if (!open) setEditingGroup(null);
+        }}
+        group={editingGroup}
+        typeId={type}
+        onSave={saveGroup}
+      />
+
+      <ConfirmDialog
+        open={deleteGroupTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDeleteGroupTarget(null);
+        }}
+        title={t("Delete Group")}
+        message={t("Are you sure you want to delete this Group?")}
+        onConfirm={confirmDeleteGroup}
+      />
+
+      <ConfirmDialog
+        open={deleteRunConfirmOpen}
+        onOpenChange={setDeleteRunConfirmOpen}
+        title={t("meal.deleterun")}
+        message={t("meal.deletecnfrm").replace(
+          "{{name}}",
+          editingRun?.name ?? form.name,
+        )}
+        onConfirm={handleDelete}
+        loading={deleting}
+        confirmLabel={deleting ? t("common.deleting") : t("common.delete")}
       />
     </Dialog>
   );

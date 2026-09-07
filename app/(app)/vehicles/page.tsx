@@ -407,6 +407,7 @@ function VehicleCard({
           <p className="text-xs text-muted-foreground">{t(vehicleType)}</p>
         </div>
         <RowActions
+          variant="menu"
           onEdit={onEdit}
           onDelete={onDelete}
           deleteTitle={t("vehicle.delete")}

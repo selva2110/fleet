@@ -1,3 +1,4 @@
+import { ParticipantMealForm } from "../catalog/groups";
 import { todayLocalDate } from "../date";
 import { MealsConfig } from "./config";
 import { MealRun, MealRunForm } from "./types";
@@ -13,7 +14,18 @@ export class MealsUtils {
       fromdate: todayLocalDate(),
       todate: todayLocalDate(),
       departTime: "11:30",
-      participantIds: [],
+      groupIds: [],
+      participants: [],
+    };
+  }
+
+  static blankParticipantRecord(): ParticipantMealForm {
+    return {
+      participantId: "",
+      mealOption: "",
+      dietPlan: "",
+      mealNotes: "",
+      medicalNotes: "",
     };
   }
 

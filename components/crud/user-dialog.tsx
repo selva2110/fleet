@@ -56,7 +56,7 @@ export function UserDialog({
     value: center.id,
   }));
   const [form, setForm] = useState<UserForm>(
-    UserUtils.blankUser(roleOptions[0]?.value ?? ""),
+    UserUtils.blankUser(roleOptions[0]?.value ?? "", centerOptions[0]?.value ?? ""),
   );
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -75,7 +75,9 @@ export function UserDialog({
         confirmPassword: "",
       });
     } else {
-      setForm(UserUtils.blankUser(roleOptions[0]?.value ?? ""));
+      setForm(
+        UserUtils.blankUser(roleOptions[0]?.value ?? "", centerOptions[0]?.value ?? ""),
+      );
     }
     setErrors({});
   }, [editing, open]);
@@ -126,7 +128,7 @@ export function UserDialog({
           <DialogDescription>{t("user.dialogdesc")}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="-mx-1 max-h-[60vh] px-1">
+        <ScrollArea className="max-h-[60vh]">
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <TextField
@@ -145,15 +147,6 @@ export function UserDialog({
                 error={errors.email}
               />
             </div>
-            <AddressField
-              label={t("common.address")}
-              value={form.address}
-              onChange={(v) => set("address", v)}
-              location={null}
-              onLocationChange={(v) => {}}
-              required
-              error={errors.address}
-            />
             <div className="grid grid-cols-2 gap-3">
               <TextField
                 label={t("common.phone")}
@@ -210,7 +203,9 @@ export function UserDialog({
             </div>
             <SelectField
               label={t("user.role")}
-              value={form.roleIds[0] !== undefined ? String(form.roleIds[0]) : ""}
+              value={
+                form.roleIds[0] !== undefined ? String(form.roleIds[0]) : ""
+              }
               options={roleOptions}
               onChange={(v) => set("roleIds", v ? [Number(v)] : [])}
               required
@@ -220,6 +215,15 @@ export function UserDialog({
               label={form.status ? t("common.active") : t("common.inactive")}
               checked={form.status}
               onChange={(v) => set("status", v)}
+            />
+            <AddressField
+              label={t("common.address")}
+              value={form.address}
+              onChange={(v) => set("address", v)}
+              location={null}
+              onLocationChange={(v) => {}}
+              required
+              error={errors.address}
             />
           </div>
         </ScrollArea>

@@ -122,6 +122,8 @@ export const viTranslations = {
   "part.editreport": "Edit meal & medical details",
   "part.editreportdesc": "Update diet plan, meal notes, and medical notes for this participant.",
   "part.reportsavedsuccess": "Participant details updated successfully.",
+  "part.cleardietmeal": "Clear diet & meal plan",
+  "part.reportclearedsuccess": "Diet plan and meal notes cleared.",
   "part.transportreq": "Yêu cầu vận chuyển",
   "part.bloodgroup": "Nhóm máu",
   "part.companion": "Người đi cùng",
@@ -492,6 +494,7 @@ export const viTranslations = {
   "e.eligibleonly": "Chỉ người đủ điều kiện",
   "e.allstatuses": "Tất cả trạng thái",
   "e.removeparticipant": "Xóa {{name}}",
+  "e.removeparticipantcnfrm": "Xóa {{name}} khỏi sự kiện này?",
 
   "meal.run": "Chuyến",
   "meal.kitchencenter": "Nhà bếp/Trung tâm",
@@ -594,6 +597,7 @@ export const viTranslations = {
   "notif.noalerts": "Không có cảnh báo mới",
   "notif.nonotifications": "Chưa có thông báo nào.",
   "notif.clearall": "Xóa tất cả",
+  "notif.clearallcnfrm": "Xóa tất cả thông báo? Không thể hoàn tác thao tác này.",
   "part.none": "Không có người tham gia nào khớp với tìm kiếm và bộ lọc.",
 
   "common.clear": "Xóa",
@@ -746,6 +750,9 @@ export const viTranslations = {
   "meal.pickupkitchencenter": "Nhà bếp / Trung tâm lấy hàng",
   "meal.departuretime": "Giờ khởi hành",
   "meal.deliverystops": "Điểm dừng giao hàng",
+  "meal.searchgroups": "Tìm nhóm theo tên",
+  "meal.nogroupsavailable": "Không có nhóm nào.",
+  "meal.nogroupsmatch": "Không có nhóm nào khớp với tìm kiếm của bạn.",
   "meal.creating": "Đang tạo…",
   "meal.createrun": "Tạo chuyến",
   "meal.editrun": "Chỉnh sửa chuyến giao bữa ăn",
@@ -910,7 +917,7 @@ export const viTranslations = {
   "common.listview": "Chế độ danh sách",
   "common.searchellipsis": "Tìm kiếm…",
   "common.result": "kết quả",
-  "common.sortlabel": "Sắp x��p:",
+  "common.sortlabel": "Sắp xếp:",
   "common.sortascending": "Sắp xếp tăng dần",
   "common.sortdescending": "Sắp xếp giảm dần",
   "common.ascending": "Tăng dần",
@@ -963,6 +970,8 @@ export const viTranslations = {
   "val.capacityMin": "Số chỗ ngồi phải ít nhất là 1",
   "val.wheelchairCapacityMin": "Sức chứa xe lăn không được là số âm",
   "val.dialCodeRequired": "Mã quốc gia là bắt buộc",
+  "val.shiftStartDateRequired": "Ngày bắt đầu là bắt buộc",
+  "val.shiftEndDateBeforeStart": "Ngày kết thúc không được trước ngày bắt đầu",
 
   "vehicles.descriptions.sedan":
     "Xe nhỏ gọn cho 1–3 hành khách có thể đi lại. Nhanh chóng và tiết kiệm nhiên liệu cho các tuyến đường ngắn.",
@@ -1230,4 +1239,18 @@ export const viTranslations = {
   "trip.pickupinprogress": "Đang đón khách",
   "trip.onboard": "Đã lên xe",
   "trip.arrived": "Đã đến nơi",
+
+  "role.add": "Thêm vai trò",
+  "role.createdesc": "Tạo một vai trò mới có thể gán cho người dùng.",
+  "role.name": "Tên",
+  "role.nameplaceholder": "ví dụ: Điều phối viên",
+  "role.description": "Mô tả",
+  "role.descriptionplaceholder": "Vai trò này có thể làm gì",
+  "role.save": "Lưu vai trò",
+  "role.edit": "Chỉnh sửa vai trò",
+  "role.editdesc": "Cập nhật thông tin chi tiết của vai trò này.",
+  "role.updatesuccess": "Cập nhật vai trò thành công",
+  "role.createsuccess": "Tạo vai trò thành công",
+  "role.savechanges": "Lưu thay đổi",
+
 };

@@ -9,7 +9,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, Users, Star, AlertTriangle, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Clock,
+  Users,
+  Star,
+  AlertTriangle,
+  Check,
+} from "lucide-react";
 
 import { PageHeader, StatCard } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -26,57 +34,68 @@ import {
 } from "@/components/ui/dialog";
 
 import { useDriverShifts } from "@/lib/driver-shifts/store";
-import { SHIFT_PARTICIPANTS } from "@/lib/driver-shifts/mock-data";
+import { useDrivers } from "@/lib/driver/hooks";
+import { useVehicles } from "@/lib/vehicles/hooks";
+import { useShiftParticipants } from "@/lib/driver-shifts/hooks";
 import {
   recommendDrivers,
   to12h,
   assignmentConflict,
 } from "@/lib/driver-shifts/logic";
 import { MatchScoreBadge } from "@/components/driver-shifts/match-score";
-import type { ShiftParticipant, DriverRecommendation, DriverShift } from "@/lib/driver-shifts/types";
+import type {
+  ShiftParticipant,
+  DriverRecommendation,
+  DriverShift,
+} from "@/lib/driver-shifts/types";
 
 export default function UnassignedParticipantsPage() {
-  const { shifts, unassignedParticipantIds, assignParticipant } = useDriverShifts();
+  const { shifts, unassignedParticipantIds, assignParticipant } =
+    useDriverShifts();
+  const { drivers } = useDrivers();
+  const { vehicles } = useVehicles();
+  const { participants } = useShiftParticipants();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ShiftParticipant | null>(null);
 
   const unassigned = useMemo(() => {
     const set = new Set(unassignedParticipantIds);
-    return SHIFT_PARTICIPANTS.filter((p) => set.has(p.id)).filter((p) =>
+    return participants.filter((p) => set.has(p.id)).filter((p) =>
       query.trim()
         ? `${p.name} ${p.destination} ${p.pickupAddress}`
             .toLowerCase()
             .includes(query.trim().toLowerCase())
         : true,
     );
-  }, [unassignedParticipantIds, query]);
+  }, [unassignedParticipantIds, query, participants]);
 
   const withNeeds = unassigned.filter((p) => p.wheelchair).length;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 shrink-0"
-          render={<Link href="/driver-shifts" aria-label="Back to shifts" />}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <PageHeader
-          title="Unassigned participants"
-          description="Members without a scheduled shift. Review ranked driver matches and assign."
+      <PageHeader
+        title="Unassigned participants"
+        description="Members without a scheduled shift. Review ranked driver matches and assign."
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3 px-6">
+        <StatCard label="Unassigned" value={unassigned.length} icon={Users} />
+        <StatCard
+          label="Wheelchair"
+          value={withNeeds}
+          icon={AlertTriangle}
+          tone="warning"
+        />
+        <StatCard
+          label="Active shifts"
+          value={
+            shifts.filter((s: DriverShift) => s.status !== "cancelled").length
+          }
+          icon={Clock}
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Unassigned" value={unassigned.length} icon={Users} />
-        <StatCard label="Wheelchair" value={withNeeds} icon={AlertTriangle} tone="warning" />
-        <StatCard label="Active shifts" value={shifts.filter((s: DriverShift) => s.status !== "cancelled").length} icon={Clock} />
-      </div>
-
-      <div className="max-w-sm">
+      <div className="max-w-sm px-6">
         <Input
           placeholder="Search participants…"
           value={query}
@@ -93,12 +112,12 @@ export default function UnassignedParticipantsPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 px-6">
           {unassigned.map((p) => (
             <ParticipantCard
               key={p.id}
               participant={p}
-              recommendations={recommendDrivers(p, shifts)}
+              recommendations={recommendDrivers(p, shifts, drivers, vehicles)}
               onAssign={() => setSelected(p)}
             />
           ))}
@@ -144,15 +163,24 @@ function ParticipantCard({
 
       <div className="flex flex-wrap gap-1.5">
         {participant.wheelchair ? (
-          <Badge variant="secondary" className="text-xs">Wheelchair</Badge>
+          <Badge variant="secondary" className="text-xs">
+            Wheelchair
+          </Badge>
         ) : null}
-        <Badge variant="secondary" className="text-xs">{participant.requiredVehicleType}</Badge>
+        <Badge variant="secondary" className="text-xs">
+          {participant.requiredVehicleType}
+        </Badge>
       </div>
 
       <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-        <p className="text-xs font-medium text-muted-foreground">Top driver matches</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          Top driver matches
+        </p>
         {top.map((rec) => (
-          <div key={rec.driver.id} className="flex items-center justify-between gap-2 text-sm">
+          <div
+            key={rec.driver.id}
+            className="flex items-center justify-between gap-2 text-sm"
+          >
             <span className="flex min-w-0 items-center gap-1.5">
               <Star className="size-3 shrink-0 text-muted-foreground" />
               <span className="truncate">{rec.driver.name}</span>
@@ -161,7 +189,10 @@ function ParticipantCard({
               <span className="text-xs text-muted-foreground tabular-nums">
                 {rec.seatsAvailable} seat{rec.seatsAvailable === 1 ? "" : "s"}
               </span>
-              <MatchScoreBadge score={rec.match.score} eligible={rec.match.eligible} />
+              <MatchScoreBadge
+                score={rec.match.score}
+                eligible={rec.match.eligible}
+              />
             </span>
           </div>
         ))}
@@ -184,9 +215,11 @@ function AssignDialog({
   onConfirm: (shiftId: string, participantId: string) => void;
 }) {
   const { shifts } = useDriverShifts();
+  const { drivers } = useDrivers();
+  const { vehicles } = useVehicles();
   const recommendations = useMemo(
-    () => (participant ? recommendDrivers(participant, shifts) : []),
-    [participant, shifts],
+    () => (participant ? recommendDrivers(participant, shifts, drivers, vehicles) : []),
+    [participant, shifts, drivers, vehicles],
   );
 
   return (
@@ -195,18 +228,21 @@ function AssignDialog({
         <DialogHeader>
           <DialogTitle>Assign {participant?.name}</DialogTitle>
           <DialogDescription>
-            Drivers ranked by match score. Only shifts with room and a compatible
-            window can accept this participant.
+            Drivers ranked by match score. Only shifts with room and a
+            compatible window can accept this participant.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex max-h-96 flex-col gap-2 overflow-y-auto">
           {recommendations.map((rec) => {
             const shift = shifts.find(
-              (s: DriverShift) => s.driverId === rec.driver.id && s.status !== "cancelled",
+              (s: DriverShift) =>
+                s.driverId === rec.driver.id && s.status !== "cancelled",
             );
             const conflict =
-              participant && shift ? assignmentConflict(participant, shift) : null;
+              participant && shift
+                ? assignmentConflict(participant, shift)
+                : null;
             const blocked = !shift || conflict?.severity === "error";
             return (
               <div
@@ -216,11 +252,14 @@ function AssignDialog({
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium">
                     <span className="truncate">{rec.driver.name}</span>
-                    <MatchScoreBadge score={rec.match.score} eligible={rec.match.eligible} />
+                    <MatchScoreBadge
+                      score={rec.match.score}
+                      eligible={rec.match.eligible}
+                    />
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {shift
-                      ? `${shift.name} · ${to12h(shift.startTime)}–${to12h(shift.endTime)} · ${rec.seatsAvailable} seat${rec.seatsAvailable === 1 ? "" : "s"}`
+                      ? `${to12h(shift.startTime)}–${to12h(shift.endTime)} · ${rec.seatsAvailable} seat${rec.seatsAvailable === 1 ? "" : "s"}`
                       : "No active shift for this driver"}
                   </p>
                   {conflict ? (

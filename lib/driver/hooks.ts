@@ -10,8 +10,12 @@ export const DRIVERS_KEY = "drivers";
 
 const EMPTY_DRIVERS: Driver[] = [];
 
-export function useDrivers() {
-  const { data, isLoading, mutate } = useSWR<Driver[]>(DRIVERS_KEY, getDrivers);
+export function useDrivers(params: { enabled?: boolean } = {}) {
+  const { enabled = true } = params;
+  const { data, isLoading, mutate } = useSWR<Driver[]>(
+    enabled ? DRIVERS_KEY : null,
+    getDrivers,
+  );
   return { drivers: data ?? EMPTY_DRIVERS, isLoading, mutate };
 }
 

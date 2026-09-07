@@ -1,4 +1,7 @@
+import { Driver } from "../driver/types";
+import { Trip } from "../trips/types";
 import { LatLng } from "../types";
+import { Vehicle } from "../vehicles/types";
 
 export interface FleetEvent {
   id: string;
@@ -188,7 +191,10 @@ export type DomainEventType =
   //User
   | "user.created"
   | "user.updated"
-  | "user.deleted";
+  | "user.deleted"
+  | "role.created"
+  | "role.updated"
+  | "role.deleted";
 
 export type AggregateType =
   | "event"
@@ -201,6 +207,21 @@ export type AggregateType =
   | "system"
   | "careItem"
   | "careItemType"
-  | "user";
+  | "user"
+  | "role";
 
 export type EventsTab = "events" | "meal-delivery" | "catalog";
+
+export interface EventGroupListProps {
+  groups: { event: FleetEvent | undefined; trips: Trip[] }[];
+  isEmpty: boolean;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  expandedEventId: string | null;
+  onToggleExpand: (eventId: string | null) => void;
+  selectedTripId: string | null;
+  onSelectTrip: (tripId: string | null) => void;
+  vehicles: Vehicle[];
+  drivers: Driver[];
+  t: (key: string) => string;
+}

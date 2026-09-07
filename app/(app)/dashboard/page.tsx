@@ -8,6 +8,7 @@ import { FadeIn } from '@/components/aurora/aurora-ui'
 import { useAuroraData } from '@/components/aurora/use-aurora-data'
 import { useTranslation } from '@/components/context/language-provider'
 import { AuroraCalendars } from '@/components/aurora/aurora-calendars';
+import { useSession } from '@/components/context/session-provider-client'
 
 function useGreeting() {
   const [state, setState] = useState<{ greeting: string; time: string; date: string } | null>(null)
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const {t} = useTranslation()
   const greeting = useGreeting()
   const data = useAuroraData()
+  const {userName} = useSession()
 
   return (
     <div className="relative min-h-full bg-background text-foreground">
@@ -42,7 +44,7 @@ export default function DashboardPage() {
         <FadeIn className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground text-balance sm:text-3xl">
-              {greeting ? t(greeting.greeting) : t("dash.welcomeback")}
+              {greeting ? t(greeting.greeting) : t("dash.welcomeback")} {userName}!
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {t('dash.subtitle')}

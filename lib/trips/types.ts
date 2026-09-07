@@ -1,5 +1,8 @@
-import { UnassignedParticipant } from "../participant/types";
+import { Driver } from "../driver/types";
+import { Center, FleetEvent } from "../events/types";
+import { Participant, UnassignedParticipant } from "../participant/types";
 import { LatLng } from "../types";
+import { Vehicle } from "../vehicles/types";
 
 export type TripStatus =
   | "PLANNED"
@@ -210,5 +213,16 @@ export type ActiveTrip = {
 };
 
 export type TripSocketContextType = {
-  vehicleLocations: Record<Trip['id'], TripUpdate>;
+  vehicleLocations: Record<Trip["id"], TripUpdate>;
 };
+
+export interface TripDetailProps {
+  tripId: string;
+  trips: Trip[];
+  vehicles: Vehicle[];
+  drivers: Driver[];
+  centers: Center[];
+  events: FleetEvent[];
+  participants: Participant[];
+  onClose: () => void;
+}

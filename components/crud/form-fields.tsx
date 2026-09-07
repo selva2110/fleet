@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { MapboxSimpleMap } from "@/components/map/mapbox-simple";
+import dynamic from "next/dynamic";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,18 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { LatLng } from "@/lib/types";
 import { useTranslation } from "../context/language-provider";
+
+const MapboxSimpleMap = dynamic(
+  () => import("@/components/map/mapbox-simple").then((mod) => mod.MapboxSimpleMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-56 w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 interface FielProps {
   label?: string;

@@ -23,8 +23,13 @@ export const PARTICIPANT_REPORTS_KEY = "participant-reports";
 const EMPTY_PARTICIPANTS: Participant[] = [];
 const EMPTY_PARTICIPANT_REPORTS: ParticipantMedMealReportItem[] = [];
 
-export function useParticipants(params: ParticipantQueryParams = {}) {
-  const key: [string, ParticipantQueryParams?] = [PARTICIPANTS_KEY, params];
+export function useParticipants(
+  params: ParticipantQueryParams & { enabled?: boolean } = {},
+) {
+  const { enabled = true, ...queryParams } = params;
+  const key: [string, ParticipantQueryParams?] | null = enabled
+    ? [PARTICIPANTS_KEY, queryParams]
+    : null;
   const { data, isLoading, mutate } = useSWR<ParticipantListResponse, Error>(
     key,
     async ([, queryParams]: [string, ParticipantQueryParams?]) =>

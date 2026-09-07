@@ -142,6 +142,7 @@ export default function ParticipantsPage() {
                             </p>
                           </div>
                           <RowActions
+                            variant="menu"
                             onEdit={() => openEdit(p)}
                             onDelete={() => deleteParticipant(p.id, p.name)}
                             deleteTitle={t("part.delete")}

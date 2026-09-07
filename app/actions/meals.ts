@@ -33,5 +33,5 @@ export async function deleteMealDelivery(
   id: number,
   _actorRole = "dispatcher",
 ): Promise<void> {
-  await mealsApi.deleteMealDeliveryMock(id);
+  await mealsApi.deleteMealMedDelivery(id);
 }

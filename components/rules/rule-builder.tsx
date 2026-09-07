@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/common'
 import {
   Select,
   SelectContent,
@@ -152,6 +154,7 @@ function ConditionRow({
   const field = findField(condition.entity, condition.field)
   const entityFields = fieldsForEntity(condition.entity)
   const validOps = field ? OPERATORS_BY_TYPE[field.type] : []
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
 
   function changeEntity(entity: RuleEntity) {
     const first = fieldsForEntity(entity)[0]
@@ -210,13 +213,24 @@ function ConditionRow({
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={onRemove}
+          onClick={() => setConfirmRemoveOpen(true)}
           aria-label="Remove condition"
           className="shrink-0 text-muted-foreground hover:text-destructive"
         >
           <X className="size-4" />
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmRemoveOpen}
+        onOpenChange={setConfirmRemoveOpen}
+        title="Remove condition"
+        message="Remove this condition from the rule?"
+        onConfirm={() => {
+          onRemove()
+          setConfirmRemoveOpen(false)
+        }}
+      />
     </div>
   )
 }
@@ -336,6 +350,7 @@ export function ThenBuilder({
     ruleType === 'HARD'
       ? (['block', 'require', 'flag'] as ActionKind[])
       : (['penalize', 'boost', 'prefer', 'flag'] as ActionKind[])
+  const [removeActionId, setRemoveActionId] = useState<string | null>(null)
 
   function addAction() {
     onChange([...actions, { id: uid('a'), kind: allowed[0], target: '', weight: ACTION_META[allowed[0]].hasWeight ? 10 : undefined }])
@@ -406,7 +421,7 @@ export function ThenBuilder({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => onChange(actions.filter((x) => x.id !== action.id))}
+                    onClick={() => setRemoveActionId(action.id)}
                     aria-label="Remove action"
                     className="shrink-0 text-muted-foreground hover:text-destructive"
                   >
@@ -418,6 +433,19 @@ export function ThenBuilder({
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={removeActionId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveActionId(null)
+        }}
+        title="Remove action"
+        message="Remove this action from the rule?"
+        onConfirm={() => {
+          onChange(actions.filter((x) => x.id !== removeActionId))
+          setRemoveActionId(null)
+        }}
+      />
     </div>
   )
 }

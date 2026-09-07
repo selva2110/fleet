@@ -3,18 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bus, MapPin, Trash2, UserRound } from 'lucide-react'
-import { PageHeader, StatusBadge } from '@/components/common'
+import { ConfirmDialog, PageHeader, StatusBadge } from '@/components/common'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -399,27 +391,17 @@ export default function TripsPage() {
         </ListLayout>
       </div>
 
-      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('trip.clearall')}</DialogTitle>
-            <DialogDescription>
-              {t('trip.clearalldesc')
-                .replace("{{count}}", String(trips.length))
-                .replace("{{suffix}}", trips.length === 1 ? "" : "s")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter showCloseButton>
-            <Button
-              variant="destructive"
-              onClick={confirmClearAll}
-              disabled={clearing}
-            >
-              {clearing ? t('trip.clearing') : t('trip.clearall')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        title={t('trip.clearall')}
+        message={t('trip.clearalldesc')
+          .replace("{{count}}", String(trips.length))
+          .replace("{{suffix}}", trips.length === 1 ? "" : "s")}
+        onConfirm={confirmClearAll}
+        loading={clearing}
+        confirmLabel={clearing ? t('trip.clearing') : t('trip.clearall')}
+      />
     </div>
   );
 }

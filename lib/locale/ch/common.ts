@@ -117,6 +117,8 @@ export const chTranslations = {
   "part.editreport": "Edit meal & medical details",
   "part.editreportdesc": "Update diet plan, meal notes, and medical notes for this participant.",
   "part.reportsavedsuccess": "Participant details updated successfully.",
+  "part.cleardietmeal": "Clear diet & meal plan",
+  "part.reportclearedsuccess": "Diet plan and meal notes cleared.",
   "part.transportreq": "运输要求",
   "part.bloodgroup": "血型",
   "part.companion": "陪同人员",
@@ -469,6 +471,7 @@ export const chTranslations = {
   "e.eligibleonly": "仅符合条件者",
   "e.allstatuses": "所有状态",
   "e.removeparticipant": "移除 {{name}}",
+  "e.removeparticipantcnfrm": "确定要将 {{name}} 从此活动中移除吗？",
 
   "meal.run": "行程",
   "meal.kitchencenter": "厨房/中心",
@@ -568,6 +571,7 @@ export const chTranslations = {
   "notif.noalerts": "无新预警",
   "notif.nonotifications": "暂无通知。",
   "notif.clearall": "清除全部",
+  "notif.clearallcnfrm": "清除所有通知？此操作无法撤销。",
   "part.none": "没有符合您搜索和筛选条件的参与者。",
 
   "common.clear": "清除",
@@ -711,6 +715,9 @@ export const chTranslations = {
   "meal.pickupkitchencenter": "取餐厨房 / 中心",
   "meal.departuretime": "出发时间",
   "meal.deliverystops": "配送停靠点",
+  "meal.searchgroups": "按名称搜索群组",
+  "meal.nogroupsavailable": "暂无可用群组。",
+  "meal.nogroupsmatch": "没有符合搜索条件的群组。",
   "meal.creating": "正在创建…",
   "meal.createrun": "创建行程",
   "meal.editrun": "编辑送餐行程",
@@ -914,6 +921,8 @@ export const chTranslations = {
   "val.capacityMin": "座位容量必须至少为 1",
   "val.wheelchairCapacityMin": "轮椅容量不能为负数",
   "val.dialCodeRequired": "需要国际区号",
+  "val.shiftStartDateRequired": "开始日期为必填项",
+  "val.shiftEndDateBeforeStart": "结束日期不能早于开始日期",
 
   "vehicles.descriptions.sedan":
     "适用于 1-3 名行动自如乘客的紧凑型轿车。短途路线快速且省油。",
@@ -1170,4 +1179,17 @@ export const chTranslations = {
   "trip.pickupinprogress": "接载进行中",
   "trip.onboard": "已上车",
   "trip.arrived": "已到达",
+
+  "role.add": "添加角色",
+  "role.createdesc": "创建一个可分配给用户的新角色。",
+  "role.name": "名称",
+  "role.nameplaceholder": "例如：调度员",
+  "role.description": "描述",
+  "role.descriptionplaceholder": "此角色可以执行的操作",
+  "role.save": "保存角色",
+  "role.edit": "编辑角色",
+  "role.editdesc": "更新此角色的详细信息。",
+  "role.updatesuccess": "角色更新成功",
+  "role.createsuccess": "角色创建成功",
+  "role.savechanges": "保存更改",
 };

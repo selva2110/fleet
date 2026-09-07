@@ -55,6 +55,12 @@
   --color-danger-foreground: var(--danger-foreground);
   --color-danger-muted: var(--danger-muted);
   --color-danger-border: var(--danger-border);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-purple: var(--purple);
+  --color-purple-foreground: var(--purple-foreground);
+  --color-orange: var(--orange);
+  --color-orange-foreground: var(--orange-foreground);
 }
 
 :root {
@@ -101,6 +107,12 @@
   --danger-foreground: oklch(0.985 0.01 25);
   --danger-muted: oklch(0.965 0.035 25);
   --danger-border: oklch(0.88 0.09 25);
+  --info: oklch(0.6 0.15 235);
+  --info-foreground: oklch(0.99 0.01 235);
+  --purple: oklch(0.55 0.19 300);
+  --purple-foreground: oklch(0.99 0.01 300);
+  --orange: oklch(0.68 0.17 45);
+  --orange-foreground: oklch(0.99 0.01 45);
 }
 
 .dark {
@@ -144,6 +156,12 @@
   --danger-foreground: oklch(0.985 0.01 25);
   --danger-muted: oklch(0.965 0.035 25);
   --danger-border: oklch(0.88 0.09 25);
+  --info: oklch(0.7 0.14 235);
+  --info-foreground: oklch(0.14 0.02 235);
+  --purple: oklch(0.68 0.18 300);
+  --purple-foreground: oklch(0.14 0.03 300);
+  --orange: oklch(0.75 0.16 45);
+  --orange-foreground: oklch(0.2 0.04 45);
 }
 
 /* On Lok — senior-care palette
@@ -193,6 +211,12 @@
   --danger-foreground: oklch(0.985 0.01 25);
   --danger-muted: oklch(0.965 0.035 25);
   --danger-border: oklch(0.88 0.09 25);
+  --info: oklch(0.6 0.12 220);
+  --info-foreground: oklch(0.99 0.01 220);
+  --purple: oklch(0.53 0.15 300);
+  --purple-foreground: oklch(0.99 0.01 300);
+  --orange: oklch(0.7 0.145 75);
+  --orange-foreground: oklch(0.3 0.055 75);
 }
 
 /* Evergreen — warm forest calm: soft green-cream canvas, forest-green
@@ -239,6 +263,12 @@
   --danger-foreground: oklch(0.985 0.01 25);
   --danger-muted: oklch(0.965 0.035 25);
   --danger-border: oklch(0.88 0.09 25);
+  --info: oklch(0.58 0.1 190);
+  --info-foreground: oklch(0.99 0.01 190);
+  --purple: oklch(0.5 0.13 300);
+  --purple-foreground: oklch(0.99 0.01 300);
+  --orange: oklch(0.74 0.14 72);
+  --orange-foreground: oklch(0.3 0.05 72);
 }
 
 /* Sunrise — warm coral & teal: cream-peach canvas, warm coral primary,
@@ -285,6 +315,12 @@
   --danger-foreground: oklch(0.985 0.01 25);
   --danger-muted: oklch(0.965 0.035 25);
   --danger-border: oklch(0.88 0.09 25);
+  --info: oklch(0.6 0.11 195);
+  --info-foreground: oklch(0.99 0.01 195);
+  --purple: oklch(0.48 0.13 300);
+  --purple-foreground: oklch(0.99 0.01 300);
+  --orange: oklch(0.62 0.15 45);
+  --orange-foreground: oklch(0.99 0.012 60);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -329,6 +365,12 @@
     --danger-foreground: oklch(0.985 0.01 25);
     --danger-muted: oklch(0.965 0.035 25);
     --danger-border: oklch(0.88 0.09 25);
+    --info: oklch(0.7 0.14 235);
+    --info-foreground: oklch(0.14 0.02 235);
+    --purple: oklch(0.68 0.18 300);
+    --purple-foreground: oklch(0.14 0.03 300);
+    --orange: oklch(0.75 0.16 45);
+    --orange-foreground: oklch(0.2 0.04 45);
   }
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangle,
   CalendarClock,
@@ -34,13 +33,19 @@ import {
   shiftOccursOnDate,
   startOfWeek,
 } from "@/lib/driver-shifts/logic";
-import { SHIFT_DRIVERS, SHIFT_VEHICLES } from "@/lib/driver-shifts/mock-data";
 import { SHIFT_STATUS_META } from "@/lib/driver-shifts/config";
-import type { CalendarView, DriverShift, ShiftStatus } from "@/lib/driver-shifts/types";
+import { useDrivers } from "@/lib/driver/hooks";
+import { useVehicles } from "@/lib/vehicles/hooks";
+import type {
+  CalendarView,
+  DriverShift,
+  ShiftStatus,
+} from "@/lib/driver-shifts/types";
 import { ShiftWeekView } from "@/components/driver-shifts/shift-week-view";
 import { ShiftDayView } from "@/components/driver-shifts/shift-day-view";
 import { ShiftMonthView } from "@/components/driver-shifts/shift-month-view";
 import { ShiftDrawer } from "@/components/driver-shifts/shift-drawer";
+import { SelectField } from "@/components/crud/form-fields";
 
 const VIEW_OPTIONS: { value: CalendarView; label: string }[] = [
   { value: "daily", label: "Day" },
@@ -48,35 +53,44 @@ const VIEW_OPTIONS: { value: CalendarView; label: string }[] = [
   { value: "monthly", label: "Month" },
 ];
 
-const STATUS_FILTER: (ShiftStatus | "all")[] = ["all", "active", "partial", "full", "conflict", "draft"];
+const STATUS_FILTER = [
+  { label: "All", value: "" },
+  { label: "Active", value: "active" },
+  { label: "Partial", value: "partial" },
+  { label: "Full", value: "full" },
+  { label: "Conflict", value: "conflict" },
+  { label: "Draft", value: "draft" },
+] satisfies { label: string; value: ShiftStatus | "" }[];
 
 export default function DriverShiftsPage() {
   const { shifts, unassignedParticipantIds } = useDriverShifts();
+  const { drivers } = useDrivers();
+  const { vehicles } = useVehicles();
 
   const [view, setView] = useState<CalendarView>("weekly");
   const [anchor, setAnchor] = useState<string>(() => isoDate(new Date()));
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ShiftStatus | "all">("all");
-  const [driverFilter, setDriverFilter] = useState<string>("all");
-  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<ShiftStatus | "">("");
+  const [driverFilter, setDriverFilter] = useState<string>("");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<DriverShift | null>(null);
 
   const filtered = useMemo(() => {
     return shifts.filter((s) => {
-      if (statusFilter !== "all" && s.status !== statusFilter) return false;
-      if (driverFilter !== "all" && s.driverId !== driverFilter) return false;
-      if (vehicleFilter !== "all" && s.vehicleId !== vehicleFilter) return false;
+      if (statusFilter !== "" && s.status !== statusFilter) return false;
+      if (driverFilter !== "" && s.driverId !== driverFilter) return false;
+      // if (vehicleFilter !== "all" && s.vehicleId !== vehicleFilter) return false;
       if (query.trim()) {
         const q = query.toLowerCase();
-        const driver = SHIFT_DRIVERS.find((d) => d.id === s.driverId);
-        const hay = `${s.name} ${driver?.name ?? ""} ${s.vehicleId ?? ""}`.toLowerCase();
+        const driver = drivers.find((d) => d.id === s.driverId);
+        const hay = `${driver?.name ?? ""}`;
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [shifts, statusFilter, driverFilter, vehicleFilter, query]);
+  }, [shifts, statusFilter, driverFilter, vehicleFilter, query, drivers]);
 
   const stats = useMemo(() => {
     const active = shifts.filter((s) => s.status !== "cancelled");
@@ -126,8 +140,27 @@ export default function DriverShiftsPage() {
       const end = addDays(start, 6);
       return `${parseISO(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${parseISO(end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     }
-    return parseISO(anchor).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    return parseISO(anchor).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
   }, [view, anchor]);
+
+  const DRIVER_OPTIONS = [
+    { value: "", label: "All Drivers" },
+    ...drivers.map((item) => ({
+      label: item.name,
+      value: item.id,
+    })),
+  ];
+
+  const VEHICLE_OPTIONS = [
+    { value: "", label: "All Vehicles" },
+    ...vehicles.map((item) => ({
+      label: item.name,
+      value: item.id,
+    })),
+  ];
 
   return (
     <div className="flex flex-col gap-5">
@@ -136,15 +169,6 @@ export default function DriverShiftsPage() {
         description="Create, schedule and staff recurring driver shifts, then map participants onto each run."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" render={<Link href="/driver-shifts/unassigned" />}>
-              <UserPlus className="size-4" />
-              Unassigned
-              {stats.unassigned > 0 ? (
-                <span className="ml-1 rounded-full bg-warning/20 px-1.5 text-xs font-semibold text-warning-foreground">
-                  {stats.unassigned}
-                </span>
-              ) : null}
-            </Button>
             <Button onClick={openCreate}>
               <Plus className="size-4" />
               New Shift
@@ -153,74 +177,90 @@ export default function DriverShiftsPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CalendarClock} label="Shifts Today" value={stats.today} tone="primary" />
-        <StatCard icon={Users} label="Participants Assigned" value={stats.assigned} tone="success" />
-        <StatCard icon={UserPlus} label="Unassigned Participants" value={stats.unassigned} tone="warning" />
-        <StatCard icon={AlertTriangle} label="Shifts in Conflict" value={stats.conflicts} tone="danger" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 px-6">
+        <StatCard
+          icon={CalendarClock}
+          label="Shifts Today"
+          value={stats.today}
+          tone="primary"
+        />
+        <StatCard
+          icon={Users}
+          label="Participants Assigned"
+          value={stats.assigned}
+          tone="success"
+        />
+        <StatCard
+          icon={UserPlus}
+          label="Unassigned Participants"
+          value={stats.unassigned}
+          tone="warning"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label="Shifts in Conflict"
+          value={stats.conflicts}
+          tone="danger"
+        />
       </div>
 
       {/* Filters */}
-      <Card className="flex flex-col gap-3 p-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <Card className="flex flex-col gap-3 p-3 mx-5">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
           <Input
             placeholder="Search shift, driver or vehicle..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-9 max-w-64"
+            className="h-9"
           />
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ShiftStatus | "all")}>
-            <SelectTrigger className="h-9 w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTER.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s === "all" ? "All statuses" : SHIFT_STATUS_META[s].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={driverFilter} onValueChange={(v) => setDriverFilter(v ?? "all")}>
-            <SelectTrigger className="h-9 w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All drivers</SelectItem>
-              {SHIFT_DRIVERS.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={vehicleFilter} onValueChange={(v) => setVehicleFilter(v ?? "all")}>
-            <SelectTrigger className="h-9 w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All vehicles</SelectItem>
-              {SHIFT_VEHICLES.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectField
+            label=""
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as ShiftStatus | "")}
+            options={STATUS_FILTER}
+          />
+          <SelectField
+            label=""
+            value={driverFilter}
+            onChange={(v) => setDriverFilter(v ?? "")}
+            options={DRIVER_OPTIONS}
+          />
+          <SelectField
+            label=""
+            value={vehicleFilter}
+            onChange={(v) => setVehicleFilter(v ?? "")}
+            options={VEHICLE_OPTIONS}
+          />
         </div>
       </Card>
 
       {/* Calendar toolbar */}
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden p-0 mx-6">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="size-8" onClick={() => shiftRange(-1)} aria-label="Previous">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8"
+              onClick={() => shiftRange(-1)}
+              aria-label="Previous"
+            >
               <ChevronLeft className="size-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(isoDate(new Date()))}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAnchor(isoDate(new Date()))}
+            >
               Today
             </Button>
-            <Button variant="outline" size="icon" className="size-8" onClick={() => shiftRange(1)} aria-label="Next">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8"
+              onClick={() => shiftRange(1)}
+              aria-label="Next"
+            >
               <ChevronRight className="size-4" />
             </Button>
             <span className="ml-1 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -248,9 +288,17 @@ export default function DriverShiftsPage() {
         </div>
 
         {view === "weekly" ? (
-          <ShiftWeekView anchorDate={anchor} shifts={filtered} onSelectShift={openEdit} />
+          <ShiftWeekView
+            anchorDate={anchor}
+            shifts={filtered}
+            onSelectShift={openEdit}
+          />
         ) : view === "daily" ? (
-          <ShiftDayView date={anchor} shifts={filtered} onSelectShift={openEdit} />
+          <ShiftDayView
+            date={anchor}
+            shifts={filtered}
+            onSelectShift={openEdit}
+          />
         ) : (
           <ShiftMonthView
             anchorDate={anchor}
@@ -263,11 +311,16 @@ export default function DriverShiftsPage() {
         )}
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Showing {filtered.length} of {shifts.length} shifts · {formatLongDate(anchor)}
+      <p className="text-xs text-muted-foreground text-right pr-6 pb-3">
+        Showing {filtered.length} of {shifts.length} shifts ·{" "}
+        {formatLongDate(anchor)}
       </p>
 
-      <ShiftDrawer open={drawerOpen} onOpenChange={setDrawerOpen} editing={editing} />
+      <ShiftDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        editing={editing}
+      />
     </div>
   );
 }

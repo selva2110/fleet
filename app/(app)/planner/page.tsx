@@ -697,7 +697,7 @@ function RecentPlans({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium">
-                        {event?.name ?? t('planner.unknownevent')}
+                        {event?.name ?? t("planner.unknownevent")}
                       </p>
 
                       <Badge
@@ -708,16 +708,22 @@ function RecentPlans({
                         }
                       >
                         {g.dispatched && <Check className="mr-1 size-3" />}
-                        {g.dispatched ? t('planner.dispatched') : t('planner.notdispatched')}
+                        {g.dispatched
+                          ? t("planner.dispatched")
+                          : t("planner.notdispatched")}
                       </Badge>
                     </div>
 
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {center?.name && `${center.name} · `}
-                      {event && `${formatMonthDayYear(event.date)} · ${t('e.startTime')} - ${formatTimeOfDay(event.startTime)} · ${t('e.endTime')} - ${formatTimeOfDay(event.endTime)} · `}
+                      {event &&
+                        `${formatMonthDayYear(event.date)} · ${t("e.startTime")} - ${formatTimeOfDay(event.startTime)} · ${t("e.endTime")} - ${formatTimeOfDay(event.endTime)} · `}
                       {g.trips.length}{" "}
-                      {g.trips.length === 1 ? t('planner.route') : t('planner.routes')} · {g.riders}{" "}
-                      {t('planner.ridersword')} · {formatMiles(g.distance)}
+                      {g.trips.length === 1
+                        ? t("planner.route")
+                        : t("planner.routes")}{" "}
+                      · {g.riders} {t("planner.ridersword")} ·{" "}
+                      {formatMiles(g.distance)}
                     </p>
                   </div>
                 </CollapsibleTrigger>
@@ -726,7 +732,7 @@ function RecentPlans({
                   {g.dispatched ? (
                     allTripsCompleted ? (
                       <Button size="sm" variant="outline">
-                        {t('e.tripcompleted')}
+                        {t("e.tripcompleted")}
                       </Button>
                     ) : (
                       <Button
@@ -734,30 +740,27 @@ function RecentPlans({
                         variant="outline"
                         onClick={() => onOpenDispatch(g.eventId)}
                       >
-                        {t('planner.opendispatch')}
+                        {t("planner.opendispatch")}
                       </Button>
                     )
-                  ) : (g.trips.some((t) => t.status === "PLANNED" || t.status === "VEHICLE_ASSIGNED" || t.status === "DRIVER_ASSIGNED")) ? (
-                    <Button
-                      size="sm"
-                      disabled={busyId === g.eventId}
-                      onClick={async () => {
-                        setBusyId(g.eventId);
-                        try {
-                          await onReplan(g.eventId);
-                        } finally {
-                          setBusyId(null);
-                        }
-                      }}
-                    >
-                      <Sparkles className="size-4" />
-                      {t('planner.replan')}
-                    </Button>
                   ) : (
-                    <div className="flex items-center gap-2 rounded-md border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger">
-                      <span className="font-medium">{t('planner.replandeadlinelabel')}</span>
-                      <span>Can Replan only before Trip Starts</span>
-                    </div>
+                    (g.trips.length === 0 || !!event?.tripCreationFailedReason) && (
+                      <Button
+                        size="sm"
+                        disabled={busyId === g.eventId}
+                        onClick={async () => {
+                          setBusyId(g.eventId);
+                          try {
+                            await onReplan(g.eventId);
+                          } finally {
+                            setBusyId(null);
+                          }
+                        }}
+                      >
+                        <Sparkles className="size-4" />
+                        {t("planner.replan")}
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -765,183 +768,207 @@ function RecentPlans({
               {/* Event details */}
               <CollapsibleContent>
                 <div className="border-t bg-muted/20 px-4 py-3">
-                {event?.tripCreationFailedReason ? (
-                  <FailureReasons
-                    reason={event.tripCreationFailedReason}
-                    canReplan={g.trips.some((t) => t.status === "PLANNED" || t.status === "VEHICLE_ASSIGNED" || t.status === "DRIVER_ASSIGNED")}
-                    busy={busyId === g.eventId}
-                    onReplan={async () => {
-                      setBusyId(g.eventId)
-                      try {
-                        await onReplan(g.eventId)
-                      } finally {
-                        setBusyId(null)
+                  {event?.tripCreationFailedReason || g.trips.length === 0 ? (
+                    <FailureReasons
+                      reason={
+                        event?.tripCreationFailedReason ??
+                        "Trip Creation Failed Reason Not Available"
                       }
-                    }}
-                  />
-                ) : (
-                g.trips.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {t('planner.routeslabel')}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {g.trips.length}{" "}
-                          {g.trips.length === 1 ? t('planner.route') : t('planner.routes')}
-                        </span>
-                      </div>
+                      canReplan={
+                        !!event?.tripCreationFailedReason ||
+                        g.trips.length === 0
+                      }
+                      busy={busyId === g.eventId}
+                      onReplan={async () => {
+                        setBusyId(g.eventId);
 
-                      {g.trips.map((trip) => {
-                        const meta = TripsConfig.tripStatusMeta[trip.status] ?? TripsConfig.tripStatusMeta['PLANNED'];
-                        const tripParticipants = (
-                          Array.isArray(trip.stops) ? trip.stops : []
-                        )
-                          .map((s) => findById(participants, s.participantId))
-                          .filter(Boolean) as { id: string; name: string }[];
+                        try {
+                          await onReplan(g.eventId);
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    />
+                  ) : (
+                    g.trips.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {t("planner.routeslabel")}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {g.trips.length}{" "}
+                            {g.trips.length === 1
+                              ? t("planner.route")
+                              : t("planner.routes")}
+                          </span>
+                        </div>
 
-                        const driver = findById(drivers, trip.driverId);
-                        const failed = trip.tripCreationFailedReason;
+                        {g.trips.map((trip) => {
+                          const meta =
+                            TripsConfig.tripStatusMeta[trip.status] ??
+                            TripsConfig.tripStatusMeta["PLANNED"];
+                          const tripParticipants = (
+                            Array.isArray(trip.stops) ? trip.stops : []
+                          )
+                            .map((s) => findById(participants, s.participantId))
+                            .filter(Boolean) as { id: string; name: string }[];
 
-                        return (
-                          <Collapsible
-                            key={trip.id}
-                            className="overflow-hidden rounded-lg border bg-background shadow-sm"
-                          >
-                            {/* Trip header */}
-                            <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                              <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform data-panel-open:rotate-180" />
+                          const driver = findById(drivers, trip.driverId);
+                          const failed = trip.tripCreationFailedReason;
 
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold">
-                                      {trip.tripNumber}
-                                    </span>
-                                    <Badge
-                                      variant="secondary"
-                                      className="h-5 px-1.5 text-[10px]"
-                                    >
-                                      {t(meta.label) ?? ''}
-                                    </Badge>
+                          return (
+                            <Collapsible
+                              key={trip.id}
+                              className="overflow-hidden rounded-lg border bg-background shadow-sm"
+                            >
+                              {/* Trip header */}
+                              <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform data-panel-open:rotate-180" />
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold">
+                                        {trip.tripNumber}
+                                      </span>
+                                      <Badge
+                                        variant="secondary"
+                                        className="h-5 px-1.5 text-[10px]"
+                                      >
+                                        {t(meta.label) ?? ""}
+                                      </Badge>
+                                    </div>
+
+                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                      {tripParticipants.length}{" "}
+                                      {tripParticipants.length === 1
+                                        ? t("common.participant").toLowerCase()
+                                        : t(
+                                            "common.participants",
+                                          ).toLowerCase()}
+                                      {" · "}
+                                      {driver?.name ??
+                                        t("planner.nodriverassigned")}
+                                    </p>
                                   </div>
+                                </CollapsibleTrigger>
 
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {tripParticipants.length}{" "}
-                                    {tripParticipants.length === 1
-                                      ? t('common.participant').toLowerCase()
-                                      : t('common.participants').toLowerCase()}
-                                    {" · "}
-                                    {driver?.name ?? t('planner.nodriverassigned')}
+                                <div className="text-right">
+                                  <p className="text-sm font-medium">
+                                    {formatMiles(trip.distanceKm)}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {t("planner.distancelabel")}
                                   </p>
                                 </div>
-                              </CollapsibleTrigger>
-
-                              <div className="text-right">
-                                <p className="text-sm font-medium">
-                                  {formatMiles(trip.distanceKm)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {t('planner.distancelabel')}
-                                </p>
                               </div>
-                            </div>
 
-                            {/* Trip details */}
-                            <CollapsibleContent>
-                              <div className="border-t bg-muted/20 px-3 py-3">
-                                {failed ? (
-                                  <FailureReasons
-                                    reason={failed}
-                                    canReplan={trip.status === "PLANNED" || trip.status === "VEHICLE_ASSIGNED" || trip.status === "DRIVER_ASSIGNED"}
-                                    busy={busyId === trip.id}
-                                    onReplan={async () => {
-                                      setBusyId(trip.id)
-                                      try {
-                                        await onReplanTrip(trip.id)
-                                      } finally {
-                                        setBusyId(null)
+                              {/* Trip details */}
+                              <CollapsibleContent>
+                                <div className="border-t bg-muted/20 px-3 py-3">
+                                  {failed ? (
+                                    <FailureReasons
+                                      reason={failed}
+                                      canReplan={
+                                        trip.status === "PLANNED" ||
+                                        trip.status === "VEHICLE_ASSIGNED" ||
+                                        trip.status === "DRIVER_ASSIGNED"
                                       }
-                                    }}
-                                  />
-                                ) : (
-                                  <>
-                                    {/* Driver / participant count */}
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                      <div className="rounded-md border bg-background p-3">
-                                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                                          {t('common.driver')}
-                                        </p>
-
-                                        {driver ? (
-                                          <div className="mt-1 flex items-center gap-2">
-                                            <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                              {firstLetterInitials(driver.name)}
-                                            </div>
-                                            <span className="text-sm font-medium">
-                                              {driver.name}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <p className="mt-1 text-sm text-muted-foreground">
-                                            {t('planner.nodriverassigned')}
+                                      busy={busyId === trip.id}
+                                      onReplan={async () => {
+                                        setBusyId(trip.id);
+                                        try {
+                                          await onReplanTrip(trip.id);
+                                        } finally {
+                                          setBusyId(null);
+                                        }
+                                      }}
+                                    />
+                                  ) : (
+                                    <>
+                                      {/* Driver / participant count */}
+                                      <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                            {t("common.driver")}
                                           </p>
-                                        )}
-                                      </div>
 
-                                      <div className="rounded-md border bg-background p-3">
-                                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                                          {t('common.participants')}
-                                        </p>
-                                        <p className="mt-1 text-sm font-medium">
-                                          {tripParticipants.length}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    {/* Participants */}
-                                    <div className="mt-3">
-                                      <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                                        {t('planner.participantlist')}
-                                      </p>
-
-                                      {tripParticipants.length ? (
-                                        <div className="overflow-hidden rounded-md border bg-background">
-                                          {tripParticipants.map((p, i) => (
-                                            <div
-                                              key={p.id}
-                                              className={cn(
-                                                "flex items-center gap-2 px-3 py-2",
-                                                i < tripParticipants.length - 1 &&
-                                                  "border-b",
-                                              )}
-                                            >
-                                              <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
-                                                {i + 1}
+                                          {driver ? (
+                                            <div className="mt-1 flex items-center gap-2">
+                                              <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                                {firstLetterInitials(
+                                                  driver.name,
+                                                )}
                                               </div>
-                                              <span className="truncate text-sm">
-                                                {p.name}
+                                              <span className="text-sm font-medium">
+                                                {driver.name}
                                               </span>
                                             </div>
-                                          ))}
+                                          ) : (
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                              {t("planner.nodriverassigned")}
+                                            </p>
+                                          )}
                                         </div>
-                                      ) : (
-                                        <div className="rounded-md border border-dashed bg-background px-3 py-2">
-                                          <p className="text-sm text-muted-foreground">
-                                            {t('planner.noparticipantsassigned')}
+
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                            {t("common.participants")}
+                                          </p>
+                                          <p className="mt-1 text-sm font-medium">
+                                            {tripParticipants.length}
                                           </p>
                                         </div>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        );
-                      })}
-                    </div>
-                  ))}
+                                      </div>
+
+                                      {/* Participants */}
+                                      <div className="mt-3">
+                                        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                          {t("planner.participantlist")}
+                                        </p>
+
+                                        {tripParticipants.length ? (
+                                          <div className="overflow-hidden rounded-md border bg-background">
+                                            {tripParticipants.map((p, i) => (
+                                              <div
+                                                key={p.id}
+                                                className={cn(
+                                                  "flex items-center gap-2 px-3 py-2",
+                                                  i <
+                                                    tripParticipants.length -
+                                                      1 && "border-b",
+                                                )}
+                                              >
+                                                <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                                                  {i + 1}
+                                                </div>
+                                                <span className="truncate text-sm">
+                                                  {p.name}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="rounded-md border border-dashed bg-background px-3 py-2">
+                                            <p className="text-sm text-muted-foreground">
+                                              {t(
+                                                "planner.noparticipantsassigned",
+                                              )}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    )
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>

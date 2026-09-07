@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowDownRight, MapPin, Truck, Users } from "lucide-react";
+import { ArrowDownRight, MapPin, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shiftOccursOnDate, to12h, toMinutes } from "@/lib/driver-shifts/logic";
-import { findDriver, findParticipant, findVehicle } from "@/lib/driver-shifts/mock-data";
 import { SHIFT_STATUS_META } from "@/lib/driver-shifts/config";
+import { useDrivers } from "@/lib/driver/hooks";
+import { useShiftParticipants } from "@/lib/driver-shifts/hooks";
 import type { DriverShift } from "@/lib/driver-shifts/types";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -24,6 +25,8 @@ export function ShiftDayView({
   shifts: DriverShift[];
   onSelectShift: (shift: DriverShift) => void;
 }) {
+  const { drivers } = useDrivers();
+  const { participants } = useShiftParticipants();
   const dayShifts = shifts
     .filter((s) => s.status !== "cancelled" && shiftOccursOnDate(s, date))
     .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
@@ -37,7 +40,7 @@ export function ShiftDayView({
   }
 
   return (
-    <div className="max-h-[560px] overflow-y-auto">
+    <div className="max-h-140 overflow-y-auto">
       {HOURS.map((h) => {
         const startingHere = dayShifts.filter((s) => Math.floor(toMinutes(s.startTime) / 60) === h);
         return (
@@ -48,8 +51,7 @@ export function ShiftDayView({
             <div className="min-h-12 border-l border-border px-2 py-1.5">
               <div className="flex flex-col gap-2">
                 {startingHere.map((shift) => {
-                  const driver = findDriver(shift.driverId);
-                  const vehicle = findVehicle(shift.vehicleId);
+                  const driver = drivers.find((d) => d.id === shift.driverId) ?? null;
                   const meta = SHIFT_STATUS_META[shift.status];
                   return (
                     <div key={shift.id} className="flex flex-col gap-1.5">
@@ -64,28 +66,22 @@ export function ShiftDayView({
                         <div className="flex items-center justify-between gap-2">
                           <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                             <span className={cn("size-2 rounded-full", meta.dot)} />
-                            {driver?.name ?? shift.name}
+                            {driver?.name ?? "No Driver Name"}
                           </span>
                           <span className="text-[11px] tabular-nums text-muted-foreground">
                             {to12h(shift.startTime)} - {to12h(shift.endTime)}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                          <span>{shift.name}</span>
-                          {vehicle ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Truck className="size-3" /> {vehicle.name}
-                            </span>
-                          ) : null}
                           <span className="inline-flex items-center gap-1">
-                            <Users className="size-3" /> {shift.stops.length}/{shift.capacity}
+                            <Users className="size-3" /> {shift.stops.length}
                           </span>
                         </div>
                       </button>
 
                       {/* Participant pickups/dropoffs within this shift */}
                       {shift.stops.map((stop) => {
-                        const p = findParticipant(stop.participantId);
+                        const p = participants.find((pt) => pt.id === stop.participantId) ?? null;
                         return (
                           <div
                             key={stop.participantId}

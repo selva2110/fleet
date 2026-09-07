@@ -8,6 +8,7 @@ export const createDriverFormSchema = (t: (key: string) => string) =>
         .trim()
         .min(2, t("val.nameMin"))
         .max(100, t("val.nameMax")),
+      dial_code: z.string().trim().length(10, t("Country Code is Needed")),
       mobile_number: z.string().trim().length(10, t("val.phoneInvalid")),
       address: z.string().trim().min(5, t("val.addressRequired")),
       location: z.any().nullable(),

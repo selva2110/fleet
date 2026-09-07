@@ -141,65 +141,6 @@ export function VehicleDialog({
               required
               error={errors.name}
             />
-            <SelectField
-              label={"Address Type"}
-              value={addressType}
-              options={VehiclesConfig.ADDRESS_TYPES}
-              onChange={(v) => {
-                setAddressType(v);
-                set("address", "");
-                set("location", null);
-              }}
-            />
-            {addressType === "independent" ? (
-              <AddressField
-                label={t("common.address")}
-                value={form.address}
-                onChange={(v) => set("address", v)}
-                location={form.location}
-                onLocationChange={(v) => set("location", v)}
-                required
-                error={errors.address}
-              />
-            ) : (
-              <>
-                <SelectField
-                  label={`${t("common.dest")} / ${t("common.carecenter")}`}
-                  value={centerId}
-                  options={centerOptions}
-                  onChange={(value) => {
-                    setCenterId(value);
-                    const selectedCenter = centers.find(
-                      (center) => center.id === value,
-                    );
-
-                    if (selectedCenter) {
-                      setForm((prev) => ({
-                        ...prev,
-                        address: selectedCenter.address,
-                        location: selectedCenter.location,
-                      }));
-                    }
-                  }}
-                  required
-                  error={errors.centerId}
-                />
-                {selectedCenter ? (
-                  <div className="grid gap-3 sm:grid-cols-1">
-                    <DetailPill
-                      label={"Address"}
-                      value={selectedCenter.address}
-                    />
-                    <div className="h-56 overflow-hidden rounded-lg border border-border">
-                      <DestinationMap
-                        location={selectedCenter?.location ?? null}
-                        label={selectedCenter?.name}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            )}
             <div className="grid grid-cols-2 gap-3">
               <SelectField
                 label={t("common.type")}
@@ -273,6 +214,65 @@ export function VehicleDialog({
                 />
               </div>
             </div>
+            <SelectField
+              label={"Address Type"}
+              value={addressType}
+              options={VehiclesConfig.ADDRESS_TYPES}
+              onChange={(v) => {
+                setAddressType(v);
+                set("address", "");
+                set("location", null);
+              }}
+            />
+            {addressType === "independent" ? (
+              <AddressField
+                label={t("common.address")}
+                value={form.address}
+                onChange={(v) => set("address", v)}
+                location={form.location}
+                onLocationChange={(v) => set("location", v)}
+                required
+                error={errors.address}
+              />
+            ) : (
+              <>
+                <SelectField
+                  label={`${t("common.dest")} / ${t("common.carecenter")}`}
+                  value={centerId}
+                  options={centerOptions}
+                  onChange={(value) => {
+                    setCenterId(value);
+                    const selectedCenter = centers.find(
+                      (center) => center.id === value,
+                    );
+
+                    if (selectedCenter) {
+                      setForm((prev) => ({
+                        ...prev,
+                        address: selectedCenter.address,
+                        location: selectedCenter.location,
+                      }));
+                    }
+                  }}
+                  required
+                  error={errors.centerId}
+                />
+                {selectedCenter ? (
+                  <div className="grid gap-3 sm:grid-cols-1">
+                    <DetailPill
+                      label={"Address"}
+                      value={selectedCenter.address}
+                    />
+                    <div className="h-56 overflow-hidden rounded-lg border border-border">
+                      <DestinationMap
+                        location={selectedCenter?.location ?? null}
+                        label={selectedCenter?.name}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </ScrollArea>
 

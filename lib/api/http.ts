@@ -24,6 +24,7 @@ export async function clearSessionAndRedirectToLogin(): Promise<never> {
   cookieStore.delete('access_token')
   cookieStore.delete('refresh_token')
   cookieStore.delete('role_access')
+  cookieStore.delete('user_name')
   redirect('/login')
 }
 
@@ -31,6 +32,7 @@ async function request<T>(
   url: string,
   init?: RequestInit,
   isRetry = false,
+  revalidate?: number,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -47,9 +49,15 @@ async function request<T>(
     }
   }
 
+  // Reference/lookup data that rarely changes can opt into a short-lived
+  // Next Data Cache window (per caller, via `revalidate`) instead of always
+  // hitting the backend. Everything else stays fully live.
+  const cacheInit: Pick<RequestInit, 'cache' | 'next'> =
+    revalidate !== undefined ? { next: { revalidate } } : { cache: 'no-store' }
+
   const res = await fetch(url, {
     ...init,
-    cache: 'no-store',
+    ...cacheInit,
     headers,
   })
 
@@ -61,7 +69,7 @@ async function request<T>(
     if (!refreshed) {
       await clearSessionAndRedirectToLogin()
     }
-    return request<T>(url, init, true)
+    return request<T>(url, init, true, revalidate)
   }
 
   if (!res.ok) {
@@ -73,8 +81,8 @@ async function request<T>(
   return (await res.json()) as T
 }
 
-export function apiGet<T>(url: string, headers?: HeadersInit): Promise<T> {
-  return request<T>(url, { method: 'GET', headers })
+export function apiGet<T>(url: string, headers?: HeadersInit, revalidate?: number): Promise<T> {
+  return request<T>(url, { method: 'GET', headers }, false, revalidate)
 }
 
 export function apiPost<T>(url: string, body?: unknown, headers?: HeadersInit): Promise<T> {

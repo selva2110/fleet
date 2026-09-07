@@ -17,7 +17,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { PageHeader } from "@/components/common";
+import { ConfirmDialog, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,12 +30,9 @@ import {
   matchParticipantToShift,
   to12h,
 } from "@/lib/driver-shifts/logic";
-import {
-  SHIFT_PARTICIPANTS,
-  findDriver,
-  findParticipant,
-  findVehicle,
-} from "@/lib/driver-shifts/mock-data";
+import { useDrivers } from "@/lib/driver/hooks";
+import { useVehicles } from "@/lib/vehicles/hooks";
+import { useShiftParticipants } from "@/lib/driver-shifts/hooks";
 import { ShiftStatusBadge } from "@/components/driver-shifts/shift-block";
 import { MatchScoreBadge } from "@/components/driver-shifts/match-score";
 
@@ -46,20 +43,24 @@ export default function ShiftDetailsPage({
 }) {
   const { id } = use(params);
   const { getShift, shifts, assignParticipant, removeParticipant, reorderStops } = useDriverShifts();
+  const { drivers } = useDrivers();
+  const { vehicles } = useVehicles();
+  const { participants } = useShiftParticipants();
   const shift = getShift(id);
   const [query, setQuery] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<{ participantId: string; name: string } | null>(null);
 
   if (!shift) notFound();
 
-  const driver = findDriver(shift.driverId);
-  const vehicle = findVehicle(shift.vehicleId);
+  const driver = drivers.find((d) => d.id === shift.driverId) ?? null;
+  const vehicle = vehicles.find((v) => v.id === driver?.assignedVehicleId) ?? null;
   const conflicts = useMemo(() => detectShiftConflicts(shift, shifts), [shift, shifts]);
 
   const assignedIds = new Set(shift.stops.map((s) => s.participantId));
 
   // Candidate list: participants not yet on this shift, scored + sorted.
   const candidates = useMemo(() => {
-    return SHIFT_PARTICIPANTS.filter((p) => !assignedIds.has(p.id))
+    return participants.filter((p) => !assignedIds.has(p.id))
       .filter((p) => {
         if (!query.trim()) return true;
         const q = query.toLowerCase();
@@ -74,9 +75,7 @@ export default function ShiftDetailsPage({
         if (a.match.eligible !== b.match.eligible) return a.match.eligible ? -1 : 1;
         return b.match.score - a.match.score;
       });
-  }, [query, shift, vehicle, driver, assignedIds]);
-
-  const seatsLeft = shift.capacity - shift.stops.length;
+  }, [query, shift, vehicle, driver, assignedIds, participants]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -89,7 +88,7 @@ export default function ShiftDetailsPage({
           Back to shifts
         </Link>
         <PageHeader
-          title={shift.name}
+          title={driver?.name ?? "No Driver Name"}
           description={describeRecurrence(shift.recurrence, shift.startDate, shift.endDate)}
           actions={<ShiftStatusBadge status={shift.status} />}
         />
@@ -127,13 +126,13 @@ export default function ShiftDetailsPage({
           </div>
         </Card>
         <Card className="flex items-center gap-3 p-3">
-          <div className={cn("flex size-9 items-center justify-center rounded-lg", seatsLeft > 0 ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive")}>
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <UserPlus className="size-4" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Capacity</p>
+            <p className="text-xs text-muted-foreground">Participants</p>
             <p className="text-sm font-semibold tabular-nums text-foreground">
-              {shift.stops.length}/{shift.capacity} · {seatsLeft} open
+              {shift.stops.length} assigned
             </p>
           </div>
         </Card>
@@ -167,7 +166,7 @@ export default function ShiftDetailsPage({
           ) : (
             <ul className="flex flex-col gap-2">
               {shift.stops.map((stop, idx) => {
-                const p = findParticipant(stop.participantId);
+                const p = participants.find((pt) => pt.id === stop.participantId) ?? null;
                 return (
                   <li key={stop.participantId} className="rounded-md border border-border p-2.5">
                     <div className="flex items-start justify-between gap-2">
@@ -211,7 +210,12 @@ export default function ShiftDetailsPage({
                         variant="ghost"
                         size="icon"
                         className="size-7 text-destructive hover:text-destructive"
-                        onClick={() => removeParticipant(shift.id, stop.participantId)}
+                        onClick={() =>
+                          setRemoveTarget({
+                            participantId: stop.participantId,
+                            name: p?.name ?? stop.participantId,
+                          })
+                        }
                         aria-label="Remove"
                       >
                         <UserMinus className="size-4" />
@@ -237,7 +241,7 @@ export default function ShiftDetailsPage({
           ) : (
             <ol className="relative flex flex-col gap-0 pl-2">
               {shift.stops.map((stop, idx) => {
-                const p = findParticipant(stop.participantId);
+                const p = participants.find((pt) => pt.id === stop.participantId) ?? null;
                 return (
                   <li key={stop.participantId} className="relative flex gap-3 pb-4 last:pb-0">
                     <div className="flex flex-col items-center">
@@ -334,6 +338,20 @@ export default function ShiftDetailsPage({
           </ul>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+        title="Remove participant"
+        message={`Remove ${removeTarget?.name ?? "this participant"} from this shift?`}
+        onConfirm={() => {
+          if (!removeTarget) return;
+          removeParticipant(shift.id, removeTarget.participantId);
+          setRemoveTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -6,8 +6,9 @@
 // A lightweight React context that owns all prototype state (shifts + their
 // participant assignments) and exposes mutations. Lives at the driver-shifts
 // route-group layout so state persists as the dispatcher navigates between the
-// calendar, shift details and unassigned views. Swap the seed + mutations for
-// API calls later; the hook surface can stay identical.
+// calendar, shift details and unassigned views. There is no shifts backend
+// yet, so state starts empty; swap the initial state + mutations for API
+// calls once that service exists — the hook surface can stay identical.
 // -----------------------------------------------------------------------------
 
 import {
@@ -19,8 +20,10 @@ import {
   type ReactNode,
 } from "react";
 import type { DriverShift, ShiftStop } from "./types";
-import { SEED_SHIFTS, SHIFT_PARTICIPANTS } from "./mock-data";
+import { useShiftParticipants } from "./hooks";
 import { deriveStatus, stopFromParticipant } from "./logic";
+
+const INITIAL_SHIFTS: DriverShift[] = [];
 
 interface ShiftsContextValue {
   shifts: DriverShift[];
@@ -38,7 +41,8 @@ interface ShiftsContextValue {
 const ShiftsContext = createContext<ShiftsContextValue | null>(null);
 
 export function DriverShiftsProvider({ children }: { children: ReactNode }) {
-  const [shifts, setShifts] = useState<DriverShift[]>(SEED_SHIFTS);
+  const [shifts, setShifts] = useState<DriverShift[]>(INITIAL_SHIFTS);
+  const { participants } = useShiftParticipants();
 
   const withDerivedStatus = useCallback((next: DriverShift[]): DriverShift[] => {
     return next.map((s) => ({ ...s, status: deriveStatus(s, next) }));
@@ -46,16 +50,11 @@ export function DriverShiftsProvider({ children }: { children: ReactNode }) {
 
   const getShift = useCallback((id: string) => shifts.find((s) => s.id === id), [shifts]);
 
-  const upsertShift = useCallback(
-    (shift: DriverShift) => {
-      setShifts((prev) => {
-        const exists = prev.some((s) => s.id === shift.id);
-        const next = exists ? prev.map((s) => (s.id === shift.id ? shift : s)) : [...prev, shift];
-        return withDerivedStatus(next);
-      });
-    },
-    [withDerivedStatus],
-  );
+  const upsertShift = useCallback((shift: DriverShift) => {
+    // No shifts backend exists yet — log what would be saved instead of
+    // holding it in local state, which would just fake persistence.
+    console.log("upsertShift", shift);
+  }, []);
 
   const cancelShift = useCallback((id: string) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status: "cancelled" } : s)));
@@ -67,7 +66,7 @@ export function DriverShiftsProvider({ children }: { children: ReactNode }) {
 
   const assignParticipant = useCallback(
     (shiftId: string, participantId: string) => {
-      const participant = SHIFT_PARTICIPANTS.find((p) => p.id === participantId);
+      const participant = participants.find((p) => p.id === participantId);
       if (!participant) return;
       const stop: ShiftStop = stopFromParticipant(participant);
       setShifts((prev) => {
@@ -82,7 +81,7 @@ export function DriverShiftsProvider({ children }: { children: ReactNode }) {
         return withDerivedStatus(next);
       });
     },
-    [withDerivedStatus],
+    [participants, withDerivedStatus],
   );
 
   const removeParticipant = useCallback(
@@ -121,8 +120,8 @@ export function DriverShiftsProvider({ children }: { children: ReactNode }) {
       if (s.status === "cancelled") continue;
       for (const st of s.stops) assigned.add(st.participantId);
     }
-    return SHIFT_PARTICIPANTS.filter((p) => !assigned.has(p.id)).map((p) => p.id);
-  }, [shifts]);
+    return participants.filter((p) => !assigned.has(p.id)).map((p) => p.id);
+  }, [shifts, participants]);
 
   const value = useMemo<ShiftsContextValue>(
     () => ({

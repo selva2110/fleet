@@ -120,6 +120,8 @@ export const enTranslations = {
   "part.editreport": "Edit meal & medical details",
   "part.editreportdesc": "Update diet plan, meal notes, and medical notes for this participant.",
   "part.reportsavedsuccess": "Participant details updated successfully.",
+  "part.cleardietmeal": "Clear diet & meal plan",
+  "part.reportclearedsuccess": "Diet plan and meal notes cleared.",
   "part.transportreq": "Transport requirements",
   "part.bloodgroup": "Blood group",
   "part.companion": "Companion",
@@ -485,6 +487,7 @@ export const enTranslations = {
   "e.eligibleonly": "Eligible only",
   "e.allstatuses": "All statuses",
   "e.removeparticipant": "Remove {{name}}",
+  "e.removeparticipantcnfrm": "Remove {{name}} from this event?",
 
   "meal.run": "Run",
   "meal.kitchencenter": "Kitchen/center",
@@ -587,6 +590,7 @@ export const enTranslations = {
   "notif.noalerts": "No new alerts",
   "notif.nonotifications": "No notifications yet.",
   "notif.clearall": "Clear all",
+  "notif.clearallcnfrm": "Clear all notifications? This cannot be undone.",
   "part.none": "No Participants match your search and filters.",
 
   "common.clear": "Clear",
@@ -736,6 +740,9 @@ export const enTranslations = {
   "meal.pickupkitchencenter": "Pickup kitchen / center",
   "meal.departuretime": "Departure time",
   "meal.deliverystops": "Delivery stops",
+  "meal.searchgroups": "Search groups by name",
+  "meal.nogroupsavailable": "No groups available.",
+  "meal.nogroupsmatch": "No groups match your search.",
   "meal.creating": "Creating…",
   "meal.createrun": "Create run",
   "meal.editrun": "Edit meal-delivery run",
@@ -951,6 +958,8 @@ export const enTranslations = {
   "val.capacityMin": "Seat capacity must be at least 1",
   "val.wheelchairCapacityMin": "Wheelchair capacity cannot be negative",
   "val.dialCodeRequired": "Dial code is required",
+  "val.shiftStartDateRequired": "Start date is required",
+  "val.shiftEndDateBeforeStart": "End date cannot be before the start date",
 
   "vehicles.descriptions.sedan":
     "Compact car for 1–3 ambulatory riders. Fast and fuel-efficient for short routes.",
@@ -1216,4 +1225,17 @@ export const enTranslations = {
   "trip.pickupinprogress": "Pickup In Progress",
   "trip.onboard": "OnBoard",
   "trip.arrived": "Arrived",
+
+  "role.add": "Add Role",
+  "role.createdesc": "Create a new role that can be assigned to users.",
+  "role.name": "Name",
+  "role.nameplaceholder": "e.g. Dispatcher",
+  "role.description": "Description",
+  "role.descriptionplaceholder": "What this role can do",
+  "role.save": "Save role",
+  "role.edit": "Edit Role",
+  "role.editdesc": "Update this role's details.",
+  "role.updatesuccess": "Role updated successfully",
+  "role.createsuccess": "Role created successfully",
+  "role.savechanges": "Save changes",
 };

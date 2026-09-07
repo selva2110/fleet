@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import countryCodes from "country-codes-list";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -55,3 +56,17 @@ export function emptyObjectResponse<T extends Object>(response: T) {
     data: response,
   };
 }
+
+const ccodes = countryCodes.all();
+const seenCallingCodes = new Set<string>();
+export const COUNTRY_CODE_OPTIONS = ccodes
+  .filter((item) => {
+    if (seenCallingCodes.has(item.countryCallingCode)) return false;
+    seenCallingCodes.add(item.countryCallingCode);
+    return true;
+  })
+  .sort((a, b) => a.countryNameEn.localeCompare(b.countryNameEn))
+  .map((item) => ({
+    label: `${item.countryNameEn} (+${item.countryCallingCode})`,
+    value: item.countryCallingCode,
+  }));

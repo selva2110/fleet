@@ -1,11 +1,23 @@
 import type { ComponentType } from 'react'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ParticipantConfig } from '@/lib/participant/config';
 import { TransportConstraints } from '@/lib/participant/types';
 import { useTranslation } from './context/language-provider';
 import { Tooltip, TooltipContent, TooltipTrigger } from './context/tooltip-provdier';
+import { useRouter } from 'next/navigation';
 
 export function PageHeader({
   title,
@@ -16,13 +28,25 @@ export function PageHeader({
   description?: string
   actions?: React.ReactNode
 }) {
+  const router = useRouter()
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-card px-6 py-4">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground text-balance">{title}</h1>
-        {description ? (
-          <p className="mt-0.5 text-sm text-muted-foreground text-pretty">{description}</p>
-        ) : null}
+      <div className="flex items-start gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mt-0.5"
+            aria-label="Back"
+            onClick={()=> router.back()}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+        <div>
+          <h1 className="text-lg font-semibold text-foreground text-balance">{title}</h1>
+          {description ? (
+            <p className="mt-0.5 text-sm text-muted-foreground text-pretty">{description}</p>
+          ) : null}
+        </div>
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </div>
@@ -120,6 +144,47 @@ export const HoverTooltip = ({
     </Tooltip>
   );
 };
+
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  message,
+  onConfirm,
+  confirmLabel,
+  loading = false,
+  destructive = true,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: React.ReactNode
+  message: React.ReactNode
+  onConfirm: () => void | Promise<void>
+  confirmLabel?: string
+  loading?: boolean
+  destructive?: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{message}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter showCloseButton>
+          <Button
+            variant={destructive ? 'destructive' : 'default'}
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {confirmLabel ?? (loading ? t('common.deleting') : t('common.delete'))}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export const createFieldSetter = <T extends object>(
   setForm: React.Dispatch<React.SetStateAction<T>>,

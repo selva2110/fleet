@@ -23,7 +23,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { CatalogConfig } from "@/lib/catalog/config";
-import { StatusBadge } from "../common";
+import { ConfirmDialog, StatusBadge } from "../common";
 import { DEFAULT_CARE_TYPES } from "@/app/(app)/catalog/page";
 import {
   Table,
@@ -55,6 +55,8 @@ export function CatalogTab({
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<CareItemType | null>(null);
   const [editingItem, setEditingItem] = useState<CareItem | null>(null);
+  const [deleteTypeTarget, setDeleteTypeTarget] = useState<CareItemType | null>(null);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<CareItem | null>(null);
   const idv = useDataView("name", "list");
 
   const selectedType =
@@ -106,10 +108,12 @@ export function CatalogTab({
 
   async function deleteType(typeId: string) {
     await deleteCareItemType(typeId);
+    setDeleteTypeTarget(null);
   }
 
   async function deleteItem(itemId: string) {
     await deleteCareItem(itemId);
+    setDeleteItemTarget(null);
   }
 
   if (isLoading) {
@@ -188,7 +192,7 @@ export function CatalogTab({
                           variant="ghost"
                           size="icon-sm"
                           title="Delete Care Item"
-                          onClick={() => deleteType(type.id)}
+                          onClick={() => setDeleteTypeTarget(type)}
                           aria-label={t("catalog.deletetype")}
                         >
                           <Trash2 className="size-3.5" />
@@ -281,7 +285,7 @@ export function CatalogTab({
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            onClick={() => deleteItem(item.id)}
+                            onClick={() => setDeleteItemTarget(item)}
                             aria-label={t("catalog.deleteitem")}
                           >
                             <Trash2 className="size-3.5" />
@@ -339,7 +343,7 @@ export function CatalogTab({
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
-                                  onClick={() => deleteItem(item.id)}
+                                  onClick={() => setDeleteItemTarget(item)}
                                   aria-label={t("catalog.deleteitem")}
                                 >
                                   <Trash2 className="size-3.5" />
@@ -379,6 +383,34 @@ export function CatalogTab({
         }}
         editingItem={editingItem}
         defaultTypeId={selectedType?.id ?? careItemTypes[0]?.id ?? ""}
+      />
+
+      <ConfirmDialog
+        open={deleteTypeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTypeTarget(null);
+        }}
+        title={t("catalog.deletetype")}
+        message={t(
+          `Are you sure you want to delete "${deleteTypeTarget?.name ?? ""}"? This also removes its items.`,
+        )}
+        onConfirm={() => {
+          if (deleteTypeTarget) deleteType(deleteTypeTarget.id);
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteItemTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteItemTarget(null);
+        }}
+        title={t("catalog.deleteitem")}
+        message={t(
+          `Are you sure you want to delete "${deleteItemTarget?.name ?? ""}"?`,
+        )}
+        onConfirm={() => {
+          if (deleteItemTarget) deleteItem(deleteItemTarget.id);
+        }}
       />
     </>
   );

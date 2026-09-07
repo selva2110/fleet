@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarRange, CheckCircle2, Info } from "lucide-react";
+import { useTranslation } from "@/components/context/language-provider";
+import { validateSchema } from "@/components/validation/zod-validation";
+import { createDriverShiftSchema } from "@/components/validation/driver-shift";
 import {
   Sheet,
   SheetContent,
@@ -27,9 +30,9 @@ import {
   describeRecurrence,
   detectShiftConflicts,
   isoDate,
-  toMinutes,
 } from "@/lib/driver-shifts/logic";
-import { SHIFT_DRIVERS, SHIFT_VEHICLES } from "@/lib/driver-shifts/mock-data";
+import { useDrivers } from "@/lib/driver/hooks";
+import { useVehicles } from "@/lib/vehicles/hooks";
 import type {
   DriverShift,
   MonthlyMode,
@@ -38,6 +41,17 @@ import type {
   RecurrenceType,
   Weekday,
 } from "@/lib/driver-shifts/types";
+import { createFieldSetter } from "../common";
+
+// Default series span applied when the recurrence cadence changes, so the
+// summary/conflict preview has a meaningful end date instead of an
+// open-ended blank range.
+const RECURRENCE_DEFAULT_SPAN_DAYS: Record<RecurrenceType, number> = {
+  "one-time": 0,
+  daily: 30,
+  weekly: 84,
+  monthly: 180,
+};
 
 function blankRecurrence(): Recurrence {
   return {
@@ -52,15 +66,15 @@ function blankRecurrence(): Recurrence {
 }
 
 interface FormState {
-  name: string;
+  // name: string;
   driverId: string;
-  vehicleId: string;
+  // vehicleId: string;
   startDate: string;
   endDate: string;
   startTime: string;
   endTime: string;
   timezone: string;
-  capacity: number;
+  // capacity: number;
   recurrence: Recurrence;
   notes: string;
 }
@@ -68,29 +82,29 @@ interface FormState {
 function toForm(shift: DriverShift | null): FormState {
   if (!shift) {
     return {
-      name: "",
+      // name: "",
       driverId: "",
-      vehicleId: "",
+      // vehicleId: "",
       startDate: isoDate(new Date()),
       endDate: "",
       startTime: "08:00",
       endTime: "16:00",
       timezone: "America/Chicago",
-      capacity: 8,
+      // capacity: 8,
       recurrence: blankRecurrence(),
       notes: "",
     };
   }
   return {
-    name: shift.name,
+    // name: shift.name,
     driverId: shift.driverId ?? "",
-    vehicleId: shift.vehicleId ?? "",
+    // vehicleId: shift.vehicleId ?? "",
     startDate: shift.startDate,
     endDate: shift.endDate ?? "",
     startTime: shift.startTime,
     endTime: shift.endTime,
     timezone: shift.timezone,
-    capacity: shift.capacity,
+    // capacity: shift.capacity,
     recurrence: shift.recurrence,
     notes: shift.notes ?? "",
   };
@@ -106,9 +120,13 @@ export function ShiftDrawer({
   editing: DriverShift | null;
 }) {
   const { shifts, upsertShift } = useDriverShifts();
+  const { drivers } = useDrivers();
+  const { vehicles } = useVehicles();
+  const { t } = useTranslation();
+  const DriverShiftSchema = useMemo(() => createDriverShiftSchema(t), [t]);
   const [form, setForm] = useState<FormState>(() => toForm(editing));
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const set = createFieldSetter(setForm, setErrors);
   useEffect(() => {
     if (open) {
       setForm(toForm(editing));
@@ -116,10 +134,6 @@ export function ShiftDrawer({
     }
   }, [open, editing]);
 
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    setErrors((e) => (e[k as string] ? { ...e, [k as string]: "" } : e));
-  };
   const setRec = <K extends keyof Recurrence>(k: K, v: Recurrence[K]) =>
     setForm((f) => ({ ...f, recurrence: { ...f.recurrence, [k]: v } }));
 
@@ -127,15 +141,15 @@ export function ShiftDrawer({
   const candidate = useMemo<DriverShift>(() => {
     return {
       id: editing?.id ?? "candidate",
-      name: form.name || "Untitled shift",
+      // name: form.name || "Untitled shift",
       driverId: form.driverId || null,
-      vehicleId: form.vehicleId || null,
+      // vehicleId: form.vehicleId || null,
       startDate: form.startDate,
       endDate: form.endDate || null,
       startTime: form.startTime,
       endTime: form.endTime,
       timezone: form.timezone,
-      capacity: form.capacity,
+      // capacity: form.capacity,
       recurrence: form.recurrence,
       stops: editing?.stops ?? [],
       status: editing?.status ?? "draft",
@@ -148,28 +162,27 @@ export function ShiftDrawer({
   );
 
   const recurrenceSummary = useMemo(
-    () => describeRecurrence(form.recurrence, form.startDate, form.endDate || null),
+    () =>
+      describeRecurrence(form.recurrence, form.startDate, form.endDate || null),
     [form.recurrence, form.startDate, form.endDate],
   );
 
   function validate(): boolean {
-    const next: Record<string, string> = {};
-    if (!form.name.trim()) next.name = "Shift name is required.";
-    if (!form.startDate) next.startDate = "Start date is required.";
-    if (!form.startTime) next.startTime = "Start time is required.";
-    if (!form.endTime) next.endTime = "End time is required.";
-    if (form.startTime && form.endTime && toMinutes(form.endTime) <= toMinutes(form.startTime)) {
-      next.endTime = "End time must be after the start time.";
-    }
-    if (form.endDate && form.endDate < form.startDate) {
-      next.endDate = "End date cannot be before the start date.";
-    }
-    if (form.recurrence.type === "weekly" && form.recurrence.weekdays.length === 0) {
-      next.weekdays = "Select at least one weekday.";
-    }
-    if (form.capacity < 1) next.capacity = "Capacity must be at least 1.";
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    return validateSchema(DriverShiftSchema, form, setErrors);
+  }
+
+  function handleRecurrenceTypeChange(type: RecurrenceType) {
+    setForm((f) => {
+      const startDate = f.startDate || isoDate(new Date());
+      const anchor = new Date(`${startDate}T00:00:00`);
+      anchor.setDate(anchor.getDate() + RECURRENCE_DEFAULT_SPAN_DAYS[type]);
+      return {
+        ...f,
+        startDate,
+        endDate: isoDate(anchor),
+        recurrence: { ...f.recurrence, type },
+      };
+    });
   }
 
   function save(asDraft: boolean) {
@@ -181,29 +194,45 @@ export function ShiftDrawer({
         ? "conflict"
         : editing?.status && editing.status !== "draft"
           ? editing.status
-          : candidate.stops.length >= form.capacity && candidate.stops.length > 0
+          : candidate.stops.length > 0
             ? "full"
             : candidate.stops.length > 0
               ? "partial"
               : "active";
-    upsertShift({ ...candidate, id: editing?.id ?? `SHF-${Date.now()}`, status });
+    upsertShift({
+      ...candidate,
+      id: editing?.id ?? `SHF-${Date.now()}`,
+      status,
+    });
     onOpenChange(false);
   }
 
   const driverOptions = [
     { value: "", label: "Unassigned" },
-    ...SHIFT_DRIVERS.map((d) => ({ value: d.id, label: d.name })),
+    ...drivers.map((d) => ({ value: d.id, label: d.name })),
   ];
   const vehicleOptions = [
     { value: "", label: "Unassigned" },
-    ...SHIFT_VEHICLES.map((v) => ({ value: v.id, label: `${v.name} · ${v.type}` })),
+    ...vehicles.map((v) => ({
+      value: v.id,
+      label: `${v.name} · ${v.type}`,
+    })),
   ];
-  const recurrenceOptions = RECURRENCE_OPTIONS.map((r) => ({ value: r.value, label: r.label }));
-  const tzOptions = TIMEZONE_OPTIONS.map((t) => ({ value: t, label: t.replace("America/", "") }));
+  const recurrenceOptions = RECURRENCE_OPTIONS.map((r) => ({
+    value: r.value,
+    label: r.label,
+  }));
+  const tzOptions = TIMEZONE_OPTIONS.map((t) => ({
+    value: t,
+    label: t.replace("America/", ""),
+  }));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+      >
         <SheetHeader className="border-b border-border">
           <SheetTitle>{editing ? "Edit Shift" : "Create Shift"}</SheetTitle>
         </SheetHeader>
@@ -214,29 +243,30 @@ export function ShiftDrawer({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Shift Details
             </h3>
-            <TextField
+            {/* <TextField
               label="Shift name"
               value={form.name}
               placeholder="e.g. Morning Dialysis Run"
               onChange={(v) => set("name", v)}
               required
               error={errors.name}
+            /> */}
+            {/* <div className="grid gap-3 sm:grid-cols-2"> */}
+            <SelectField
+              label="Driver"
+              value={form.driverId}
+              options={driverOptions}
+              onChange={(v) => set("driverId", v)}
+              error={errors.driverId}
             />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SelectField
-                label="Driver"
-                value={form.driverId}
-                options={driverOptions}
-                onChange={(v) => set("driverId", v)}
-              />
-              <SelectField
+            {/* <SelectField
                 label="Vehicle"
                 value={form.vehicleId}
                 options={vehicleOptions}
                 onChange={(v) => set("vehicleId", v)}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+              /> */}
+            {/* </div> */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <TextField
                 label="Start time"
                 type="time"
@@ -253,13 +283,13 @@ export function ShiftDrawer({
                 required
                 error={errors.endTime}
               />
-              <NumberField
+              {/* <NumberField
                 label="Capacity"
                 value={form.capacity}
                 min={1}
                 onChange={(v) => set("capacity", v)}
                 error={errors.capacity}
-              />
+              /> */}
             </div>
             <SelectField
               label="Timezone"
@@ -279,7 +309,9 @@ export function ShiftDrawer({
                 label="Repeat"
                 value={form.recurrence.type}
                 options={recurrenceOptions}
-                onChange={(v) => setRec("type", v as RecurrenceType)}
+                onChange={(v) =>
+                  handleRecurrenceTypeChange(v as RecurrenceType)
+                }
               />
               {form.recurrence.type !== "one-time" ? (
                 <NumberField
@@ -308,7 +340,9 @@ export function ShiftDrawer({
                       type="radio"
                       name="monthlyMode"
                       checked={form.recurrence.monthlyMode === "day-of-month"}
-                      onChange={() => setRec("monthlyMode", "day-of-month" as MonthlyMode)}
+                      onChange={() =>
+                        setRec("monthlyMode", "day-of-month" as MonthlyMode)
+                      }
                     />
                     On day of month
                   </label>
@@ -318,7 +352,9 @@ export function ShiftDrawer({
                         label="Day (1-31)"
                         value={form.recurrence.monthDay}
                         min={1}
-                        onChange={(v) => setRec("monthDay", Math.min(31, Math.max(1, v)))}
+                        onChange={(v) =>
+                          setRec("monthDay", Math.min(31, Math.max(1, v)))
+                        }
                       />
                     </div>
                   ) : null}
@@ -329,7 +365,9 @@ export function ShiftDrawer({
                       type="radio"
                       name="monthlyMode"
                       checked={form.recurrence.monthlyMode === "nth-weekday"}
-                      onChange={() => setRec("monthlyMode", "nth-weekday" as MonthlyMode)}
+                      onChange={() =>
+                        setRec("monthlyMode", "nth-weekday" as MonthlyMode)
+                      }
                     />
                     On the Nth weekday
                   </label>
@@ -338,8 +376,13 @@ export function ShiftDrawer({
                       <SelectField
                         label="Week"
                         value={String(form.recurrence.nthWeek)}
-                        options={NTH_WEEK_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
-                        onChange={(v) => setRec("nthWeek", Number(v) as NthWeek)}
+                        options={NTH_WEEK_OPTIONS.map((o) => ({
+                          value: String(o.value),
+                          label: o.label,
+                        }))}
+                        onChange={(v) =>
+                          setRec("nthWeek", Number(v) as NthWeek)
+                        }
                       />
                       <SelectField
                         label="Weekday"
@@ -353,7 +396,9 @@ export function ShiftDrawer({
                           { value: "6", label: "Saturday" },
                           { value: "0", label: "Sunday" },
                         ]}
-                        onChange={(v) => setRec("nthWeekday", Number(v) as Weekday)}
+                        onChange={(v) =>
+                          setRec("nthWeekday", Number(v) as Weekday)
+                        }
                       />
                     </div>
                   ) : null}

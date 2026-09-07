@@ -4,7 +4,10 @@
 // the per-domain SWR hooks in lib/<domain>/hooks.ts. Every hook fetches only
 // the domain it needs instead of one shared full-app snapshot.
 
-import { getMealMedicineReports, listParticipants } from "@/lib/api/participants";
+import {
+  getMealMedicineReports,
+  listParticipants,
+} from "@/lib/api/participants";
 import { getVehicleStatistics, listVehicles } from "@/lib/api/vehicles";
 import {
   listDrivers,
@@ -22,7 +25,12 @@ import { listTrips } from "@/lib/api/trips";
 import { listMealDeliveries } from "@/lib/api/meals";
 import { mealsQueryParams } from "@/lib/meals/types";
 import { DomainEvent, FleetEvent } from "@/lib/events/types";
-import { listCareItems, listCareItemTypes } from "@/lib/api/catalog";
+import {
+  listCareItems,
+  listCareItemTypes,
+  listCatalogGroups,
+  listParticipantsNotinList,
+} from "@/lib/api/catalog";
 import { listUsers } from "@/lib/api/users";
 import { listRoles } from "@/lib/api/auth";
 import { VehicleQueryParams } from "@/lib/vehicles/types";
@@ -111,4 +119,18 @@ export async function getSmsNotifications(events: FleetEvent[]) {
 
 export async function getRoles() {
   return listRoles();
+}
+
+export async function getRoleById(id: number) {
+  return getRoleById(id);
+}
+
+export async function getParticipantsNotInList(
+  params: { groupIds?: string[] } = {},
+) {
+  return listParticipantsNotinList(params).catch(() => []);
+}
+
+export async function getCatalogGroups(params: { typeId?: number } = {}) {
+  return listCatalogGroups(params).catch(() => []);
 }

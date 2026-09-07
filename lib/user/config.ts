@@ -3,17 +3,58 @@ import { String } from "three/examples/jsm/transpiler/AST.js";
 
 export class UsersConfig {
   static readonly roleMeta: Record<string, { label: string; cls: string }> = {
-    ADMIN: { label: "user.roleAdmin", cls: "bg-primary/15 text-primary" },
-    DISPATCHER: { label: "user.roleDispatcher", cls: "bg-success/20 text-success" },
-  };
-  static readonly ROLE_OPTIONS = Object.entries(this.roleMeta).map(([value, m]) => ({
-    value: value as string,
-    label: m.label,
-  }));
+    ADMIN: {
+      label: "Admin",
+      cls: "bg-primary/15 text-primary",
+    },
 
-  static readonly statusMeta: Record<"active" | "inactive", { label: string; cls: string }> = {
+    DISPATCHER: {
+      label: "Dispatcher",
+      cls: "bg-success/20 text-success",
+    },
+
+    "PACE Program Scheduler": {
+      label: "PACE Program Scheduler",
+      cls: "bg-info/15 text-info",
+    },
+
+    "Transport Coordinator": {
+      label: "Transport Coordinator",
+      cls: "bg-warning/15 text-warning",
+    },
+
+    "Care Team": {
+      label: "Care Team",
+      cls: "bg-purple/15 text-purple",
+    },
+
+    "Nutrition Planner": {
+      label: "Nutrition Planner",
+      cls: "bg-orange/15 text-orange",
+    },
+
+    "Super Admin": {
+      label: "Super Admin",
+      cls: "bg-destructive/15 text-destructive",
+    },
+  };
+
+  static readonly ROLE_OPTIONS = Object.entries(this.roleMeta).map(
+    ([value, m]) => ({
+      value: value as string,
+      label: m.label,
+    }),
+  );
+
+  static readonly statusMeta: Record<
+    "active" | "inactive",
+    { label: string; cls: string }
+  > = {
     active: { label: "common.active", cls: "bg-success/20 text-success" },
-    inactive: { label: "common.inactive", cls: "bg-muted text-muted-foreground" },
+    inactive: {
+      label: "common.inactive",
+      cls: "bg-muted text-muted-foreground",
+    },
   };
   static readonly STATUS_OPTIONS = [
     { value: "active", label: "common.active" },

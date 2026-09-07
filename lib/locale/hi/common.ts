@@ -122,6 +122,8 @@ export const hiTranslations = {
   "part.editreport": "Edit meal & medical details",
   "part.editreportdesc": "Update diet plan, meal notes, and medical notes for this participant.",
   "part.reportsavedsuccess": "Participant details updated successfully.",
+  "part.cleardietmeal": "Clear diet & meal plan",
+  "part.reportclearedsuccess": "Diet plan and meal notes cleared.",
   "part.transportreq": "परिवहन आवश्यकताएं",
   "part.bloodgroup": "रक्त समूह",
   "part.companion": "साथी",
@@ -494,6 +496,7 @@ export const hiTranslations = {
   "e.eligibleonly": "केवल पात्र",
   "e.allstatuses": "सभी स्थितियां",
   "e.removeparticipant": "{{name}} को हटाएं",
+  "e.removeparticipantcnfrm": "क्या आप {{name}} को इस इवेंट से हटाना चाहते हैं?",
 
   "meal.run": "रन",
   "meal.kitchencenter": "रसोई/केंद्र",
@@ -597,6 +600,7 @@ export const hiTranslations = {
   "notif.noalerts": "कोई नए अलर्ट नहीं",
   "notif.nonotifications": "अभी तक कोई सूचना नहीं।",
   "notif.clearall": "सभी साफ़ करें",
+  "notif.clearallcnfrm": "सभी सूचनाएं साफ़ करें? इसे पूर्ववत नहीं किया जा सकता।",
   "part.none": "आपकी खोज और फ़िल्टर से कोई प्रतिभागी मेल नहीं खाता।",
 
   "common.clear": "साफ़ करें",
@@ -748,6 +752,9 @@ export const hiTranslations = {
   "meal.pickupkitchencenter": "पिकअप रसोई / केंद्र",
   "meal.departuretime": "प्रस्थान का समय",
   "meal.deliverystops": "वितरण स्टॉप",
+  "meal.searchgroups": "नाम से समूह खोजें",
+  "meal.nogroupsavailable": "कोई समूह उपलब्ध नहीं है।",
+  "meal.nogroupsmatch": "आपकी खोज से मेल खाने वाला कोई समूह नहीं मिला।",
   "meal.creating": "बनाया जा रहा है…",
   "meal.createrun": "रन बनाएं",
   "meal.editrun": "भोजन-वितरण रन संपादित करें",
@@ -966,6 +973,8 @@ export const hiTranslations = {
   "val.capacityMin": "सीट क्षमता कम से कम 1 होनी चाहिए",
   "val.wheelchairCapacityMin": "व्हीलचेयर क्षमता नकारात्मक नहीं हो सकती",
   "val.dialCodeRequired": "डायल कोड आवश्यक है",
+  "val.shiftStartDateRequired": "आरंभ तिथि आवश्यक है",
+  "val.shiftEndDateBeforeStart": "समाप्ति तिथि आरंभ तिथि से पहले नहीं हो सकती",
 
   "vehicles.descriptions.sedan":
     "1-3 पैदल चलने में सक्षम यात्रियों के लिए कॉम्पैक्ट कार। छोटे मार्गों के लिए तेज़ और ईंधन-कुशल।",
@@ -1236,4 +1245,18 @@ export const hiTranslations = {
   "trip.pickupinprogress": "पिकअप जारी है",
   "trip.onboard": "वाहन में सवार",
   "trip.arrived": "पहुंच गया",
+
+  "role.add": "भूमिका जोड़ें",
+  "role.createdesc": "एक नई भूमिका बनाएं जिसे उपयोगकर्ताओं को सौंपा जा सके।",
+  "role.name": "नाम",
+  "role.nameplaceholder": "उदाहरण: डिस्पैचर",
+  "role.description": "विवरण",
+  "role.descriptionplaceholder": "यह भूमिका क्या कर सकती है",
+  "role.save": "भूमिका सहेजें",
+  "role.edit": "भूमिका संपादित करें",
+  "role.editdesc": "इस भूमिका का विवरण अपडेट करें।",
+  "role.updatesuccess": "भूमिका सफलतापूर्वक अपडेट की गई",
+  "role.createsuccess": "भूमिका सफलतापूर्वक बनाई गई",
+  "role.savechanges": "परिवर्तन सहेजें",
+
 };

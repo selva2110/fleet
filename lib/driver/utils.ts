@@ -71,7 +71,7 @@ export class DriverUtils {
       address: "",
       blood_group: "",
       location: null,
-      dial_code: "+1",
+      dial_code: "1",
       license_number: "",
       certifications: {
         wheelchairAssist: { enabled: false, certificateNo: "" },

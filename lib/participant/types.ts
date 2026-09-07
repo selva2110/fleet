@@ -11,7 +11,7 @@ interface contactDetails {
   name: string;
   phone: string;
   address: string;
-  dialCode: string;
+  // dialCode: string;
   location: LatLng | null;
   relation: string;
 }

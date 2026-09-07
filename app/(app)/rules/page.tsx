@@ -31,6 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/common'
 import {
   CATEGORY_META,
   CATEGORY_OPTIONS,
@@ -189,27 +190,16 @@ export default function RulesPage() {
 
   return (
     <div className="relative min-h-full bg-background text-foreground">
-      <div className="mx-auto w-full max-w-[1600px] px-3 pb-12 pt-5 sm:px-5">
-        {/* Header */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                <Scale className="size-5" />
-              </span>
-              <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-                Rule Engine
-              </h1>
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Author, test, and version the constraints that drive NEMT trip planning.
-            </p>
-          </div>
+      <PageHeader
+        title="Rule Engine"
+        description="Author, test, and version the constraints that drive NEMT trip planning."
+        actions={
           <Button onClick={openCreate} className="gap-1.5">
             <Plus className="size-4" /> New rule
           </Button>
-        </div>
-
+        }
+      />
+      <div className="mx-auto w-full max-w-[1600px] px-3 pb-12 sm:px-5">
         {/* Stats */}
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard icon={Layers} label="Rules in set" value={stats.total} hint={activeSet.name} />
@@ -297,7 +287,7 @@ export default function RulesPage() {
                         className="text-left"
                       >
                         <p className="font-medium leading-tight hover:text-primary">{rule.name}</p>
-                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{rule.description}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground whitespace-normal break-words ">{rule.description}</p>
                       </button>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">

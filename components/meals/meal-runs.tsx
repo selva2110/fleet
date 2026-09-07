@@ -10,7 +10,7 @@ import {
   LoadingState,
   useDataView,
 } from "../data-view/data-view";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { findById } from "@/lib/utils";
 import { Card } from "../ui/card";
 import {
@@ -29,7 +29,6 @@ import { useDrivers } from "@/lib/driver/hooks";
 import { useCareItemTypes } from "@/lib/catalog/hooks";
 import { Boxes, Clock, Truck, UtensilsCrossed } from "lucide-react";
 import { RowActions } from "../crud/row-actions";
-import { NewMealRunDialog } from "./new-meal-run-dialog";
 
 function dateRangeLabel(fromDate: string, toDate: string) {
   return fromDate === toDate
@@ -43,7 +42,7 @@ export function MealRunsTab({
   typeId,
 }: {
   detailId: string | null;
-  onOpenDetail: (id: string) => void;
+  onOpenDetail: (id: MealRun) => void;
   typeId: number;
 }) {
   const { mealDeliveries, isLoading } = useMealDeliveries({ typeId });
@@ -53,13 +52,6 @@ export function MealRunsTab({
   const { t } = useTranslation();
   const { addToast } = useNotifications();
   const dv = useDataView("fromDate");
-  const [editingRun, setEditingRun] = useState<MealRun | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-
-  function openEdit(run: MealRun) {
-    setEditingRun(run);
-    setEditDialogOpen(true);
-  }
 
   async function handleDelete(run: MealRun) {
     try {
@@ -129,8 +121,7 @@ export function MealRunsTab({
             <MealRunCard
               key={m.id}
               run={m}
-              onOpen={() => onOpenDetail(String(m.id))}
-              onEdit={() => openEdit(m)}
+              onEdit={() => onOpenDetail(m)}
               onDelete={() => handleDelete(m)}
             />
           ))}
@@ -162,7 +153,6 @@ export function MealRunsTab({
                   return (
                     <TableRow
                       key={m.id}
-                      onClick={() => onOpenDetail(String(m.id))}
                       data-active={detailId === String(m.id)}
                       className="cursor-pointer data-[active=true]:bg-muted/60"
                     >
@@ -195,7 +185,7 @@ export function MealRunsTab({
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <RowActions
-                          onEdit={() => openEdit(m)}
+                          onEdit={() => onOpenDetail(m)}
                           onDelete={() => handleDelete(m)}
                           deleteTitle={t("meal.deleterun")}
                           deleteMessage={t("meal.deletecnfrm").replace(
@@ -212,29 +202,16 @@ export function MealRunsTab({
           </div>
         </Card>
       )}
-
-      <NewMealRunDialog
-        open={editDialogOpen}
-        onOpenChange={(value) => {
-          setEditDialogOpen(value);
-          if (!value) setEditingRun(null);
-        }}
-        editingRun={editingRun}
-        type={editingRun?.typeId ?? 1}
-        columns={["dietPlan", "mealNotes"]}
-      />
     </div>
   );
 }
 
 function MealRunCard({
   run,
-  onOpen,
   onEdit,
   onDelete,
 }: {
   run: MealRun;
-  onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void | Promise<void>;
 }) {
@@ -250,10 +227,7 @@ function MealRunCard({
   const meta = MealsConfig.mealStatusMeta[run.status];
 
   return (
-    <Card
-      onClick={onOpen}
-      className="flex cursor-pointer flex-col overflow-hidden transition-colors hover:border-primary/40"
-    >
+    <Card className="flex cursor-pointer flex-col overflow-hidden transition-colors hover:border-primary/40">
       <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
@@ -266,6 +240,7 @@ function MealRunCard({
           <StatusBadge label={t(meta.label)} cls={meta.cls} />
           <div onClick={(e) => e.stopPropagation()}>
             <RowActions
+              variant="menu"
               onEdit={onEdit}
               onDelete={onDelete}
               deleteTitle={t("meal.deleterun")}

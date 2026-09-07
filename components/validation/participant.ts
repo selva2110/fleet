@@ -9,7 +9,7 @@ const ContactDetailsSchema = z.object({
   name: z.string().trim(),
   phone: z.string().trim(),
   address: z.string().trim(),
-  dialCode: z.string().trim(),
+  // dialCode: z.string().trim(),
   location: LocationSchema.nullable(),
   relation: z.string().trim(),
 });

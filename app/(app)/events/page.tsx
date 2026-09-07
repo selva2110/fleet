@@ -144,8 +144,8 @@ export default function EventsPage() {
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader
-        title={t(EventsConfig.EVENT_HEADER['events']?.title)}
-        description={t(EventsConfig.EVENT_HEADER['events']?.description)}
+        title={t(EventsConfig.EVENT_HEADER["events"]?.title)}
+        description={t(EventsConfig.EVENT_HEADER["events"]?.description)}
         actions={
           <Button onClick={openAdd} size="lg">
             <Plus className="size-4" /> {t("e.addevent")}
@@ -228,6 +228,7 @@ export default function EventsPage() {
                           >
                             <StatusBadge label={t(meta.label)} cls={meta.cls} />
                             <RowActions
+                              variant="menu"
                               onEdit={() => openEdit(e)}
                               onDelete={() => deleteEvent(e.id, e.name)}
                               deleteTitle={t("e.deleteev")}
@@ -251,7 +252,8 @@ export default function EventsPage() {
                           </p>
                           <p className="flex items-center gap-2">
                             <Clock className="size-3.5 shrink-0" />{" "}
-                            {formatTimeOfDay(e.startTime)} – {formatTimeOfDay(e.endTime)}
+                            {formatTimeOfDay(e.startTime)} –{" "}
+                            {formatTimeOfDay(e.endTime)}
                             {e.roundTrip ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                                 <Repeat className="size-3" /> {t("e.roundTrip")}
@@ -345,7 +347,8 @@ export default function EventsPage() {
                               </TableCell>
                               <TableCell className="text-sm tabular-nums text-muted-foreground">
                                 <span className="flex items-center gap-1.5">
-                                  {formatTimeOfDay(e.startTime)}–{formatTimeOfDay(e.endTime)}
+                                  {formatTimeOfDay(e.startTime)}–
+                                  {formatTimeOfDay(e.endTime)}
                                   {e.roundTrip ? (
                                     <Repeat
                                       className="size-3.5 text-primary"
@@ -376,9 +379,7 @@ export default function EventsPage() {
                               <TableCell onClick={(ev) => ev.stopPropagation()}>
                                 <RowActions
                                   onEdit={() => openEdit(e)}
-                                  onDelete={() =>
-                                    deleteEvent(e.id, e.name)
-                                  }
+                                  onDelete={() => deleteEvent(e.id, e.name)}
                                   deleteTitle={t("e.deleteev")}
                                   deleteMessage={t("e.deleteevconfrm").replace(
                                     "{{name}}",
