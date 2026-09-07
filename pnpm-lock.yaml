@@ -35,6 +35,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      country-codes-list:
+        specifier: ^3.1.1
+        version: 3.1.1
       dayjs:
         specifier: ^1.11.23
         version: 1.11.23
@@ -1726,6 +1729,9 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  country-codes-list@3.1.1:
+    resolution: {integrity: sha512-byHWmYalclhar8wgDbqBOa219KtzSFYW5q9zuQ3TW4EuapBKfLFWN28A54wvcG0KI8dClMSynNOcwe156Pav0g==}
 
   cross-env@7.0.3:
     resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
@@ -4977,6 +4983,8 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 5.7.3
+
+  country-codes-list@3.1.1: {}
 
   cross-env@7.0.3:
     dependencies:
